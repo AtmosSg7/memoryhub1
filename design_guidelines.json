@@ -1,0 +1,106 @@
+{
+  "project_name": "MemoryHub",
+  "theme": "light",
+  "archetype": "4 (Swiss & High-Contrast / Premium Tech)",
+  "visual_style": "Mix of Stripe (premium, colored, modern blue) and Linear (minimal, tech, precise)",
+  "colors": {
+    "background": {
+      "primary": "#FFFFFF",
+      "secondary": "#FAFAFB",
+      "tertiary": "#F4F5F7"
+    },
+    "text": {
+      "primary": "#0A0A0B",
+      "secondary": "#5E5F6E",
+      "muted": "#8A8F98"
+    },
+    "brand": {
+      "primary": "#4F46E5",
+      "primary_hover": "#4338CA",
+      "accent": "#0EA5E9",
+      "glow": "rgba(79, 70, 229, 0.15)"
+    },
+    "dashboard": {
+      "border": "#E5E7EB",
+      "card_bg": "#FFFFFF",
+      "tab_inactive": "#9CA3AF",
+      "tab_active": "#111827"
+    }
+  },
+  "typography": {
+    "headings": {
+      "family": "Cabinet Grotesk, sans-serif",
+      "weight": "font-bold to font-black",
+      "tracking": "tracking-tight"
+    },
+    "body": {
+      "family": "Manrope, sans-serif",
+      "weight": "font-normal to font-medium"
+    },
+    "mono": {
+      "family": "JetBrains Mono, monospace"
+    }
+  },
+  "layout_and_spacing": {
+    "container": "max-w-7xl mx-auto px-6 md:px-12",
+    "section_padding": "py-24 md:py-32",
+    "bento_gap": "gap-6 md:gap-8",
+    "card_padding": "p-6 md:p-8",
+    "border_radius": "rounded-2xl md:rounded-3xl",
+    "dashboard_radius": "rounded-xl"
+  },
+  "component_guidelines": {
+    "navbar": "Sticky crystal glassmorphism header (backdrop-blur-xl, bg-white/70, border-b border-gray-200/50). Must include Language Switcher (FR/EN) and primary CTA 'Join the Beta'.",
+    "hero": "Outcome-driven headline (Cabinet Grotesk text-5xl to text-7xl, tracking-tight). Subtitle explaining the problem. Single primary CTA. Background with subtle Stripe-like mesh gradient or glowing blue radial gradient. No heavy illustrations, prepare for the live UI demo below.",
+    "interactive_search": "A section titled 'Your client calls...'. Large, centered, beautiful input field mimicking Raycast or Spotlight. Framer Motion typing effect typing 'Didier Martin'.",
+    "dashboard_mockup": "Appears after typing 'Didier Martin'. Looks like a real SaaS interface (Linear/Notion vibes). Flat solid cards, 1px border (#E5E7EB), subtle shadow-sm. Tabs: AI Summary, Emails, Quotes, Invoices, Google Drive docs, Notion notes, Photos. Use the bento grid protocol for the internal layout.",
+    "features_bento": "Bento grid layout (Mode A). Cards with hover effects (The 'Tracing Beam' or subtle lift). Focus on Gmail, Drive, and Notion integrations.",
+    "how_it_works": "3 clean steps layout. Split layout (Text on left, UI visual on right) or a vertical timeline with crisp connecting lines.",
+    "pricing": "3 tiers (Solo 19€, Pro 49€, Team 99€). Use 'Grid Borders' or 'Tracing Beam' on the Pro tier to highlight it. Transparent pricing, no hidden fees.",
+    "faq": "Clean accordion (Shadcn UI). Left-aligned text.",
+    "buttons": "Shadcn based. Primary: Solid brand color (#4F46E5) with subtle hover lift and shadow. Secondary: Outline or ghost with gray text.",
+    "testing": "All interactive elements MUST have data-testid attributes."
+  },
+  "animation_strategy": {
+    "library": "framer-motion",
+    "hero": "Fade up and staggered text reveal.",
+    "search_bar": "Typing effect using Framer Motion (use-motion-value and animate).",
+    "dashboard_reveal": "Scale up and fade in after search completes.",
+    "scroll": "Use Lenis for smooth momentum scrolling. Scroll-triggered fade-ins for bento boxes."
+  },
+  "media": {
+    "image_urls": [
+      {
+        "category": "Client Profile Picture (Didier Martin)",
+        "url": "https://images.unsplash.com/photo-1530983822321-fcac2d3c0f06?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzJ8MHwxfHNlYXJjaHwxfHxmcmVuY2glMjBhcnRpc2FuJTIwbWF0dXJlJTIwbWFuJTIwcG9ydHJhaXR8ZW58MHx8fHwxNzgzMDQ0OTA5fDA&ixlib=rb-4.1.0&q=85",
+        "description": "Mature French artisan smiling. Use as Didier Martin's avatar in the dashboard mockup."
+      },
+      {
+        "category": "Client Work Photo 1 (Dashboard Photos Tab)",
+        "url": "https://images.unsplash.com/photo-1611021061285-16c871740efa?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODd8MHwxfHNlYXJjaHwyfHxjYXJwZW50cnklMjB3b29kd29yayUyMGNyYWZ0c21hbnxlbnwwfHx8fDE3ODMwNDQ5MTB8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Woodworker shaping wood. Use inside the 'Photos' tab of the dashboard."
+      },
+      {
+        "category": "Client Work Photo 2 (Dashboard Photos Tab)",
+        "url": "https://images.unsplash.com/photo-1659930087003-2d64e33181f7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODd8MHwxfHNlYXJjaHwxfHxjYXJwZW50cnklMjB3b29kd29yayUyMGNyYWZ0c21hbnxlbnwwfHx8fDE3ODMwNDQ5MTB8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Person cutting a piece of wood. Use inside the 'Photos' tab of the dashboard."
+      }
+    ],
+    "icons": {
+      "library": "lucide-react",
+      "instruction": "Use lucide-react for UI icons (search, mail, file-text, image, check). For specific brand logos like Gmail, Google Drive, and Notion, use react-icons (e.g., SiGmail, SiGoogledrive, SiNotion). Provide installation command: yarn add react-icons"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Follow the theme and archetype strictly. MemoryHub must feel like a premium tool, mimicking Stripe's typography and Linear's minimal container borders.",
+    "Create a bilingual context or simple state to toggle FR/EN strings on the landing page.",
+    "Implement the interactive search demo carefully using Framer Motion. The text 'Didier Martin' should type out, and then trigger the display of the Dashboard mockup.",
+    "Dashboard Mockup: Do not build a separate page. It should be a visually stunning component built right into the landing page, showing realistic data for Didier Martin, including his avatar and work photos from the media section.",
+    "Use Shadcn UI for Tabs, Accordion, Buttons, and Cards. Customise their padding and borders according to the 'layout_and_spacing' guidelines.",
+    "Always add 'data-testid' to actionable items (Language switcher, CTA buttons, Tabs).",
+    "Do NOT use 'Inter' font for headings; stick to Cabinet Grotesk (or similar geometric/display sans).",
+    "Never use pure black or pure gray. Use the provided tinted colors.",
+    "Ensure 'Join the Beta' buttons stand out with the primary brand color.",
+    "Install the required packages before usage, like framer-motion, lucide-react, react-icons."
+  ]
+}
