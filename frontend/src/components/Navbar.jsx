@@ -20,14 +20,16 @@ export const Navbar = ({ onJoin }) => {
 
   return (
     <header
-      className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${
-        scrolled ? "backdrop-blur-xl bg-white/75 border-b border-gray-200/60" : "bg-transparent"
+      className={`fixed top-0 inset-x-0 z-50 transition-[background,backdrop-filter,border-color,box-shadow,height] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        scrolled
+          ? "backdrop-blur-2xl bg-white/72 border-b border-black/[0.06] shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-20px_rgba(10,10,11,0.15)]"
+          : "bg-transparent border-b border-transparent"
       }`}
       data-testid="site-navbar"
     >
-      <div className="max-w-7xl mx-auto px-6 md:px-10 h-16 flex items-center justify-between">
-        <a href="#top" className="flex items-center gap-2" data-testid="brand-logo">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4F46E5] to-[#0EA5E9] flex items-center justify-center shadow-sm">
+      <div className={`max-w-7xl mx-auto px-6 md:px-10 flex items-center justify-between transition-[height] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${scrolled ? "h-14" : "h-16"}`}>
+        <a href="#top" className="flex items-center gap-2 group" data-testid="brand-logo">
+          <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-[#4F46E5] to-[#0EA5E9] flex items-center justify-center shadow-[0_1px_0_rgba(255,255,255,0.2)_inset,0_4px_12px_-4px_rgba(79,70,229,0.5)] transition-transform duration-300 group-hover:scale-[1.04]">
             <Sparkles className="w-4 h-4 text-white" strokeWidth={2.4} />
           </div>
           <span className="font-display text-[17px] font-bold tracking-tight text-[#0A0A0B]">
@@ -35,31 +37,31 @@ export const Navbar = ({ onJoin }) => {
           </span>
         </a>
 
-        <nav className="hidden md:flex items-center gap-8 text-[14px] text-[#5E5F6E] font-medium">
-          <button data-testid="nav-features" onClick={() => scrollTo("features")} className="hover:text-[#0A0A0B] transition-colors">
+        <nav className="hidden md:flex items-center gap-1 text-[14px] text-[#52535E] font-medium">
+          <button data-testid="nav-features" onClick={() => scrollTo("features")} className="px-3 py-1.5 rounded-lg hover:text-[#0A0A0B] hover:bg-black/[0.03] transition-all duration-200">
             {t("nav.features")}
           </button>
-          <button data-testid="nav-how" onClick={() => scrollTo("how")} className="hover:text-[#0A0A0B] transition-colors">
+          <button data-testid="nav-how" onClick={() => scrollTo("how")} className="px-3 py-1.5 rounded-lg hover:text-[#0A0A0B] hover:bg-black/[0.03] transition-all duration-200">
             {t("nav.how")}
           </button>
-          <button data-testid="nav-pricing" onClick={() => scrollTo("pricing")} className="hover:text-[#0A0A0B] transition-colors">
+          <button data-testid="nav-pricing" onClick={() => scrollTo("pricing")} className="px-3 py-1.5 rounded-lg hover:text-[#0A0A0B] hover:bg-black/[0.03] transition-all duration-200">
             {t("nav.pricing")}
           </button>
-          <button data-testid="nav-faq" onClick={() => scrollTo("faq")} className="hover:text-[#0A0A0B] transition-colors">
+          <button data-testid="nav-faq" onClick={() => scrollTo("faq")} className="px-3 py-1.5 rounded-lg hover:text-[#0A0A0B] hover:bg-black/[0.03] transition-all duration-200">
             {t("nav.faq")}
           </button>
         </nav>
 
         <div className="flex items-center gap-2">
           <div
-            className="hidden sm:flex items-center bg-[#F4F5F7] border border-[#E5E7EB] rounded-full p-0.5 text-[12px] font-semibold"
+            className="hidden sm:flex items-center bg-black/[0.04] border border-black/[0.06] rounded-full p-0.5 text-[11.5px] font-semibold"
             data-testid="lang-switcher"
           >
             <button
               onClick={() => setLang("fr")}
               data-testid="lang-fr"
-              className={`px-3 py-1 rounded-full transition-colors ${
-                lang === "fr" ? "bg-white text-[#0A0A0B] shadow-sm" : "text-[#8A8F98]"
+              className={`px-2.5 py-1 rounded-full transition-all duration-300 ${
+                lang === "fr" ? "bg-white text-[#0A0A0B] shadow-[0_1px_2px_rgba(10,10,11,0.08)]" : "text-[#8A8F98] hover:text-[#52535E]"
               }`}
             >
               FR
@@ -67,8 +69,8 @@ export const Navbar = ({ onJoin }) => {
             <button
               onClick={() => setLang("en")}
               data-testid="lang-en"
-              className={`px-3 py-1 rounded-full transition-colors ${
-                lang === "en" ? "bg-white text-[#0A0A0B] shadow-sm" : "text-[#8A8F98]"
+              className={`px-2.5 py-1 rounded-full transition-all duration-300 ${
+                lang === "en" ? "bg-white text-[#0A0A0B] shadow-[0_1px_2px_rgba(10,10,11,0.08)]" : "text-[#8A8F98] hover:text-[#52535E]"
               }`}
             >
               EN

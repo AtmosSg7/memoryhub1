@@ -7,13 +7,13 @@ export const Faq = () => {
   const items = t("faq.items");
 
   return (
-    <section id="faq" className="py-24 md:py-32 bg-[#FAFAFB] border-y border-[#E5E7EB]">
+    <section id="faq" className="py-28 md:py-36 bg-gradient-to-b from-[#FBFBFC] via-[#F4F5F7] to-[#FBFBFC] border-y border-[#EEF0F3]">
       <div className="max-w-3xl mx-auto px-6 md:px-10">
-        <div className="mb-12">
-          <p className="text-[12px] uppercase tracking-[0.18em] text-[#4F46E5] font-bold mb-3">
+        <div className="mb-14">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-[#4F46E5] font-bold mb-4">
             {t("faq.kicker")}
           </p>
-          <h2 className="font-display text-4xl md:text-5xl font-black text-[#0A0A0B] tracking-tight leading-[1.02]">
+          <h2 className="font-display text-[36px] md:text-[52px] font-black text-[#0A0A0B] tracking-[-0.03em] leading-[1.02]">
             {t("faq.title")}
           </h2>
         </div>
@@ -23,13 +23,13 @@ export const Faq = () => {
             <AccordionItem
               key={idx}
               value={`item-${idx}`}
-              className="card-soft px-5 border !border-[#E5E7EB]"
+              className="card-soft px-5 md:px-6 border !border-[#E7E9EE] data-[state=open]:border-[#D6DAE1] data-[state=open]:shadow-[0_1px_0_rgba(255,255,255,0.7)_inset,0_2px_4px_rgba(10,10,11,0.04),0_20px_40px_-24px_rgba(10,10,11,0.14)] transition-all duration-500"
               data-testid={`faq-item-${idx}`}
             >
-              <AccordionTrigger className="text-left font-display font-bold text-[16px] md:text-[17px] text-[#0A0A0B] hover:no-underline">
+              <AccordionTrigger className="text-left font-display font-bold text-[16px] md:text-[17.5px] text-[#0A0A0B] hover:no-underline tracking-[-0.02em] py-5 [&[data-state=open]>svg]:text-[#4F46E5]">
                 {item.q}
               </AccordionTrigger>
-              <AccordionContent className="text-[14.5px] text-[#5E5F6E] leading-relaxed pb-4">
+              <AccordionContent className="text-[14.5px] text-[#52535E] leading-[1.65] pb-5 pr-6">
                 {item.a}
               </AccordionContent>
             </AccordionItem>
