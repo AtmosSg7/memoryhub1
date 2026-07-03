@@ -1,0 +1,25 @@
+{
+  "summary": "Frontend-only MemoryHub landing page tested end-to-end. All critical flows work: page load, sticky navbar, FR/EN language switcher, Hero CTA opens JoinModal (email submit -> success -> close), nav anchor links (features/how/pricing/faq), SearchDemo typing 'Didier Martin' with client dashboard reveal, all 7 dashboard tabs, Pricing plans 19/49/99 with 'Le plus populaire' badge, all 3 pricing CTAs open modal, FAQ accordion expands, Final CTA opens modal, mobile 390x844 no horizontal overflow.",
+  "tested_scope": ["frontend"],
+  "passed": [
+    "Landing page loads without errors, navbar visible",
+    "Language switcher lang-en and lang-fr toggle",
+    "Hero CTA (hero-cta-primary) opens join-modal",
+    "JoinModal email input + submit -> join-modal-success",
+    "join-modal-close dismisses modal",
+    "nav-features, nav-how, nav-pricing, nav-faq scroll/click work",
+    "fake-search-bar animates 'Didier Martin' and client-dashboard reveals",
+    "All 7 dashboard tabs (summary/emails/quotes/invoices/drive/notion/photos) clickable",
+    "Pricing shows 19€ Solo, 49€ Pro (Le plus populaire badge), 99€ Team",
+    "pricing-cta-solo, pricing-cta-pro, pricing-cta-team all open join-modal",
+    "faq-item-0 accordion expands",
+    "final-cta-join opens join-modal",
+    "Mobile 390x844 no horizontal overflow (scrollWidth=390)"
+  ],
+  "failed": [],
+  "action_items": [],
+  "success_rate": {"backend": "N/A (no backend)", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true,
+  "notes": "One transient click failure on nav-pricing during the combined run was not reproducible on retry; direct pricing-cta clicks all succeeded. No blockers."
+}
