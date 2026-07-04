@@ -1,22 +1,65 @@
 import React, { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLang } from "@/context/LanguageContext";
-import { X, CheckCircle2, ArrowRight } from "lucide-react";
+import { X, CheckCircle2, ArrowRight, Loader2 } from "lucide-react";
+
+const API_BASE = process.env.REACT_APP_API_URL || "";
 
 export const JoinModal = ({ open, onClose }) => {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const submit = (e) => {
+  const handleClose = () => {
+    if (loading) return;
+    setError("");
+    onClose();
+  };
+
+  const submit = async (e) => {
     e.preventDefault();
-    if (!email.includes("@")) return;
-    setSent(true);
-    setTimeout(() => {
-      setSent(false);
-      setEmail("");
-      onClose();
-    }, 1800);
+    setError("");
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/waitlist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), language: lang }),
+      });
+
+      if (res.status === 201) {
+        setSent(true);
+        setTimeout(() => {
+          setSent(false);
+          setEmail("");
+          setError("");
+          onClose();
+        }, 1800);
+        return;
+      }
+
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        // ignore parse errors
+      }
+
+      if (res.status === 422) {
+        setError(t("joinModal.errorInvalid"));
+      } else if (res.status === 409) {
+        setError(t("joinModal.errorDuplicate"));
+      } else {
+        setError(data?.detail?.message || t("joinModal.errorServer"));
+      }
+    } catch {
+      setError(t("joinModal.errorServer"));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -29,7 +72,7 @@ export const JoinModal = ({ open, onClose }) => {
           className="fixed inset-0 z-[100] flex items-center justify-center p-4"
           data-testid="join-modal"
         >
-          <div className="absolute inset-0 bg-[#0A0A0B]/50 backdrop-blur-md" onClick={onClose} />
+          <div className="absolute inset-0 bg-[#0A0A0B]/50 backdrop-blur-md" onClick={handleClose} />
           <motion.div
             initial={{ opacity: 0, y: 16, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -38,8 +81,9 @@ export const JoinModal = ({ open, onClose }) => {
             className="relative w-full max-w-md bg-white rounded-[22px] border border-[#E7E9EE] shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_20px_60px_-15px_rgba(10,10,11,0.35)] p-8"
           >
             <button
-              onClick={onClose}
+              onClick={handleClose}
               data-testid="join-modal-close"
+              disabled={loading}
               className="absolute top-4 right-4 w-8 h-8 rounded-lg hover:bg-black/[0.04] flex items-center justify-center text-[#8A8F98] transition-colors duration-200"
             >
               <X className="w-4 h-4" />
@@ -54,19 +98,38 @@ export const JoinModal = ({ open, onClose }) => {
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setError("");
+                    }}
                     placeholder={t("joinModal.placeholder")}
                     required
+                    disabled={loading}
                     data-testid="join-modal-email"
                     className="w-full px-4 py-3 rounded-xl border border-[#E7E9EE] focus:border-[#4F46E5] focus:ring-2 focus:ring-[#4F46E5]/15 outline-none text-[15px] bg-white transition-all duration-200 placeholder:text-[#8A8F98]"
                   />
+                  {error && (
+                    <p className="text-[13px] text-red-500" data-testid="join-modal-error">
+                      {error}
+                    </p>
+                  )}
                   <button
                     type="submit"
+                    disabled={loading}
                     data-testid="join-modal-submit"
                     className="btn-primary w-full justify-center"
                   >
-                    {t("joinModal.submit")}
-                    <ArrowRight className="w-4 h-4" />
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        {t("joinModal.loading")}
+                      </>
+                    ) : (
+                      <>
+                        {t("joinModal.submit")}
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
                   </button>
                 </form>
               </>

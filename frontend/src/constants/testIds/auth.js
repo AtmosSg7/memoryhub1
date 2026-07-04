@@ -31,3 +31,15 @@ export const REGISTER = {
 export const LOGOUT = {
 	button: 'logout-button',
 };
+
+export const FORGOT_PASSWORD = {
+	emailInput: 'forgot-password-email-input',
+	submitButton: 'forgot-password-submit-button',
+	successMessage: 'forgot-password-success-message',
+};
+
+export const VERIFY_EMAIL = {
+	loading: 'verify-email-loading',
+	success: 'verify-email-success',
+	error: 'verify-email-error',
+};

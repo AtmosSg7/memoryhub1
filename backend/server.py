@@ -1,18 +1,28 @@
-from fastapi import FastAPI, APIRouter
-from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
-import os
 import logging
-from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+import os
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
+from typing import List, Literal, Optional
 
+from dotenv import load_dotenv
+from fastapi import FastAPI, APIRouter, HTTPException
+from motor.motor_asyncio import AsyncIOMotorClient
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pymongo.errors import DuplicateKeyError
+from starlette.middleware.cors import CORSMiddleware
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+load_dotenv(ROOT_DIR / '.env', override=False)
+
+from auth import auth_router
+
+# Configure logging early — used by route handlers
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -21,6 +31,7 @@ db = client[os.environ['DB_NAME']]
 
 # Create the main app without a prefix
 app = FastAPI()
+app.state.db = db
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
@@ -36,6 +47,13 @@ class StatusCheck(BaseModel):
 
 class StatusCheckCreate(BaseModel):
     client_name: str
+
+class WaitlistCreate(BaseModel):
+    email: EmailStr
+    language: Optional[Literal["fr", "en"]] = None
+
+class WaitlistResponse(BaseModel):
+    message: str
 
 # Add your routes to the router instead of directly to app
 @api_router.get("/")
@@ -66,6 +84,32 @@ async def get_status_checks():
     
     return status_checks
 
+@api_router.post("/waitlist", response_model=WaitlistResponse, status_code=201)
+async def join_waitlist(input: WaitlistCreate):
+    email = input.email.strip().lower()
+    doc = {
+        "id": str(uuid.uuid4()),
+        "email": email,
+        "language": input.language,
+        "createdAt": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        await db.waitlist.insert_one(doc)
+    except DuplicateKeyError:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "This email is already on the waitlist."},
+        )
+    except Exception:
+        logger.exception("Failed to add email to waitlist")
+        raise HTTPException(
+            status_code=500,
+            detail={"message": "Something went wrong. Please try again later."},
+        )
+    return WaitlistResponse(message="Successfully joined the waitlist.")
+
+api_router.include_router(auth_router)
+
 # Include the router in the main app
 app.include_router(api_router)
 
@@ -77,12 +121,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+@app.on_event("startup")
+async def startup_db_indexes():
+    await db.waitlist.create_index("email", unique=True)
+    await db.users.create_index("email", unique=True)
+    await db.users.create_index("emailVerificationToken", sparse=True)
+    await db.users.create_index("passwordResetToken", sparse=True)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
