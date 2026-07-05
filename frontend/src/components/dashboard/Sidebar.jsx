@@ -8,6 +8,7 @@ import {
   Receipt,
   FolderClosed,
   Clock3,
+  Layers,
   Plug,
   Settings,
   Sparkles,
@@ -29,6 +30,7 @@ const groups = (t) => [
     items: [
       { to: "/dashboard/quotes", key: "quotes", icon: FileText, label: t("nav.quotes") },
       { to: "/dashboard/invoices", key: "invoices", icon: Receipt, label: t("nav.invoices") },
+      { to: "/dashboard/catalog", key: "catalog", icon: Layers, label: t("nav.catalog") },
       { to: "/dashboard/documents", key: "documents", icon: FolderClosed, label: t("nav.documents") },
       { to: "/dashboard/timeline", key: "timeline", icon: Clock3, label: t("nav.timeline") },
     ],

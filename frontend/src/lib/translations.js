@@ -456,6 +456,7 @@ export const translations = {
         notes: "Notes",
         quotes: "Devis",
         invoices: "Factures",
+        catalog: "Catalogue",
         documents: "Documents",
         timeline: "Historique",
         integrations: "Intégrations",
@@ -578,6 +579,10 @@ export const translations = {
         invoices: {
           title: "Factures",
           subtitle: "Facturation, statuts de paiement et relances.",
+        },
+        catalog: {
+          title: "Catalogue",
+          subtitle: "Prestations apprises depuis vos devis et factures — lecture seule.",
         },
         documents: {
           title: "Documents",
@@ -918,6 +923,31 @@ export const translations = {
           desc: "Créez votre première facture pour suivre votre facturation.",
           filteredTitle: "Aucune facture avec ce statut",
           filteredDesc: "Aucune facture ne correspond à ce filtre.",
+        },
+      },
+      catalog: {
+        loading: "Chargement…",
+        searchPlaceholder: "Rechercher une prestation…",
+        resultsLabel: "prestations",
+        stats: {
+          items: "Prestations indexées",
+          usages: "Utilisations totales",
+          average: "Moy. utilisations / prestation",
+        },
+        col: {
+          description: "Description",
+          usage: "Utilisations",
+          avgPrice: "Prix moy. HT",
+          minPrice: "Min HT",
+          maxPrice: "Max HT",
+          vat: "TVA fréq.",
+          lastUsed: "Dernière utilisation",
+        },
+        empty: {
+          title: "Catalogue vide pour l'instant",
+          desc: "Les prestations de vos devis et factures apparaîtront ici automatiquement.",
+          filteredTitle: "Aucune prestation trouvée",
+          filteredDesc: "Essayez un autre mot-clé.",
         },
       },
       noteType: {
@@ -1574,6 +1604,7 @@ export const translations = {
         notes: "Notes",
         quotes: "Quotes",
         invoices: "Invoices",
+        catalog: "Catalog",
         documents: "Documents",
         timeline: "Timeline",
         integrations: "Integrations",
@@ -1684,6 +1715,10 @@ export const translations = {
         notes: { title: "Notes", subtitle: "Job-site notes, meetings and reminders in one place." },
         quotes: { title: "Quotes", subtitle: "Track every quote — sent, accepted or pending." },
         invoices: { title: "Invoices", subtitle: "Billing, payment status and follow-ups." },
+        catalog: {
+          title: "Catalog",
+          subtitle: "Services learned from your quotes and invoices — read-only.",
+        },
         documents: {
           title: "Documents",
           subtitle: "All files linked to your clients: contracts, PDFs, photos.",
@@ -2017,6 +2052,31 @@ export const translations = {
           desc: "Create your first invoice to track your billing.",
           filteredTitle: "No invoices with this status",
           filteredDesc: "No invoices match this filter.",
+        },
+      },
+      catalog: {
+        loading: "Loading…",
+        searchPlaceholder: "Search for a service…",
+        resultsLabel: "services",
+        stats: {
+          items: "Indexed services",
+          usages: "Total usages",
+          average: "Avg. usages / service",
+        },
+        col: {
+          description: "Description",
+          usage: "Usages",
+          avgPrice: "Avg. excl. VAT",
+          minPrice: "Min excl. VAT",
+          maxPrice: "Max excl. VAT",
+          vat: "Common VAT",
+          lastUsed: "Last used",
+        },
+        empty: {
+          title: "Catalog is empty for now",
+          desc: "Services from your quotes and invoices will appear here automatically.",
+          filteredTitle: "No services found",
+          filteredDesc: "Try another keyword.",
         },
       },
       noteType: {

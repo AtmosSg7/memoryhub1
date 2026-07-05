@@ -76,6 +76,8 @@ import TimelinePage from "@/pages/dashboard/TimelinePage";
 
 import IntegrationsPage from "@/pages/dashboard/IntegrationsPage";
 
+import CatalogPage from "@/pages/dashboard/CatalogPage";
+
 import DashboardSettingsPage from "@/pages/dashboard/SettingsPage";
 
 
@@ -193,6 +195,8 @@ function App() {
               <Route path="quotes" element={<QuotesPage />} />
 
               <Route path="invoices" element={<InvoicesPage />} />
+
+              <Route path="catalog" element={<CatalogPage />} />
 
               <Route path="documents" element={<DocumentsPage />} />
 
