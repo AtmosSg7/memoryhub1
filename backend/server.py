@@ -16,6 +16,15 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env', override=False)
 
 from auth import auth_router
+from clients import clients_router
+from notes import notes_router
+from documents import documents_router
+from search import search_router
+from events import events_router
+from quotes import quotes_router
+from invoices import invoices_router
+from imports import imports_router
+from catalog import catalog_router
 
 # Configure logging early — used by route handlers
 logging.basicConfig(
@@ -109,6 +118,15 @@ async def join_waitlist(input: WaitlistCreate):
     return WaitlistResponse(message="Successfully joined the waitlist.")
 
 api_router.include_router(auth_router)
+api_router.include_router(clients_router)
+api_router.include_router(notes_router)
+api_router.include_router(documents_router)
+api_router.include_router(search_router)
+api_router.include_router(events_router)
+api_router.include_router(quotes_router)
+api_router.include_router(invoices_router)
+api_router.include_router(imports_router)
+api_router.include_router(catalog_router)
 
 # Include the router in the main app
 app.include_router(api_router)
@@ -127,6 +145,40 @@ async def startup_db_indexes():
     await db.users.create_index("email", unique=True)
     await db.users.create_index("emailVerificationToken", sparse=True)
     await db.users.create_index("passwordResetToken", sparse=True)
+    await db.clients.create_index("id", unique=True)
+    await db.clients.create_index([("userId", 1), ("updatedAt", -1)])
+    await db.clients.create_index([("userId", 1), ("status", 1)])
+    await db.notes.create_index("id", unique=True)
+    await db.notes.create_index([("userId", 1), ("updatedAt", -1)])
+    await db.notes.create_index([("userId", 1), ("clientId", 1), ("updatedAt", -1)])
+    await db.notes.create_index([("userId", 1), ("noteDate", -1)])
+    await db.notes.create_index([("userId", 1), ("clientId", 1), ("noteDate", -1)])
+    await db.notes.create_index([("userId", 1), ("type", 1), ("noteDate", -1)])
+    await db.documents.create_index("id", unique=True)
+    await db.documents.create_index([("userId", 1), ("updatedAt", -1)])
+    await db.documents.create_index([("userId", 1), ("clientId", 1), ("updatedAt", -1)])
+    await db.events.create_index("id", unique=True)
+    await db.events.create_index([("userId", 1), ("createdAt", -1)])
+    await db.events.create_index([("userId", 1), ("clientId", 1), ("createdAt", -1)])
+    await db.quotes.create_index("id", unique=True)
+    await db.quotes.create_index([("userId", 1), ("number", 1)], unique=True)
+    await db.quotes.create_index([("userId", 1), ("quoteDate", -1)])
+    await db.quotes.create_index([("userId", 1), ("clientId", 1), ("quoteDate", -1)])
+    await db.quotes.create_index([("userId", 1), ("status", 1), ("quoteDate", -1)])
+    await db.invoices.create_index("id", unique=True)
+    await db.invoices.create_index([("userId", 1), ("number", 1)], unique=True)
+    await db.invoices.create_index([("userId", 1), ("invoiceDate", -1)])
+    await db.invoices.create_index([("userId", 1), ("clientId", 1), ("invoiceDate", -1)])
+    await db.invoices.create_index([("userId", 1), ("status", 1), ("invoiceDate", -1)])
+    await db.import_sessions.create_index("id", unique=True)
+    await db.import_sessions.create_index([("userId", 1), ("createdAt", -1)])
+    await db.import_sessions.create_index([("userId", 1), ("status", 1), ("createdAt", -1)])
+    await db.quotes.create_index([("userId", 1), ("clientId", 1), ("externalNumber", 1)], sparse=True)
+    await db.invoices.create_index([("userId", 1), ("clientId", 1), ("externalNumber", 1)], sparse=True)
+    await db.catalog_items.create_index("id", unique=True)
+    await db.catalog_items.create_index([("userId", 1), ("normalizedKey", 1)], unique=True)
+    await db.catalog_items.create_index([("userId", 1), ("lastUsedAt", -1)])
+    await db.catalog_items.create_index([("userId", 1), ("usageCount", -1)])
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

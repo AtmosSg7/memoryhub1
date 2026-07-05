@@ -1,5 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
-@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,700,500,400&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800,700,500,400&f[]=satoshi@400,500,600,700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -240,3 +240,82 @@ input {
         transition-duration: 0.001ms !important;
     }
 }
+
+/* ————————— Dashboard app (scoped navy palette) ————————— */
+
+.dashboard-app {
+    --dash-bg: #F9FAFB;
+    --dash-text: #111827;
+    --dash-muted: #4B5563;
+    --dash-border: #E5E7EB;
+    --dash-primary: #0A2540;
+    --dash-primary-hover: #173A5E;
+    --dash-accent: #0066FF;
+    background-color: var(--dash-bg);
+    color: var(--dash-text);
+    font-family: 'Satoshi', 'Manrope', ui-sans-serif, system-ui, sans-serif;
+}
+
+.dashboard-app .font-cabinet {
+    font-family: 'Cabinet Grotesk', 'Satoshi', 'Manrope', sans-serif;
+    letter-spacing: -0.02em;
+}
+
+.dashboard-app .font-satoshi {
+    font-family: 'Satoshi', sans-serif;
+}
+
+.dashboard-app .grain::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.4;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+    mix-blend-mode: overlay;
+}
+
+.dashboard-app ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+.dashboard-app ::-webkit-scrollbar-track {
+    background: transparent;
+}
+.dashboard-app ::-webkit-scrollbar-thumb {
+    background: #e5e7eb;
+    border-radius: 8px;
+    border: 2px solid #f9fafb;
+}
+.dashboard-app ::-webkit-scrollbar-thumb:hover {
+    background: #d1d5db;
+}
+
+@keyframes dashFadeSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dashboard-app .animate-fade-slide {
+    animation: dashFadeSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes dashSoftPulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}
+
+.dashboard-app .animate-soft-pulse {
+    animation: dashSoftPulse 2.4s ease-in-out infinite;
+}
+
+.dashboard-app :focus-visible {
+    box-shadow: 0 0 0 3px rgba(10, 37, 64, 0.22);
+}
+
