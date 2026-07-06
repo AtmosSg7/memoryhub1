@@ -1,16 +1,6 @@
 export const QUOTE_STATUSES = ["draft", "sent", "accepted", "rejected", "expired"];
 
-const STATUS_STYLES = {
-  draft: { bg: "bg-[#F3F4F6]", text: "text-[#4B5563]", border: "border-[#E5E7EB]" },
-  sent: { bg: "bg-[#EFF6FF]", text: "text-[#0A2540]", border: "border-[#BFDBFE]" },
-  accepted: { bg: "bg-[#ECFDF5]", text: "text-[#065F46]", border: "border-[#A7F3D0]" },
-  rejected: { bg: "bg-[#FEF2F2]", text: "text-[#991B1B]", border: "border-[#FECACA]" },
-  expired: { bg: "bg-[#FFFBEB]", text: "text-[#92400E]", border: "border-[#FDE68A]" },
-};
-
-export function getQuoteStatusStyle(status) {
-  return STATUS_STYLES[status] || STATUS_STYLES.draft;
-}
+export { getQuoteStatusStyle } from "@/utils/statusDisplay";
 
 export function formatQuoteAmount(cents, lang = "fr") {
   const value = (cents || 0) / 100;

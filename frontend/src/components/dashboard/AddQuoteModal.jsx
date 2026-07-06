@@ -13,11 +13,20 @@ import {
 } from "@/utils/commercialDisplay";
 import { QUOTE_STATUSES, datetimeLocalToIso, toDatetimeLocalValue } from "@/utils/quoteDisplay";
 import { getDisplayCompany } from "@/utils/clientDisplay";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/dashboard/ActionButton";
+import {
+  DETAIL_MODAL_CONTENT_CLASS,
+  DETAIL_MODAL_OVERLAY_CLASS,
+  DetailModalFooter,
+  FORM_FIELD_CLASS,
+  FORM_LABEL_CLASS,
+  FORM_SELECT_CONTENT_CLASS,
+  FORM_TEXTAREA_CLASS,
+} from "@/components/dashboard/detailModalLayout";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const EMPTY_FORM = {
@@ -27,15 +36,6 @@ const EMPTY_FORM = {
   quoteDate: "",
   internalNotes: "",
 };
-
-const MODAL_OVERLAY_CLASS = "z-[100] bg-[#0A0A0B]/50 backdrop-blur-md";
-const MODAL_CONTENT_CLASS =
-  "z-[100] w-[calc(100%-2rem)] max-w-4xl max-h-[90vh] overflow-y-auto bg-white border border-[#E7E9EE] rounded-[22px] p-6 sm:p-8 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_20px_60px_-15px_rgba(10,10,11,0.35)] sm:rounded-[22px] [&>button]:rounded-lg";
-const FIELD_CLASS =
-  "h-10 rounded-xl border border-[#E7E9EE] bg-white px-4 text-[15px] text-[#111827] shadow-none placeholder:text-[#8A8F98] focus-visible:border-[#0A2540] focus-visible:ring-2 focus-visible:ring-[#0A2540]/15";
-const TEXTAREA_CLASS = `${FIELD_CLASS} min-h-[80px] py-3 h-auto`;
-const LABEL_CLASS = "text-sm font-medium text-[#374151]";
-const SELECT_CONTENT_CLASS = "z-[110] rounded-xl border border-[#E7E9EE] bg-white text-[#111827] shadow-lg";
 
 function quoteToForm(quote, prefillClient) {
   if (quote) {
@@ -119,8 +119,8 @@ export default function AddQuoteModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && closeAddQuote()}>
-      <DialogContent overlayClassName={MODAL_OVERLAY_CLASS} className={MODAL_CONTENT_CLASS} data-testid="add-quote-modal">
-        <DialogHeader>
+      <DialogContent overlayClassName={DETAIL_MODAL_OVERLAY_CLASS} className={DETAIL_MODAL_CONTENT_CLASS} data-testid="add-quote-modal">
+        <DialogHeader className="space-y-1 pb-1">
           <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-[#111827]">
             {isEdit ? t("quoteForm.editTitle") : t("quoteForm.addTitle")}
           </DialogTitle>
@@ -137,13 +137,13 @@ export default function AddQuoteModal() {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="quote-client" className={LABEL_CLASS}>{t("quoteForm.client")} *</Label>
+            <Label htmlFor="quote-client" className={FORM_LABEL_CLASS}>{t("quoteForm.client")} *</Label>
             {clientLocked ? (
-              <Input id="quote-client" readOnly value={getDisplayCompany(prefillClient)} className={`${FIELD_CLASS} bg-[#F9FAFB] text-[#6B7280]`} />
+              <Input id="quote-client" readOnly value={getDisplayCompany(prefillClient)} className={`${FORM_FIELD_CLASS} bg-[#F9FAFB] text-[#6B7280]`} />
             ) : (
               <Select value={form.clientId || "none"} onValueChange={(v) => setForm((p) => ({ ...p, clientId: v === "none" ? "" : v }))}>
-                <SelectTrigger data-testid="quote-form-client" className={FIELD_CLASS}><SelectValue placeholder={t("quoteForm.selectClient")} /></SelectTrigger>
-                <SelectContent className={SELECT_CONTENT_CLASS}>
+                <SelectTrigger data-testid="quote-form-client" className={FORM_FIELD_CLASS}><SelectValue placeholder={t("quoteForm.selectClient")} /></SelectTrigger>
+                <SelectContent className={FORM_SELECT_CONTENT_CLASS}>
                   <SelectItem value="none">{t("quoteForm.selectClient")}</SelectItem>
                   {clients.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{getDisplayCompany(c)}</SelectItem>
@@ -154,16 +154,16 @@ export default function AddQuoteModal() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="quote-title" className={LABEL_CLASS}>{t("quoteForm.title")}</Label>
-            <Input id="quote-title" value={form.title} onChange={setField("title")} className={FIELD_CLASS} placeholder={t("quoteForm.titlePlaceholder")} />
+            <Label htmlFor="quote-title" className={FORM_LABEL_CLASS}>{t("quoteForm.title")}</Label>
+            <Input id="quote-title" value={form.title} onChange={setField("title")} className={FORM_FIELD_CLASS} placeholder={t("quoteForm.titlePlaceholder")} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className={LABEL_CLASS}>{t("quoteForm.status")}</Label>
+              <Label className={FORM_LABEL_CLASS}>{t("quoteForm.status")}</Label>
               <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
-                <SelectTrigger className={FIELD_CLASS}><SelectValue /></SelectTrigger>
-                <SelectContent className={SELECT_CONTENT_CLASS}>
+                <SelectTrigger className={FORM_FIELD_CLASS}><SelectValue /></SelectTrigger>
+                <SelectContent className={FORM_SELECT_CONTENT_CLASS}>
                   {QUOTE_STATUSES.map((s) => (
                     <SelectItem key={s} value={s}>{t(`quoteStatus.${s}`)}</SelectItem>
                   ))}
@@ -171,8 +171,8 @@ export default function AddQuoteModal() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="quote-date" className={LABEL_CLASS}>{t("quoteForm.quoteDate")}</Label>
-              <Input id="quote-date" type="datetime-local" value={form.quoteDate} onChange={setField("quoteDate")} className={FIELD_CLASS} />
+              <Label htmlFor="quote-date" className={FORM_LABEL_CLASS}>{t("quoteForm.quoteDate")}</Label>
+              <Input id="quote-date" type="datetime-local" value={form.quoteDate} onChange={setField("quoteDate")} className={FORM_FIELD_CLASS} />
             </div>
           </div>
 
@@ -184,16 +184,22 @@ export default function AddQuoteModal() {
           />
 
           <div className="space-y-2">
-            <Label htmlFor="quote-notes" className={LABEL_CLASS}>{t("quoteForm.internalNotes")}</Label>
-            <Textarea id="quote-notes" value={form.internalNotes} onChange={setField("internalNotes")} rows={3} className={TEXTAREA_CLASS} />
+            <Label htmlFor="quote-notes" className={FORM_LABEL_CLASS}>{t("quoteForm.internalNotes")}</Label>
+            <Textarea id="quote-notes" value={form.internalNotes} onChange={setField("internalNotes")} rows={3} className={FORM_TEXTAREA_CLASS} />
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0 pt-2">
-            <Button type="button" variant="outline" onClick={closeAddQuote} disabled={submitting} className="rounded-xl">{t("quoteForm.cancel")}</Button>
-            <Button type="submit" disabled={submitting} className="rounded-xl bg-[#0A2540] text-white hover:bg-[#173A5E]">
-              {submitting ? t("quoteForm.saving") : isEdit ? t("quoteForm.save") : t("quoteForm.create")}
-            </Button>
-          </DialogFooter>
+          <DetailModalFooter
+            primary={
+              <ActionButton type="submit" variant="primary" disabled={submitting}>
+                {submitting ? t("quoteForm.saving") : isEdit ? t("quoteForm.save") : t("quoteForm.create")}
+              </ActionButton>
+            }
+            secondary={
+              <ActionButton type="button" variant="secondary" onClick={closeAddQuote} disabled={submitting}>
+                {t("quoteForm.cancel")}
+              </ActionButton>
+            }
+          />
         </form>
       </DialogContent>
     </Dialog>

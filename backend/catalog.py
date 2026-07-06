@@ -4,7 +4,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Query
 
 from auth import get_current_user, get_db
-from catalog_indexer import normalize_catalog_description
+from catalog_indexer import ensure_catalog_backfilled, normalize_catalog_description
 from catalog_models import CatalogItemPublic, CatalogListResponse, CatalogStatsResponse
 
 catalog_router = APIRouter(prefix="/catalog", tags=["catalog"])
@@ -44,6 +44,7 @@ async def list_catalog_items(
     db=Depends(get_db),
 ):
     query = _user_filter(current_user["id"])
+    await ensure_catalog_backfilled(db, current_user["id"])
     total = await db.catalog_items.count_documents(query)
     cursor = db.catalog_items.find(query, CATALOG_PROJECTION).sort("lastUsedAt", -1).limit(limit)
     items = [catalog_item_public(doc) async for doc in cursor]
@@ -62,6 +63,7 @@ async def suggest_catalog_items(
     if not tokens:
         return CatalogListResponse(items=[], total=0)
 
+    await ensure_catalog_backfilled(db, current_user["id"])
     regex_parts = [re.escape(token) for token in tokens]
     pattern = ".*".join(regex_parts)
     query = {
@@ -82,6 +84,7 @@ async def catalog_stats(
     db=Depends(get_db),
 ):
     query = _user_filter(current_user["id"])
+    await ensure_catalog_backfilled(db, current_user["id"])
     total_items = await db.catalog_items.count_documents(query)
 
     pipeline = [

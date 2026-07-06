@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAuth } from "@/context/AuthContext";
 import PageHeader from "@/components/dashboard/PageHeader";
 import { Save } from "lucide-react";
@@ -8,6 +9,7 @@ import { toast } from "sonner";
 
 export default function SettingsPage() {
   const { t, lang, setLang } = useDashboardLang();
+  usePageTitle("page.settings.title");
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -20,7 +22,7 @@ export default function SettingsPage() {
         subtitle={t("page.settings.subtitle")}
         primaryLabel={t("common.saveDraft")}
         primaryIcon={Save}
-        onPrimary={() => toast.success(t("common.saveDraft"), { description: t("toast.mockOnly") })}
+        onPrimary={() => toast.message(t("common.saveDraft"), { description: t("toast.comingSoon") })}
         testId="settings-header"
       />
 

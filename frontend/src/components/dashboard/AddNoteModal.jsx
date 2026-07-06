@@ -6,7 +6,16 @@ import { useClients } from "@/hooks/useClients";
 import { createNote, updateNote } from "@/lib/notesApi";
 import { NOTE_TYPES, datetimeLocalToIso, toDatetimeLocalValue } from "@/utils/noteDisplay";
 import { getDisplayCompany } from "@/utils/clientDisplay";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/dashboard/ActionButton";
+import {
+  DETAIL_MODAL_FORM_CONTENT_CLASS,
+  DETAIL_MODAL_OVERLAY_CLASS,
+  DetailModalFooter,
+  FORM_FIELD_CLASS,
+  FORM_LABEL_CLASS,
+  FORM_SELECT_CONTENT_CLASS,
+  FORM_TEXTAREA_CLASS,
+} from "@/components/dashboard/detailModalLayout";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -14,7 +23,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -33,22 +41,6 @@ const EMPTY_FORM = {
   clientId: "",
   noteDate: "",
 };
-
-const MODAL_OVERLAY_CLASS =
-  "z-[100] bg-[#0A0A0B]/50 backdrop-blur-md";
-
-const MODAL_CONTENT_CLASS =
-  "z-[100] w-[calc(100%-2rem)] max-w-lg max-h-[90vh] overflow-y-auto bg-white border border-[#E7E9EE] rounded-[22px] p-6 sm:p-8 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_20px_60px_-15px_rgba(10,10,11,0.35)] sm:rounded-[22px] [&>button]:rounded-lg [&>button]:text-[#8A8F98] [&>button]:hover:bg-black/[0.04] [&>button]:hover:opacity-100";
-
-const FIELD_CLASS =
-  "h-10 rounded-xl border border-[#E7E9EE] bg-white px-4 text-[15px] text-[#111827] shadow-none placeholder:text-[#8A8F98] focus-visible:border-[#0A2540] focus-visible:ring-2 focus-visible:ring-[#0A2540]/15";
-
-const TEXTAREA_CLASS = `${FIELD_CLASS} min-h-[120px] py-3 h-auto`;
-
-const LABEL_CLASS = "text-sm font-medium text-[#374151]";
-
-const SELECT_CONTENT_CLASS =
-  "z-[110] rounded-xl border border-[#E7E9EE] bg-white text-[#111827] shadow-lg";
 
 function noteToForm(note, prefillClient) {
   if (note) {
@@ -131,11 +123,11 @@ export default function AddNoteModal() {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && closeAddNote()}>
       <DialogContent
-        overlayClassName={MODAL_OVERLAY_CLASS}
-        className={MODAL_CONTENT_CLASS}
+        overlayClassName={DETAIL_MODAL_OVERLAY_CLASS}
+        className={DETAIL_MODAL_FORM_CONTENT_CLASS}
         data-testid="add-note-modal"
       >
-        <DialogHeader>
+        <DialogHeader className="space-y-1 pb-1">
           <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-[#111827]">
             {isEdit ? t("noteForm.editTitle") : t("noteForm.addTitle")}
           </DialogTitle>
@@ -146,7 +138,7 @@ export default function AddNoteModal() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="note-title" className={LABEL_CLASS}>
+            <Label htmlFor="note-title" className={FORM_LABEL_CLASS}>
               {t("noteForm.title")}
             </Label>
             <Input
@@ -155,12 +147,12 @@ export default function AddNoteModal() {
               value={form.title}
               onChange={setField("title")}
               placeholder={t("noteForm.titlePlaceholder")}
-              className={FIELD_CLASS}
+              className={FORM_FIELD_CLASS}
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="note-content" className={LABEL_CLASS}>
+            <Label htmlFor="note-content" className={FORM_LABEL_CLASS}>
               {t("noteForm.content")} *
             </Label>
             <Textarea
@@ -169,14 +161,14 @@ export default function AddNoteModal() {
               value={form.content}
               onChange={setField("content")}
               rows={5}
-              className={TEXTAREA_CLASS}
+              className={FORM_TEXTAREA_CLASS}
               required
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="note-type" className={LABEL_CLASS}>
+              <Label htmlFor="note-type" className={FORM_LABEL_CLASS}>
                 {t("noteForm.type")}
               </Label>
               <Select
@@ -185,10 +177,10 @@ export default function AddNoteModal() {
                   setForm((prev) => ({ ...prev, type: value }))
                 }
               >
-                <SelectTrigger data-testid="note-form-type" className={FIELD_CLASS}>
+                <SelectTrigger data-testid="note-form-type" className={FORM_FIELD_CLASS}>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className={SELECT_CONTENT_CLASS}>
+                <SelectContent className={FORM_SELECT_CONTENT_CLASS}>
                   {NOTE_TYPES.map((type) => (
                     <SelectItem
                       key={type}
@@ -203,7 +195,7 @@ export default function AddNoteModal() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="note-date" className={LABEL_CLASS}>
+              <Label htmlFor="note-date" className={FORM_LABEL_CLASS}>
                 {t("noteForm.noteDate")}
               </Label>
               <Input
@@ -212,13 +204,13 @@ export default function AddNoteModal() {
                 data-testid="note-form-date"
                 value={form.noteDate}
                 onChange={setField("noteDate")}
-                className={FIELD_CLASS}
+                className={FORM_FIELD_CLASS}
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="note-client" className={LABEL_CLASS}>
+            <Label htmlFor="note-client" className={FORM_LABEL_CLASS}>
               {t("noteForm.client")}
             </Label>
             {clientLocked ? (
@@ -227,7 +219,7 @@ export default function AddNoteModal() {
                 data-testid="note-form-client-locked"
                 value={getDisplayCompany(prefillClient)}
                 readOnly
-                className={`${FIELD_CLASS} bg-[#F9FAFB] text-[#6B7280]`}
+                className={`${FORM_FIELD_CLASS} bg-[#F9FAFB] text-[#6B7280]`}
               />
             ) : (
               <Select
@@ -239,10 +231,10 @@ export default function AddNoteModal() {
                   }))
                 }
               >
-                <SelectTrigger data-testid="note-form-client" className={FIELD_CLASS}>
+                <SelectTrigger data-testid="note-form-client" className={FORM_FIELD_CLASS}>
                   <SelectValue placeholder={t("noteForm.noClient")} />
                 </SelectTrigger>
-                <SelectContent className={SELECT_CONTENT_CLASS}>
+                <SelectContent className={FORM_SELECT_CONTENT_CLASS}>
                   <SelectItem
                     value="none"
                     className="rounded-lg focus:bg-[#F3F4F6] focus:text-[#111827]"
@@ -263,29 +255,22 @@ export default function AddNoteModal() {
             )}
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={closeAddNote}
-              disabled={submitting}
-              className="rounded-xl border-[#E5E7EB] bg-white text-[#374151] hover:bg-[#F9FAFB] hover:text-[#111827]"
-            >
-              {t("noteForm.cancel")}
-            </Button>
-            <Button
-              type="submit"
-              data-testid="note-form-submit"
-              disabled={submitting}
-              className="rounded-xl bg-[#0A2540] text-white hover:bg-[#173A5E]"
-            >
-              {submitting
-                ? t("noteForm.saving")
-                : isEdit
-                  ? t("noteForm.save")
-                  : t("noteForm.create")}
-            </Button>
-          </DialogFooter>
+          <DetailModalFooter
+            primary={
+              <ActionButton type="submit" variant="primary" data-testid="note-form-submit" disabled={submitting}>
+                {submitting
+                  ? t("noteForm.saving")
+                  : isEdit
+                    ? t("noteForm.save")
+                    : t("noteForm.create")}
+              </ActionButton>
+            }
+            secondary={
+              <ActionButton type="button" variant="secondary" onClick={closeAddNote} disabled={submitting}>
+                {t("noteForm.cancel")}
+              </ActionButton>
+            }
+          />
         </form>
       </DialogContent>
     </Dialog>

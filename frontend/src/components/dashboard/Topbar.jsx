@@ -157,7 +157,7 @@ export default function Topbar() {
           <button
             className="relative w-9 h-9 rounded-lg border border-[#E5E7EB] hover:bg-[#F9FAFB] flex items-center justify-center text-[#4B5563] transition-colors"
             data-testid="topbar-notifications-btn"
-            onClick={() => toast.message(t("topbar.notifications"), { description: t("toast.mockOnly") })}
+            onClick={() => toast.message(t("topbar.notifications"), { description: t("toast.comingSoon") })}
             aria-label={t("topbar.notifications")}
           >
             <Bell className="w-4 h-4" />

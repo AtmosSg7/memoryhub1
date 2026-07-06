@@ -24,33 +24,7 @@ import {
 
 } from "@/utils/clientDisplay";
 
-
-
-const STATUS_STYLES = {
-
-  active: "bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0]",
-
-  pending: "bg-[#FFFBEB] text-[#92400E] border-[#FCD34D]",
-
-  new: "bg-[#EFF6FF] text-[#0A2540] border-[#BFDBFE]",
-
-  dormant: "bg-[#F3F4F6] text-[#4B5563] border-[#E5E7EB]",
-
-};
-
-
-
-const StatusDot = {
-
-  active: "bg-[#10B981]",
-
-  pending: "bg-[#F59E0B]",
-
-  new: "bg-[#0066FF]",
-
-  dormant: "bg-[#9CA3AF]",
-
-};
+import StatusBadge from "@/components/dashboard/StatusBadge";
 
 
 
@@ -164,7 +138,9 @@ export default function RecentClients() {
 
       ) : clients.length === 0 ? (
 
-        <div className="px-6 pb-6 text-sm text-[#6B7280]">{t("empty.noClients.title")}</div>
+        <div className="px-6 pb-6 text-sm text-[#6B7280] leading-relaxed">
+          {t("empty.noClients.desc")}
+        </div>
 
       ) : (
 
@@ -276,33 +252,7 @@ export default function RecentClients() {
 
                     <td className="px-4 py-3.5 whitespace-nowrap">
 
-                      <span
-
-                        className={[
-
-                          "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border",
-
-                          STATUS_STYLES[client.status] || STATUS_STYLES.new,
-
-                        ].join(" ")}
-
-                      >
-
-                        <span
-
-                          className={[
-
-                            "w-1.5 h-1.5 rounded-full",
-
-                            StatusDot[client.status] || StatusDot.new,
-
-                          ].join(" ")}
-
-                        />
-
-                        {t(`status.${client.status}`)}
-
-                      </span>
+                      <StatusBadge kind="client" status={client.status} dot />
 
                     </td>
 

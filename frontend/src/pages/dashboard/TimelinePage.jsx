@@ -1,4 +1,5 @@
 import { useDashboardLang } from "@/hooks/useDashboardLang";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 import PageHeader from "@/components/dashboard/PageHeader";
 
@@ -9,6 +10,7 @@ import ActivityFeed from "@/components/dashboard/ActivityFeed";
 export default function TimelinePage() {
 
   const { t } = useDashboardLang();
+  usePageTitle("page.timeline.title");
 
 
 

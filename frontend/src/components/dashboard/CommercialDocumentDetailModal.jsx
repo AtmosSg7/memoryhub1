@@ -2,84 +2,138 @@ import { Pencil } from "lucide-react";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import CommercialLineItemsDetail from "@/components/dashboard/CommercialLineItemsDetail";
 import CommercialPdfDownload from "@/components/dashboard/CommercialPdfDownload";
-import { formatQuoteDate, getQuoteDate, getQuoteStatusStyle } from "@/utils/quoteDisplay";
-import { formatInvoiceDate, getInvoiceDate, getInvoiceStatusStyle, normalizeInvoiceStatus } from "@/utils/invoiceDisplay";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-
-const MODAL_OVERLAY_CLASS = "z-[100] bg-[#0A0A0B]/50 backdrop-blur-md";
-const MODAL_CONTENT_CLASS =
-  "z-[100] w-[calc(100%-2rem)] max-w-4xl max-h-[90vh] overflow-y-auto bg-white border border-[#E7E9EE] rounded-[22px] p-6 sm:p-8 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_20px_60px_-15px_rgba(10,10,11,0.35)] sm:rounded-[22px] [&>button]:rounded-lg";
+import { formatQuoteAmount, formatQuoteDate, getQuoteDate } from "@/utils/quoteDisplay";
+import { formatInvoiceAmount, formatInvoiceDate, getInvoiceDate, normalizeInvoiceStatus } from "@/utils/invoiceDisplay";
+import StatusBadge from "@/components/dashboard/StatusBadge";
+import InvoiceStatusBadge from "@/components/dashboard/InvoiceStatusBadge";
+import InvoicePaymentSummary from "@/components/dashboard/InvoicePaymentSummary";
+import InvoicePaymentAction from "@/components/dashboard/InvoicePaymentAction";
+import FollowUpAction from "@/components/dashboard/FollowUpAction";
+import DocumentSendAction from "@/components/dashboard/DocumentSendAction";
+import FollowUpLastHint from "@/components/dashboard/FollowUpLastHint";
+import { useFollowUpLastMap } from "@/hooks/useFollowUpLastMap";
+import QuoteInvoiceAction from "@/components/dashboard/QuoteInvoiceAction";
+import QuoteAcceptedBanner from "@/components/dashboard/QuoteAcceptedBanner";
+import { ActionButton } from "@/components/dashboard/ActionButton";
+import {
+  DETAIL_MODAL_CONTENT_CLASS,
+  DETAIL_MODAL_OVERLAY_CLASS,
+  DetailModalFooter,
+  DetailModalSection,
+  DetailModalSummary,
+  DetailModalSummaryItem,
+} from "@/components/dashboard/detailModalLayout";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function CommercialDocumentDetailModal({ type, document, open, onOpenChange, onEdit }) {
   const { t, lang } = useDashboardLang();
+  const { getLast } = useFollowUpLastMap(type, document ? [document] : []);
+  const lastFollowUp = document ? getLast(document.id) : null;
   if (!document) return null;
 
   const isQuote = type === "quote";
   const i18nPrefix = isQuote ? "quoteForm" : "invoiceForm";
-  const statusStyle = isQuote ? getQuoteStatusStyle(document.status) : getInvoiceStatusStyle(document.status);
   const statusKey = isQuote ? document.status : normalizeInvoiceStatus(document.status);
-  const statusLabel = t(isQuote ? `quoteStatus.${statusKey}` : `invoiceStatus.${statusKey}`);
   const dateLabel = isQuote ? t("quoteForm.quoteDate") : t("invoiceForm.invoiceDate");
-  const dateValue = isQuote ? formatQuoteDate(getQuoteDate(document), lang) : formatInvoiceDate(getInvoiceDate(document), lang);
+  const dateValue = isQuote
+    ? formatQuoteDate(getQuoteDate(document), lang)
+    : formatInvoiceDate(getInvoiceDate(document), lang);
+  const amountValue = isQuote
+    ? formatQuoteAmount(document.amountTTC, lang)
+    : formatInvoiceAmount(document.amountTTC, lang);
   const notes = (document.internalNotes || "").trim();
+  const canCreateInvoice = isQuote && document.status === "accepted" && !document.invoiceId;
+
+  const handleEdit = () => {
+    if (onEdit) onEdit(document);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent overlayClassName={MODAL_OVERLAY_CLASS} className={MODAL_CONTENT_CLASS} data-testid={`${type}-detail-modal`}>
-        <DialogHeader>
+      <DialogContent
+        overlayClassName={DETAIL_MODAL_OVERLAY_CLASS}
+        className={DETAIL_MODAL_CONTENT_CLASS}
+        data-testid={`${type}-detail-modal`}
+      >
+        <DialogHeader className="space-y-1 pb-1">
           <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-[#111827]">
-            {t(isQuote ? "commercialDetail.quoteTitle" : "commercialDetail.invoiceTitle")}
+            {document.number}
           </DialogTitle>
-          <DialogDescription className="text-[#4B5563]">{document.number}</DialogDescription>
+          <DialogDescription className="text-[#4B5563]">
+            {document.title || t(isQuote ? "commercialDetail.quoteTitle" : "commercialDetail.invoiceTitle")}
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border}`}>
-              {statusLabel}
-            </span>
-            <span className="text-xs text-[#6B7280]">{dateLabel} : {dateValue}</span>
-          </div>
+        <div className="space-y-5">
+          {isQuote ? <QuoteAcceptedBanner quote={document} t={t} /> : null}
+          <DetailModalSummary>
+            <DetailModalSummaryItem label={t(`${i18nPrefix}.client`)}>
+              {document.clientName || "—"}
+            </DetailModalSummaryItem>
+            <DetailModalSummaryItem label={t(`${i18nPrefix}.status`)}>
+              {isQuote ? (
+                <StatusBadge kind="quote" status={statusKey} />
+              ) : (
+                <InvoiceStatusBadge invoice={document} />
+              )}
+            </DetailModalSummaryItem>
+            <DetailModalSummaryItem label={t("commercialDetail.amount")} highlight>
+              {amountValue}
+            </DetailModalSummaryItem>
+            <DetailModalSummaryItem label={dateLabel}>{dateValue}</DetailModalSummaryItem>
+          </DetailModalSummary>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-            <div className="rounded-xl border border-[#E7E9EE] bg-[#FAFAFA] px-4 py-3">
-              <div className="text-[10px] uppercase tracking-wide text-[#9CA3AF] font-semibold mb-1">{t(`${i18nPrefix}.client`)}</div>
-              <div className="font-medium text-[#111827]">{document.clientName || "—"}</div>
+          {lastFollowUp ? (
+            <div className="rounded-xl border border-[#FED7AA] bg-[#FFF7ED] px-4 py-3">
+              <FollowUpLastHint last={lastFollowUp} />
             </div>
-            <div className="rounded-xl border border-[#E7E9EE] bg-[#FAFAFA] px-4 py-3">
-              <div className="text-[10px] uppercase tracking-wide text-[#9CA3AF] font-semibold mb-1">{t(`${i18nPrefix}.title`)}</div>
-              <div className="font-medium text-[#111827]">{document.title || "—"}</div>
-            </div>
-          </div>
+          ) : null}
 
-          <div>
-            <div className="text-sm font-medium text-[#374151] mb-2">{t(`${i18nPrefix}.lineItems.title`)}</div>
+          {!isQuote ? <InvoicePaymentSummary invoice={document} lang={lang} t={t} /> : null}
+
+          <DetailModalSection title={t(`${i18nPrefix}.lineItems.title`)}>
             <CommercialLineItemsDetail document={document} i18nPrefix={i18nPrefix} t={t} lang={lang} />
-          </div>
+          </DetailModalSection>
 
-          {notes && (
-            <div className="rounded-xl border border-[#E7E9EE] bg-white px-4 py-3">
-              <div className="text-[10px] uppercase tracking-wide text-[#9CA3AF] font-semibold mb-2">{t(`${i18nPrefix}.internalNotes`)}</div>
-              <p className="text-sm text-[#374151] whitespace-pre-wrap">{notes}</p>
-            </div>
-          )}
+          {notes ? (
+            <DetailModalSection title={t(`${i18nPrefix}.internalNotes`)}>
+              <div className="rounded-xl border border-[#E7E9EE] bg-white px-4 py-3">
+                <p className="text-sm text-[#374151] whitespace-pre-wrap">{notes}</p>
+              </div>
+            </DetailModalSection>
+          ) : null}
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0 pt-2 flex-col sm:flex-row sm:justify-between">
-          <CommercialPdfDownload type={type} item={document} />
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl">
-              {t("commercialDetail.close")}
-            </Button>
-            {onEdit && (
-              <Button type="button" onClick={() => onEdit(document)} className="rounded-xl bg-[#0A2540] text-white hover:bg-[#173A5E] gap-1.5">
-                <Pencil className="w-3.5 h-3.5" />
-                {t("commercialDetail.edit")}
-              </Button>
-            )}
-          </div>
-        </DialogFooter>
+        <DetailModalFooter
+          secondary={
+            <>
+              <CommercialPdfDownload type={type} item={document} />
+              <DocumentSendAction entityType={type} entity={document} />
+              {!isQuote ? (
+                <InvoicePaymentAction invoice={document} onUpdated={() => onOpenChange(false)} />
+              ) : null}
+              <FollowUpAction entityType={type} entity={document} />
+            </>
+          }
+          primary={
+            <>
+              {canCreateInvoice ? (
+                <QuoteInvoiceAction quote={document} prominent />
+              ) : isQuote ? (
+                <QuoteInvoiceAction quote={document} />
+              ) : null}
+              <ActionButton variant="secondary" onClick={() => onOpenChange(false)}>
+                {t("actions.close")}
+              </ActionButton>
+              {onEdit && (
+                <ActionButton variant={canCreateInvoice ? "secondary" : "primary"} onClick={handleEdit} className="gap-1.5">
+                  <Pencil className="w-3.5 h-3.5" />
+                  {t("actions.edit")}
+                </ActionButton>
+              )}
+            </>
+          }
+        />
       </DialogContent>
     </Dialog>
   );

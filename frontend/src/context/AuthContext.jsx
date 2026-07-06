@@ -8,10 +8,16 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
-    const { res, data } = await apiFetch("/api/auth/me");
-    if (res.ok) {
-      setUser(data);
-      return data;
+    try {
+      const { res, data } = await apiFetch("/api/auth/me", {
+        signal: AbortSignal.timeout(15000),
+      });
+      if (res.ok) {
+        setUser(data);
+        return data;
+      }
+    } catch {
+      // Backend unreachable or session invalid — treat as logged out.
     }
     setUser(null);
     return null;

@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/dashboard/ActionButton";
 
 export default function EmptyState({
   icon: Icon,
@@ -8,12 +8,13 @@ export default function EmptyState({
   onCta,
   testId,
   compact = false,
+  ctaVariant = "primary",
 }) {
   return (
     <div
       data-testid={testId}
       className={[
-        "flex flex-col items-center justify-center text-center border-2 border-dashed border-[#E5E7EB] rounded-xl bg-[#FAFAFA]",
+        "flex flex-col items-center justify-center text-center border border-dashed border-[#E7E9EE] rounded-xl bg-[#F9FAFB]",
         compact ? "py-8 px-4" : "py-14 px-6",
       ].join(" ")}
     >
@@ -28,15 +29,15 @@ export default function EmptyState({
           {description}
         </p>
       )}
-      {cta && (
-        <Button
+      {cta && onCta && (
+        <ActionButton
+          variant={ctaVariant}
           onClick={onCta}
           data-testid={`${testId}-cta`}
-          variant="outline"
-          className="mt-5 h-9 text-sm rounded-lg border-[#E5E7EB] bg-white text-[#111827] hover:bg-[#F3F4F6] shadow-sm"
+          className="mt-5"
         >
           {cta}
-        </Button>
+        </ActionButton>
       )}
     </div>
   );

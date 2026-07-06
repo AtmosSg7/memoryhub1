@@ -3,7 +3,7 @@ import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { downloadInvoicePdf, downloadQuotePdf } from "@/lib/commercialPdfApi";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/dashboard/ActionButton";
 
 export default function CommercialPdfDownload({ type, item, compact = false }) {
   const { t, lang } = useDashboardLang();
@@ -28,15 +28,12 @@ export default function CommercialPdfDownload({ type, item, compact = false }) {
 
   if (compact) {
     return (
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
+      <ActionButton
+        variant="ghostIcon"
         onClick={handleDownload}
         disabled={downloading}
-        className="h-8 w-8 p-0 text-[#6B7280] hover:text-[#111827]"
-        title={t("commercialPdf.download")}
-        aria-label={t("commercialPdf.download")}
+        title={t("actions.download")}
+        aria-label={t("actions.download")}
         data-testid={`${type}-download-pdf-${item.id}`}
       >
         {downloading ? (
@@ -44,18 +41,16 @@ export default function CommercialPdfDownload({ type, item, compact = false }) {
         ) : (
           <Download className="w-3.5 h-3.5" />
         )}
-      </Button>
+      </ActionButton>
     );
   }
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
+    <ActionButton
+      variant="quick"
       onClick={handleDownload}
       disabled={downloading}
-      className="gap-1.5"
+      className="h-10 px-4 text-sm"
       data-testid={`${type}-download-pdf-${item.id}`}
     >
       {downloading ? (
@@ -63,7 +58,7 @@ export default function CommercialPdfDownload({ type, item, compact = false }) {
       ) : (
         <Download className="w-3.5 h-3.5" />
       )}
-      {t("commercialPdf.download")}
-    </Button>
+      {t("actions.downloadPdf")}
+    </ActionButton>
   );
 }

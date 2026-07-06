@@ -54,6 +54,8 @@ import Billing from "@/pages/Billing";
 
 import Profile from "@/pages/Profile";
 
+import ClientPortalPage from "@/pages/portal/ClientPortalPage";
+
 import DashboardLayout from "@/layouts/DashboardLayout";
 
 import DashboardHome from "@/pages/dashboard/DashboardHome";
@@ -73,6 +75,8 @@ import InvoicesPage from "@/pages/dashboard/InvoicesPage";
 import DocumentsPage from "@/pages/dashboard/DocumentsPage";
 
 import TimelinePage from "@/pages/dashboard/TimelinePage";
+
+import CommunicationsPage from "@/pages/dashboard/CommunicationsPage";
 
 import IntegrationsPage from "@/pages/dashboard/IntegrationsPage";
 
@@ -166,6 +170,8 @@ function App() {
 
             <Route path="/verify-email" element={<VerifyEmail />} />
 
+            <Route path="/portal/:token" element={<ClientPortalPage />} />
+
             <Route
 
               path="/dashboard"
@@ -199,6 +205,8 @@ function App() {
               <Route path="catalog" element={<CatalogPage />} />
 
               <Route path="documents" element={<DocumentsPage />} />
+
+              <Route path="communications" element={<CommunicationsPage />} />
 
               <Route path="timeline" element={<TimelinePage />} />
 

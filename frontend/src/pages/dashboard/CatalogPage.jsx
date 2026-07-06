@@ -1,14 +1,20 @@
 import { useState } from "react";
-import { Loader2, Search, Layers } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Search, Layers } from "lucide-react";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { useCatalog } from "@/hooks/useCatalog";
 import PageHeader from "@/components/dashboard/PageHeader";
 import EmptyState from "@/components/dashboard/EmptyState";
+import { PageError, PageLoader } from "@/components/dashboard/PageFeedback";
+import { LIST_TABLE_CONTAINER_CLASS } from "@/components/dashboard/detailModalLayout";
 import { formatQuoteAmount, formatQuoteDate } from "@/utils/quoteDisplay";
 import { Input } from "@/components/ui/input";
 
 export default function CatalogPage() {
   const { t, lang } = useDashboardLang();
+  usePageTitle("page.catalog.title");
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const { items, total, stats, loading, error } = useCatalog(search);
 
@@ -49,21 +55,20 @@ export default function CatalogPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-[#6B7280]">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" />
-          {t("catalog.loading")}
-        </div>
+        <PageLoader label={t("catalog.loading")} testId="catalog-loading" />
       ) : error ? (
-        <div className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-5 text-sm text-[#991B1B]">{error}</div>
+        <PageError message={error} testId="catalog-error" />
       ) : items.length === 0 ? (
         <EmptyState
           icon={Layers}
           title={search.trim() ? t("catalog.empty.filteredTitle") : t("catalog.empty.title")}
           description={search.trim() ? t("catalog.empty.filteredDesc") : t("catalog.empty.desc")}
+          cta={search.trim() ? undefined : t("catalog.empty.cta")}
+          onCta={search.trim() ? undefined : () => navigate("/dashboard/documents")}
           testId="catalog-empty"
         />
       ) : (
-        <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
+        <div className={LIST_TABLE_CONTAINER_CLASS}>
           <div className="px-4 py-3 border-b border-[#F3F4F6] text-xs text-[#6B7280]">
             {items.length} / {total} {t("catalog.resultsLabel")}
           </div>

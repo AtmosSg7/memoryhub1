@@ -1,15 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRightLeft, ExternalLink, Loader2 } from "lucide-react";
+import { ExternalLink, Loader2, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { useAddQuote } from "@/context/AddQuoteContext";
 import { useAddInvoice } from "@/context/AddInvoiceContext";
 import { convertQuoteToInvoice } from "@/lib/quotesApi";
 import { getInvoice } from "@/lib/invoicesApi";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/dashboard/ActionButton";
 
-export default function QuoteInvoiceAction({ quote, compact = false }) {
+export default function QuoteInvoiceAction({ quote, compact = false, prominent = false }) {
   const { t } = useDashboardLang();
   const navigate = useNavigate();
   const { notifyQuotesChanged } = useAddQuote();
@@ -44,7 +44,7 @@ export default function QuoteInvoiceAction({ quote, compact = false }) {
       const invoice = await convertQuoteToInvoice(quote.id);
       notifyQuotesChanged();
       notifyInvoicesChanged();
-      toast.success(t("toast.quoteConverted"), {
+      toast.success(t("toast.invoiceCreatedFromQuote"), {
         description: invoice.number,
       });
       openEditInvoice(invoice);
@@ -60,13 +60,11 @@ export default function QuoteInvoiceAction({ quote, compact = false }) {
 
   if (hasLinkedInvoice) {
     return (
-      <Button
-        type="button"
-        variant="outline"
-        size={compact ? "sm" : "sm"}
+      <ActionButton
+        variant="quick"
         onClick={handleViewInvoice}
         disabled={submitting}
-        className={compact ? "h-8 gap-1 text-xs" : "gap-1.5"}
+        className={compact ? undefined : "h-10 px-4 text-sm"}
         data-testid={`quote-view-invoice-${quote.id}`}
       >
         {submitting ? (
@@ -74,29 +72,27 @@ export default function QuoteInvoiceAction({ quote, compact = false }) {
         ) : (
           <ExternalLink className="w-3.5 h-3.5" />
         )}
-        {quote.invoiceNumber || t("quoteForm.viewInvoice")}
-      </Button>
+        {t("actions.viewInvoice")}
+      </ActionButton>
     );
   }
 
   if (quote.status !== "accepted") return null;
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
+    <ActionButton
+      variant={prominent ? "primary" : "accent"}
       onClick={handleConvert}
       disabled={submitting}
-      className={compact ? "h-8 gap-1 text-xs border-[#BFDBFE] text-[#0A2540] hover:bg-[#EFF6FF]" : "gap-1.5 border-[#BFDBFE] text-[#0A2540] hover:bg-[#EFF6FF]"}
-      data-testid={`quote-convert-${quote.id}`}
+      className={compact ? "gap-1.5" : "h-10 px-4 text-sm gap-1.5"}
+      data-testid={`quote-create-invoice-${quote.id}`}
     >
       {submitting ? (
         <Loader2 className="w-3.5 h-3.5 animate-spin" />
       ) : (
-        <ArrowRightLeft className="w-3.5 h-3.5" />
+        <Receipt className="w-3.5 h-3.5" />
       )}
-      {t("quoteForm.convertToInvoice")}
-    </Button>
+      {t("actions.createInvoiceFromQuote")}
+    </ActionButton>
   );
 }

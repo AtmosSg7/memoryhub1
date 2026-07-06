@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pymongo import ReturnDocument
 
 from auth import get_current_user, get_db
-from catalog_indexer import index_catalog_line_items
+from catalog_indexer import index_catalog_line_items, index_catalog_line_items_from_raw
 from commercial_engine import (
     compute_global_totals,
     load_import_analysis_line_items,
@@ -88,6 +88,7 @@ class QuotePublic(BaseModel):
     lineItems: Optional[List[CommercialLineItem]] = None
     invoiceId: Optional[str] = None
     invoiceNumber: Optional[str] = None
+    portalAcceptedAt: Optional[str] = None
     createdAt: str
     updatedAt: str
 
@@ -180,6 +181,7 @@ def quote_public(doc: dict) -> QuotePublic:
         lineItems=parse_line_items(doc.get("lineItems")) or None,
         invoiceId=doc.get("invoiceId"),
         invoiceNumber=doc.get("invoiceNumber"),
+        portalAcceptedAt=doc.get("portalAcceptedAt"),
         createdAt=doc["createdAt"],
         updatedAt=doc["updatedAt"],
     )
@@ -274,8 +276,8 @@ async def insert_quote_document(
         client_id=client_id,
         metadata=metadata,
     )
-    if resolved_line_items:
-        await index_catalog_line_items(db, user_id, resolved_line_items)
+    if doc.get("lineItems"):
+        await index_catalog_line_items_from_raw(db, user_id, doc["lineItems"])
     return doc
 
 
@@ -399,6 +401,8 @@ async def update_quote(
     if not existing:
         raise HTTPException(status_code=404, detail={"message": "Quote not found."})
 
+    previous_status = existing.get("status", "draft")
+
     updates = body.model_dump(exclude_unset=True)
     if not updates:
         return quote_public(existing)
@@ -476,8 +480,24 @@ async def update_quote(
         metadata=_quote_event_metadata(merged),
     )
 
+    if merged.get("status") == "accepted" and previous_status != "accepted":
+        await record_event(
+            db,
+            current_user["id"],
+            "quote_accepted",
+            "quote",
+            quote_id,
+            client_id=merged.get("clientId"),
+            metadata={
+                **_quote_event_metadata(merged),
+                "source": "dashboard",
+            },
+        )
+
     if indexed_line_items:
         await index_catalog_line_items(db, current_user["id"], indexed_line_items)
+    elif merged.get("lineItems"):
+        await index_catalog_line_items_from_raw(db, current_user["id"], merged["lineItems"])
 
     public_doc = {k: v for k, v in merged.items() if k not in ("userId", "_id")}
     return quote_public(public_doc)
@@ -537,8 +557,17 @@ async def convert_quote_to_invoice(
     )
 
     now = datetime.now(timezone.utc).isoformat()
-    await db.quotes.update_one(
-        {"userId": user_id, "id": quote_id},
+    link_result = await db.quotes.update_one(
+        {
+            "userId": user_id,
+            "id": quote_id,
+            "status": "accepted",
+            "$or": [
+                {"invoiceId": {"$exists": False}},
+                {"invoiceId": None},
+                {"invoiceId": ""},
+            ],
+        },
         {
             "$set": {
                 "invoiceId": invoice_doc["id"],
@@ -547,6 +576,21 @@ async def convert_quote_to_invoice(
             }
         },
     )
+    if link_result.modified_count == 0:
+        await db.invoices.delete_one({"userId": user_id, "id": invoice_doc["id"]})
+        quote = await db.quotes.find_one(
+            {**_user_filter(user_id), "id": quote_id},
+            {"_id": 0},
+        )
+        if quote and quote.get("invoiceId"):
+            raise HTTPException(
+                status_code=409,
+                detail={"message": "Ce devis a déjà été converti en facture."},
+            )
+        raise HTTPException(
+            status_code=422,
+            detail={"message": "Seuls les devis acceptés peuvent être convertis en facture."},
+        )
 
     await record_event(
         db,
@@ -577,6 +621,13 @@ async def delete_quote(
     )
     if not existing:
         raise HTTPException(status_code=404, detail={"message": "Quote not found."})
+
+    existing = await refresh_quote_invoice_link(db, current_user["id"], existing)
+    if existing.get("invoiceId"):
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "Impossible de supprimer un devis déjà converti en facture."},
+        )
 
     result = await db.quotes.delete_one(
         {**_user_filter(current_user["id"]), "id": quote_id}

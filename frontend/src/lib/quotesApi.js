@@ -42,6 +42,11 @@ export async function deleteQuote(quoteId) {
   if (!res.ok) throw new Error(parseError(data, "Failed to delete quote."));
 }
 
+export async function getQuote(quoteId) {
+  const { res, data } = await apiFetch(`/api/quotes/${quoteId}`);
+  return handleResponse(res, data, "Failed to load quote.");
+}
+
 export async function convertQuoteToInvoice(quoteId) {
   const { res, data } = await apiFetch(`/api/quotes/${quoteId}/convert-to-invoice`, {
     method: "POST",

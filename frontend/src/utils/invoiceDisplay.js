@@ -2,13 +2,6 @@ export const INVOICE_STATUSES = ["in_progress", "paid", "overdue", "cancelled"];
 
 const LEGACY_STATUSES = new Set(["draft", "sent"]);
 
-const STATUS_STYLES = {
-  in_progress: { bg: "bg-[#EFF6FF]", text: "text-[#0A2540]", border: "border-[#BFDBFE]" },
-  paid: { bg: "bg-[#ECFDF5]", text: "text-[#065F46]", border: "border-[#A7F3D0]" },
-  overdue: { bg: "bg-[#FEF2F2]", text: "text-[#991B1B]", border: "border-[#FECACA]" },
-  cancelled: { bg: "bg-[#F3F4F6]", text: "text-[#6B7280]", border: "border-[#D1D5DB]" },
-};
-
 export function normalizeInvoiceStatus(status) {
   if (!status || LEGACY_STATUSES.has(status)) return "in_progress";
   if (INVOICE_STATUSES.includes(status)) return status;
@@ -20,9 +13,49 @@ export function invoiceMatchesStatus(invoice, statusFilter) {
   return normalizeInvoiceStatus(invoice?.status) === statusFilter;
 }
 
-export function getInvoiceStatusStyle(status) {
-  return STATUS_STYLES[normalizeInvoiceStatus(status)] || STATUS_STYLES.in_progress;
+export { getInvoiceStatusStyle } from "@/utils/statusDisplay";
+
+export function getInvoiceAmountPaid(invoice) {
+  const paid = Math.max(0, invoice?.amountPaid || 0);
+  if (paid === 0 && normalizeInvoiceStatus(invoice?.status) === "paid") {
+    return invoice?.amountTTC || 0;
+  }
+  return paid;
 }
+
+export function getInvoiceAmountDue(invoice) {
+  const total = invoice?.amountTTC || 0;
+  return Math.max(0, total - getInvoiceAmountPaid(invoice));
+}
+
+export function isInvoicePartiallyPaid(invoice) {
+  const status = normalizeInvoiceStatus(invoice?.status);
+  if (status === "cancelled" || status === "paid") return false;
+  const paid = getInvoiceAmountPaid(invoice);
+  const total = invoice?.amountTTC || 0;
+  return paid > 0 && paid < total;
+}
+
+export function getInvoiceDisplayStatus(invoice) {
+  if (isInvoicePartiallyPaid(invoice)) return "partial";
+  return normalizeInvoiceStatus(invoice?.status);
+}
+
+export function getInvoicePaymentSummary(invoice) {
+  const total = invoice?.amountTTC || 0;
+  const paid = getInvoiceAmountPaid(invoice);
+  const due = getInvoiceAmountDue(invoice);
+  return {
+    total,
+    paid,
+    due,
+    isPaid: due === 0 && paid > 0,
+    isPartial: paid > 0 && due > 0,
+    isUnpaid: paid === 0,
+  };
+}
+
+export const PAYMENT_METHODS = ["transfer", "card", "cash", "check", "other"];
 
 export function formatInvoiceAmount(cents, lang = "fr") {
   const value = (cents || 0) / 100;
@@ -64,6 +97,9 @@ export function computeInvoiceKpis(invoices, lang = "fr") {
     const status = normalizeInvoiceStatus(inv.status);
     if (status === "cancelled") continue;
 
+    const paid = getInvoiceAmountPaid(inv);
+    const due = getInvoiceAmountDue(inv);
+
     const date = new Date(getInvoiceDate(inv));
     if (
       !Number.isNaN(date.getTime()) &&
@@ -73,12 +109,10 @@ export function computeInvoiceKpis(invoices, lang = "fr") {
       monthTotal += inv.amountTTC || 0;
       monthCount += 1;
     }
-    if (status === "paid") {
-      paidTotal += inv.amountTTC || 0;
-      paidCount += 1;
-    }
-    if (status === "overdue") {
-      overdueTotal += inv.amountTTC || 0;
+    paidTotal += paid;
+    if (paid > 0) paidCount += 1;
+    if (status === "overdue" && due > 0) {
+      overdueTotal += due;
       overdueCount += 1;
     }
   }

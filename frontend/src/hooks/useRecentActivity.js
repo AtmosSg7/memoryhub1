@@ -5,6 +5,7 @@ import { useAddNote } from "@/context/AddNoteContext";
 import { useDocumentsContext } from "@/context/DocumentsContext";
 import { useAddQuote } from "@/context/AddQuoteContext";
 import { useAddInvoice } from "@/context/AddInvoiceContext";
+import { useFollowUpContext } from "@/context/FollowUpContext";
 
 export function useRecentActivity(limit = 10) {
   const { refreshKey: clientsRefreshKey } = useAddClient();
@@ -12,6 +13,7 @@ export function useRecentActivity(limit = 10) {
   const { refreshKey: documentsRefreshKey } = useDocumentsContext();
   const { refreshKey: quotesRefreshKey } = useAddQuote();
   const { refreshKey: invoicesRefreshKey } = useAddInvoice();
+  const { refreshKey: followUpsRefreshKey } = useFollowUpContext();
 
   const [events, setEvents] = useState([]);
   const [total, setTotal] = useState(0);
@@ -36,7 +38,7 @@ export function useRecentActivity(limit = 10) {
 
   useEffect(() => {
     refetch();
-  }, [refetch, clientsRefreshKey, notesRefreshKey, documentsRefreshKey, quotesRefreshKey, invoicesRefreshKey]);
+  }, [refetch, clientsRefreshKey, notesRefreshKey, documentsRefreshKey, quotesRefreshKey, invoicesRefreshKey, followUpsRefreshKey]);
 
   return { events, total, loading, error, refetch };
 }

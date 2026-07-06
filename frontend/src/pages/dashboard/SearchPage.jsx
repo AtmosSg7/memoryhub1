@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Search, Clock3, ArrowUpRight, X } from "lucide-react";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { useSearch, SEARCH_MIN_CHARS } from "@/hooks/useSearch";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
 import PageHeader from "@/components/dashboard/PageHeader";
@@ -10,6 +11,7 @@ import EmptyState from "@/components/dashboard/EmptyState";
 
 export default function SearchPage() {
   const { t } = useDashboardLang();
+  usePageTitle("page.search.title");
   const [searchParams, setSearchParams] = useSearchParams();
   const { history, addSearch, removeSearch, clearHistory } = useSearchHistory();
 

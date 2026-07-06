@@ -10,6 +10,7 @@ import { AddNoteProvider } from "@/context/AddNoteContext";
 import { AddQuoteProvider } from "@/context/AddQuoteContext";
 import { AddInvoiceProvider } from "@/context/AddInvoiceContext";
 import { DocumentsProvider } from "@/context/DocumentsContext";
+import { FollowUpProvider } from "@/context/FollowUpContext";
 
 export default function DashboardLayout() {
   return (
@@ -18,6 +19,7 @@ export default function DashboardLayout() {
         <AddQuoteProvider>
           <AddInvoiceProvider>
           <DocumentsProvider>
+          <FollowUpProvider>
           <div className="dashboard-app min-h-screen bg-[#F9FAFB] text-[#111827] font-satoshi">
             <Sidebar />
             <div className="md:pl-64">
@@ -36,6 +38,7 @@ export default function DashboardLayout() {
             <AddQuoteModal />
             <AddInvoiceModal />
           </div>
+          </FollowUpProvider>
         </DocumentsProvider>
           </AddInvoiceProvider>
         </AddQuoteProvider>

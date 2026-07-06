@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/dashboard/ActionButton";
 
 export default function PageHeader({
   eyebrow,
@@ -35,25 +35,24 @@ export default function PageHeader({
       {(primaryLabel || secondaryLabel) && (
         <div className="flex items-center gap-2 shrink-0">
           {secondaryLabel && (
-            <Button
+            <ActionButton
+              variant="secondary"
               onClick={onSecondary}
               data-testid={`${testId}-secondary`}
-              variant="outline"
-              className="h-10 px-4 rounded-lg border-[#E5E7EB] bg-white text-[#111827] hover:bg-[#F3F4F6]"
             >
-              {SecondaryIcon && <SecondaryIcon className="w-4 h-4 mr-2" />}
+              {SecondaryIcon && <SecondaryIcon className="w-4 h-4" />}
               {secondaryLabel}
-            </Button>
+            </ActionButton>
           )}
           {primaryLabel && (
-            <Button
+            <ActionButton
+              variant="primary"
               onClick={onPrimary}
               data-testid={`${testId}-primary`}
-              className="h-10 px-4 rounded-lg bg-[#0A2540] hover:bg-[#173A5E] text-white shadow-sm"
             >
-              {PrimaryIcon && <PrimaryIcon className="w-4 h-4 mr-2" />}
+              {PrimaryIcon && <PrimaryIcon className="w-4 h-4" />}
               {primaryLabel}
-            </Button>
+            </ActionButton>
           )}
         </div>
       )}

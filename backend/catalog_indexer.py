@@ -4,9 +4,12 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from commercial_engine import parse_line_items
 from commercial_models import CommercialLineItem
 
 DEFAULT_CATALOG_SOURCE = "learned"
+BACKFILL_STATUS_DONE = "done"
+BACKFILL_STATUS_RUNNING = "running"
 
 
 def normalize_catalog_description(text: str) -> str:
@@ -116,3 +119,94 @@ async def index_catalog_line_items(
                 "updatedAt": now,
             }
         )
+
+
+async def index_catalog_line_items_from_raw(
+    db,
+    user_id: str,
+    raw_line_items: Any,
+) -> None:
+    await index_catalog_line_items(db, user_id, parse_line_items(raw_line_items))
+
+
+async def _documents_with_line_items_exist(db, user_id: str) -> bool:
+    query = {"userId": user_id, "lineItems.0": {"$exists": True}}
+    quote = await db.quotes.find_one(query, {"_id": 1})
+    if quote:
+        return True
+    invoice = await db.invoices.find_one(query, {"_id": 1})
+    return invoice is not None
+
+
+async def backfill_catalog_from_documents(db, user_id: str) -> int:
+    indexed_lines = 0
+    for collection_name in ("quotes", "invoices"):
+        cursor = db[collection_name].find(
+            {"userId": user_id, "lineItems.0": {"$exists": True}},
+            {"_id": 0, "lineItems": 1},
+        )
+        async for doc in cursor:
+            line_items = parse_line_items(doc.get("lineItems"))
+            if not line_items:
+                continue
+            await index_catalog_line_items(db, user_id, line_items)
+            indexed_lines += len(line_items)
+    return indexed_lines
+
+
+async def ensure_catalog_backfilled(db, user_id: str) -> None:
+    if await db.catalog_items.count_documents({"userId": user_id}) > 0:
+        return
+
+    meta = await db.catalog_meta.find_one({"userId": user_id}, {"_id": 0, "backfillStatus": 1})
+    if meta and meta.get("backfillStatus") == BACKFILL_STATUS_DONE:
+        return
+    if meta and meta.get("backfillStatus") == BACKFILL_STATUS_RUNNING:
+        return
+
+    if not await _documents_with_line_items_exist(db, user_id):
+        now = datetime.now(timezone.utc).isoformat()
+        await db.catalog_meta.update_one(
+            {"userId": user_id},
+            {"$set": {"userId": user_id, "backfillStatus": BACKFILL_STATUS_DONE, "updatedAt": now}},
+            upsert=True,
+        )
+        return
+
+    now = datetime.now(timezone.utc).isoformat()
+    lock = await db.catalog_meta.find_one_and_update(
+        {"userId": user_id, "backfillStatus": {"$nin": [BACKFILL_STATUS_RUNNING, BACKFILL_STATUS_DONE]}},
+        {
+            "$set": {
+                "userId": user_id,
+                "backfillStatus": BACKFILL_STATUS_RUNNING,
+                "updatedAt": now,
+            }
+        },
+        upsert=True,
+    )
+    if lock is None:
+        existing = await db.catalog_meta.find_one({"userId": user_id}, {"_id": 0, "backfillStatus": 1})
+        if existing and existing.get("backfillStatus") in (BACKFILL_STATUS_RUNNING, BACKFILL_STATUS_DONE):
+            return
+
+    try:
+        await backfill_catalog_from_documents(db, user_id)
+        done_at = datetime.now(timezone.utc).isoformat()
+        await db.catalog_meta.update_one(
+            {"userId": user_id},
+            {
+                "$set": {
+                    "backfillStatus": BACKFILL_STATUS_DONE,
+                    "backfilledAt": done_at,
+                    "updatedAt": done_at,
+                }
+            },
+            upsert=True,
+        )
+    except Exception:
+        await db.catalog_meta.update_one(
+            {"userId": user_id},
+            {"$unset": {"backfillStatus": ""}},
+        )
+        raise

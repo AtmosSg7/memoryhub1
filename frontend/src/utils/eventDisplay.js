@@ -14,13 +14,17 @@ const LABEL_KEYS = {
   document_deleted: "activity.documentDeleted",
   quote_created: "activity.quoteCreated",
   quote_updated: "activity.quoteUpdated",
+  quote_accepted: "activity.quoteAccepted",
   quote_deleted: "activity.quoteDeleted",
   quote_converted: "activity.quoteConverted",
   invoice_created: "activity.invoiceCreated",
   invoice_updated: "activity.invoiceUpdated",
   invoice_deleted: "activity.invoiceDeleted",
   invoice_paid: "activity.invoicePaid",
+  invoice_payment_recorded: "activity.invoicePaymentRecorded",
   invoice_reopened: "activity.invoiceReopened",
+  follow_up_recorded: "activity.followUpRecorded",
+  document_send_prepared: "activity.documentSendPrepared",
 };
 
 const ICON_TYPES = {
@@ -33,13 +37,17 @@ const ICON_TYPES = {
   document_deleted: "document",
   quote_created: "quote",
   quote_updated: "quote",
+  quote_accepted: "quote",
   quote_deleted: "quote",
   quote_converted: "invoice",
   invoice_created: "invoice",
   invoice_updated: "invoice",
   invoice_deleted: "invoice",
   invoice_paid: "invoice",
+  invoice_payment_recorded: "invoice",
   invoice_reopened: "invoice",
+  follow_up_recorded: "quote",
+  document_send_prepared: "quote",
 };
 
 export function getEventLabelKey(type) {
@@ -113,6 +121,7 @@ export function getEventDetail(event, lang = "fr") {
 
     case "quote_created":
     case "quote_updated":
+    case "quote_accepted":
     case "quote_deleted":
       return joinParts([
         metadata.quoteNumber,
@@ -135,17 +144,161 @@ export function getEventDetail(event, lang = "fr") {
     case "invoice_updated":
     case "invoice_deleted":
     case "invoice_paid":
+    case "invoice_payment_recorded":
     case "invoice_reopened":
       return joinParts([
         metadata.invoiceNumber,
         metadata.title,
         metadata.clientName,
-        metadata.amountTTC != null ? formatInvoiceAmount(metadata.amountTTC, lang) : "",
-        metadata.invoiceDate ? formatInvoiceDate(metadata.invoiceDate, lang) : "",
+        metadata.paymentAmount != null
+          ? formatInvoiceAmount(metadata.paymentAmount, lang)
+          : metadata.amountTTC != null
+            ? formatInvoiceAmount(metadata.amountTTC, lang)
+            : "",
+        metadata.amountDue != null ? formatInvoiceAmount(metadata.amountDue, lang) : "",
+        metadata.paymentDate ? formatInvoiceDate(metadata.paymentDate, lang) : "",
         metadata.paidAt ? formatInvoiceDate(metadata.paidAt, lang) : "",
+      ]);
+
+    case "follow_up_recorded":
+      return joinParts([
+        metadata.documentNumber || metadata.quoteNumber || metadata.invoiceNumber,
+        metadata.excerpt,
+        metadata.clientName,
+      ]);
+
+    case "document_send_prepared":
+      return joinParts([
+        metadata.documentNumber || metadata.quoteNumber || metadata.invoiceNumber,
+        metadata.excerpt,
+        metadata.clientName,
       ]);
 
     default:
       return metadata.clientName || metadata.noteTitle || metadata.fileName || "";
   }
+}
+
+export function getEventRoute(event) {
+  if (!event?.entityId) return null;
+
+  const { entityType, entityId, clientId } = event;
+
+  if (entityType === "client") {
+    return `/dashboard/clients/${entityId}`;
+  }
+  if (entityType === "quote") {
+    return `/dashboard/quotes?open=${entityId}`;
+  }
+  if (entityType === "invoice") {
+    return `/dashboard/invoices?open=${entityId}`;
+  }
+  if (entityType === "note") {
+    if (clientId) return `/dashboard/clients/${clientId}?section=notes`;
+    return "/dashboard/notes";
+  }
+  if (entityType === "document") {
+    if (clientId) return `/dashboard/clients/${clientId}?section=documents`;
+    return "/dashboard/documents";
+  }
+  return null;
+}
+
+function isImportEvent(metadata) {
+  return metadata?.source === "import" || Boolean(metadata?.importSessionId);
+}
+
+/** Structured fields for timeline rows: type, client, amount, subtitle. */
+export function getEventPresentation(event, lang = "fr") {
+  const metadata = event?.metadata || {};
+  const { type } = event;
+  const isImport = isImportEvent(metadata);
+  let clientName = null;
+  let amount = null;
+  let subtitle = "";
+
+  switch (type) {
+    case "client_created":
+    case "client_updated":
+      clientName = metadata.clientName || null;
+      break;
+
+    case "note_created":
+    case "note_updated":
+    case "note_deleted":
+      clientName = metadata.clientName || null;
+      subtitle = joinParts([
+        metadata.noteTitle,
+        metadata.excerpt ? (lang === "fr" ? `« ${metadata.excerpt} »` : `"${metadata.excerpt}"`) : "",
+      ]);
+      break;
+
+    case "document_uploaded":
+    case "document_deleted":
+      clientName = metadata.clientName || null;
+      subtitle = joinParts([
+        metadata.fileName,
+        metadata.size != null ? formatFileSize(metadata.size) : "",
+      ]);
+      break;
+
+    case "quote_created":
+    case "quote_updated":
+    case "quote_accepted":
+    case "quote_deleted":
+      clientName = metadata.clientName || null;
+      amount = metadata.amountTTC != null ? formatQuoteAmount(metadata.amountTTC, lang) : null;
+      subtitle = joinParts([metadata.quoteNumber, metadata.title]);
+      break;
+
+    case "quote_converted":
+      clientName = metadata.clientName || null;
+      amount = metadata.amountTTC != null ? formatQuoteAmount(metadata.amountTTC, lang) : null;
+      subtitle = joinParts([metadata.quoteNumber, metadata.invoiceNumber, metadata.title]);
+      break;
+
+    case "invoice_created":
+    case "invoice_updated":
+    case "invoice_deleted":
+    case "invoice_paid":
+    case "invoice_payment_recorded":
+    case "invoice_reopened":
+      clientName = metadata.clientName || null;
+      amount = metadata.paymentAmount != null
+        ? formatInvoiceAmount(metadata.paymentAmount, lang)
+        : metadata.amountTTC != null
+          ? formatInvoiceAmount(metadata.amountTTC, lang)
+          : null;
+      subtitle = joinParts([metadata.invoiceNumber, metadata.title]);
+      break;
+
+    case "follow_up_recorded":
+      clientName = metadata.clientName || null;
+      subtitle = joinParts([
+        metadata.documentNumber || metadata.quoteNumber || metadata.invoiceNumber,
+        metadata.excerpt,
+      ]);
+      break;
+
+    case "document_send_prepared":
+      clientName = metadata.clientName || null;
+      subtitle = joinParts([
+        metadata.documentNumber || metadata.quoteNumber || metadata.invoiceNumber,
+        metadata.excerpt,
+      ]);
+      break;
+
+    default:
+      clientName = metadata.clientName || null;
+      subtitle = metadata.noteTitle || metadata.fileName || metadata.quoteNumber || metadata.invoiceNumber || "";
+      break;
+  }
+
+  return {
+    labelKey: getEventLabelKey(type),
+    clientName,
+    amount,
+    subtitle,
+    isImport,
+  };
 }

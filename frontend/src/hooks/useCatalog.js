@@ -13,10 +13,10 @@ export function useCatalog(searchQuery = "") {
     setError(null);
     try {
       const trimmed = searchQuery.trim();
-      const [catalogData, statsData] = await Promise.all([
-        trimmed ? suggestCatalogItems(trimmed) : listCatalogItems(),
-        getCatalogStats(),
-      ]);
+      const catalogData = trimmed
+        ? await suggestCatalogItems(trimmed)
+        : await listCatalogItems();
+      const statsData = await getCatalogStats();
       setItems(catalogData.items || []);
       setTotal(catalogData.total ?? 0);
       setStats(statsData);

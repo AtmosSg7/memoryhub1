@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Upload,
   FileText,
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useDocumentsContext } from "@/context/DocumentsContext";
 import {
@@ -33,6 +35,8 @@ import { Button } from "@/components/ui/button";
 
 export default function DocumentsPage() {
   const { t, lang } = useDashboardLang();
+  usePageTitle("page.documents.title");
+  const [searchParams, setSearchParams] = useSearchParams();
   const { documents, loading, error } = useDocuments();
   const { notifyDocumentsChanged } = useDocumentsContext();
   const [previewDoc, setPreviewDoc] = useState(null);
@@ -40,6 +44,15 @@ export default function DocumentsPage() {
   const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [actionId, setActionId] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("import") === "1") {
+      setImportOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete("import");
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleUpload = async (file) => {
     try {
@@ -203,6 +216,7 @@ export default function DocumentsPage() {
           title={t("empty.noDocs.title")}
           description={t("empty.noDocs.desc")}
           cta={t("empty.noDocs.cta")}
+          onCta={() => setImportOpen(true)}
           testId="empty-docs"
         />
       )}

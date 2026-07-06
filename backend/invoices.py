@@ -17,7 +17,7 @@ from pymongo import ReturnDocument
 
 from auth import get_current_user, get_db
 
-from catalog_indexer import index_catalog_line_items
+from catalog_indexer import index_catalog_line_items, index_catalog_line_items_from_raw
 
 from commercial_engine import (
     compute_global_totals,
@@ -31,6 +31,17 @@ from commercial_engine import (
 from commercial_models import CommercialLineItem
 
 from events import record_event
+
+from invoice_payments import (
+    InvoicePaymentCreate,
+    InvoicePaymentRecord,
+    build_full_payment_update,
+    build_payment_update,
+    build_reopen_payment_update,
+    compute_amount_due,
+    get_amount_paid,
+    parse_payment_records,
+)
 
 from pdf_documents import build_invoice_pdf
 
@@ -220,6 +231,12 @@ class InvoicePublic(BaseModel):
 
     paidAt: Optional[str] = None
 
+    amountPaid: int = 0
+
+    amountDue: int = 0
+
+    payments: Optional[List[InvoicePaymentRecord]] = None
+
     createdAt: str
 
     updatedAt: str
@@ -383,6 +400,10 @@ def _invoice_event_metadata(doc: dict) -> dict:
 
         "paidAt": doc.get("paidAt"),
 
+        "amountPaid": get_amount_paid(doc),
+
+        "amountDue": compute_amount_due(doc.get("amountTTC", 0), get_amount_paid(doc)),
+
     }
 
 
@@ -390,6 +411,10 @@ def _invoice_event_metadata(doc: dict) -> dict:
 
 
 def invoice_public(doc: dict) -> InvoicePublic:
+
+    amount_paid = get_amount_paid(doc)
+
+    amount_ttc = doc.get("amountTTC", 0)
 
     return InvoicePublic(
 
@@ -411,7 +436,7 @@ def invoice_public(doc: dict) -> InvoicePublic:
 
         vatRate=doc.get("vatRate", DEFAULT_VAT_RATE),
 
-        amountTTC=doc["amountTTC"],
+        amountTTC=amount_ttc,
 
         internalNotes=doc.get("internalNotes"),
 
@@ -422,6 +447,12 @@ def invoice_public(doc: dict) -> InvoicePublic:
         quoteNumber=doc.get("quoteNumber"),
 
         paidAt=doc.get("paidAt"),
+
+        amountPaid=amount_paid,
+
+        amountDue=compute_amount_due(amount_ttc, amount_paid),
+
+        payments=parse_payment_records(doc.get("payments")) or None,
 
         createdAt=doc["createdAt"],
 
@@ -529,8 +560,8 @@ async def insert_invoice_document(
         client_id=client_id,
         metadata=metadata,
     )
-    if resolved_line_items:
-        await index_catalog_line_items(db, user_id, resolved_line_items)
+    if doc.get("lineItems"):
+        await index_catalog_line_items_from_raw(db, user_id, doc["lineItems"])
     return doc
 
 
@@ -737,6 +768,22 @@ async def update_invoice(
 
 
 
+    if updates.get("status") == "paid":
+
+        raise HTTPException(
+
+            status_code=422,
+
+            detail={
+
+                "message": "Utilisez l'enregistrement de paiement pour marquer une facture comme payée.",
+
+            },
+
+        )
+
+
+
     if "clientId" in updates:
 
         client_id, client_name = await _resolve_client(
@@ -843,6 +890,8 @@ async def update_invoice(
 
     if indexed_line_items:
         await index_catalog_line_items(db, current_user["id"], indexed_line_items)
+    elif merged.get("lineItems"):
+        await index_catalog_line_items_from_raw(db, current_user["id"], merged["lineItems"])
 
     public_doc = {k: v for k, v in merged.items() if k not in ("userId", "_id")}
 
@@ -880,12 +929,19 @@ async def mark_invoice_paid(
             detail={"message": "Seules les factures en cours ou en retard peuvent être marquées comme payées."},
         )
 
-    now = datetime.now(timezone.utc).isoformat()
-    merged = {**existing, "status": "paid", "paidAt": now, "updatedAt": now}
-    await db.invoices.update_one(
-        {"userId": user_id, "id": invoice_id},
-        {"$set": {"status": "paid", "paidAt": now, "updatedAt": now}},
-    )
+    try:
+        payment_result = build_full_payment_update(existing)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail={"message": str(exc)}) from exc
+
+    update_fields = payment_result["update"]
+    mongo_update: dict = {"$set": update_fields}
+    if update_fields.get("status") != "paid":
+        mongo_update["$unset"] = {"paidAt": ""}
+    await db.invoices.update_one({"userId": user_id, "id": invoice_id}, mongo_update)
+    merged = {**existing, **update_fields}
+    if update_fields.get("status") != "paid":
+        merged.pop("paidAt", None)
     await record_event(
         db,
         user_id,
@@ -898,6 +954,71 @@ async def mark_invoice_paid(
     return invoice_public(merged)
 
 
+@invoices_router.post("/{invoice_id}/payments", response_model=InvoicePublic)
+async def record_invoice_payment(
+    invoice_id: str,
+    body: InvoicePaymentCreate,
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    user_id = current_user["id"]
+    existing = await _get_invoice_doc(db, user_id, invoice_id)
+    status = _normalize_status(existing.get("status"))
+    if status not in PAYABLE_STATUSES:
+        raise HTTPException(
+            status_code=422,
+            detail={"message": "Seules les factures en cours ou en retard acceptent un paiement."},
+        )
+
+    try:
+        payment_result = build_payment_update(
+            existing,
+            amount=body.amount,
+            paid_at=body.paidAt,
+            method=body.method,
+            note=body.note,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail={"message": str(exc)}) from exc
+
+    update_fields = payment_result["update"]
+    mongo_update: dict = {"$set": update_fields}
+    if update_fields.get("status") != "paid":
+        mongo_update["$unset"] = {"paidAt": ""}
+    await db.invoices.update_one({"userId": user_id, "id": invoice_id}, mongo_update)
+    merged = {**existing, **update_fields}
+    if update_fields.get("status") != "paid":
+        merged.pop("paidAt", None)
+    record = payment_result["record"]
+    metadata = {
+        **_invoice_event_metadata(merged),
+        "paymentAmount": record.amount,
+        "paymentMethod": record.method,
+        "paymentDate": record.paidAt,
+        "amountDue": payment_result["amountDue"],
+    }
+    await record_event(
+        db,
+        user_id,
+        "invoice_payment_recorded",
+        "invoice",
+        invoice_id,
+        client_id=merged.get("clientId"),
+        metadata=metadata,
+    )
+    if payment_result["isFullyPaid"]:
+        await record_event(
+            db,
+            user_id,
+            "invoice_paid",
+            "invoice",
+            invoice_id,
+            client_id=merged.get("clientId"),
+            metadata=_invoice_event_metadata(merged),
+        )
+    return invoice_public(merged)
+
+
 @invoices_router.post("/{invoice_id}/mark-in-progress", response_model=InvoicePublic)
 async def mark_invoice_in_progress(
     invoice_id: str,
@@ -906,19 +1027,27 @@ async def mark_invoice_in_progress(
 ):
     user_id = current_user["id"]
     existing = await _get_invoice_doc(db, user_id, invoice_id)
-    if _normalize_status(existing.get("status")) != "paid":
+    status = _normalize_status(existing.get("status"))
+    amount_paid = get_amount_paid(existing)
+    if status == "cancelled":
+        raise HTTPException(status_code=422, detail={"message": "Cette facture est annulée."})
+    if status != "paid" and amount_paid <= 0:
         raise HTTPException(
             status_code=422,
-            detail={"message": "Seules les factures payées peuvent être remises en cours."},
+            detail={"message": "Seules les factures payées ou partiellement payées peuvent être remises en cours."},
         )
 
-    now = datetime.now(timezone.utc).isoformat()
-    merged = {**existing, "status": DEFAULT_STATUS, "updatedAt": now}
-    merged.pop("paidAt", None)
+    update_fields = build_reopen_payment_update(existing)
+    merged = {**existing, **update_fields}
     await db.invoices.update_one(
         {"userId": user_id, "id": invoice_id},
         {
-            "$set": {"status": DEFAULT_STATUS, "updatedAt": now},
+            "$set": {
+                "status": update_fields["status"],
+                "amountPaid": update_fields["amountPaid"],
+                "payments": update_fields["payments"],
+                "updatedAt": update_fields["updatedAt"],
+            },
             "$unset": {"paidAt": ""},
         },
     )

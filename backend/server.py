@@ -25,6 +25,11 @@ from quotes import quotes_router
 from invoices import invoices_router
 from imports import imports_router
 from catalog import catalog_router
+from reminders import reminders_router
+from portal import portal_router, portal_admin_router
+from communications import communications_router
+from follow_ups import follow_ups_router
+from document_sends import document_sends_router
 
 # Configure logging early — used by route handlers
 logging.basicConfig(
@@ -127,6 +132,12 @@ api_router.include_router(quotes_router)
 api_router.include_router(invoices_router)
 api_router.include_router(imports_router)
 api_router.include_router(catalog_router)
+api_router.include_router(reminders_router)
+api_router.include_router(portal_router)
+api_router.include_router(portal_admin_router)
+api_router.include_router(communications_router)
+api_router.include_router(follow_ups_router)
+api_router.include_router(document_sends_router)
 
 # Include the router in the main app
 app.include_router(api_router)
@@ -179,6 +190,12 @@ async def startup_db_indexes():
     await db.catalog_items.create_index([("userId", 1), ("normalizedKey", 1)], unique=True)
     await db.catalog_items.create_index([("userId", 1), ("lastUsedAt", -1)])
     await db.catalog_items.create_index([("userId", 1), ("usageCount", -1)])
+    await db.catalog_meta.create_index("userId", unique=True)
+    await db.client_portals.create_index("id", unique=True)
+    await db.client_portals.create_index("token", unique=True)
+    await db.client_portals.create_index([("userId", 1), ("clientId", 1)], unique=True)
+    await db.email_messages.create_index("id", unique=True)
+    await db.email_messages.create_index([("userId", 1), ("clientId", 1), ("sentAt", -1)], sparse=True)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():

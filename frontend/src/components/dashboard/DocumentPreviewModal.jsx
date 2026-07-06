@@ -3,20 +3,21 @@ import { Loader2, Download } from "lucide-react";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { fetchDocumentBlob, triggerBlobDownload } from "@/lib/documentsApi";
 import { canPreviewDocument, getDocumentExtension } from "@/utils/documentDisplay";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/dashboard/ActionButton";
+import {
+  DETAIL_MODAL_CONTENT_CLASS,
+  DETAIL_MODAL_OVERLAY_CLASS,
+  DetailModalFooter,
+} from "@/components/dashboard/detailModalLayout";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const MODAL_OVERLAY_CLASS = "z-[100] bg-[#0A0A0B]/50 backdrop-blur-md";
-
-const MODAL_CONTENT_CLASS =
-  "z-[100] w-[calc(100%-2rem)] max-w-4xl max-h-[90vh] overflow-hidden flex flex-col bg-white border border-[#E7E9EE] rounded-[22px] p-6 sm:p-8 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_20px_60px_-15px_rgba(10,10,11,0.35)] sm:rounded-[22px] [&>button]:rounded-lg [&>button]:text-[#8A8F98] [&>button]:hover:bg-black/[0.04] [&>button]:hover:opacity-100";
+const PREVIEW_CONTENT_CLASS = `${DETAIL_MODAL_CONTENT_CLASS} overflow-hidden flex flex-col max-w-4xl`;
 
 export default function DocumentPreviewModal({ document: doc, open, onOpenChange }) {
   const { t } = useDashboardLang();
@@ -87,11 +88,11 @@ export default function DocumentPreviewModal({ document: doc, open, onOpenChange
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        overlayClassName={MODAL_OVERLAY_CLASS}
-        className={MODAL_CONTENT_CLASS}
+        overlayClassName={DETAIL_MODAL_OVERLAY_CLASS}
+        className={PREVIEW_CONTENT_CLASS}
         data-testid="document-preview-modal"
       >
-        <DialogHeader>
+        <DialogHeader className="space-y-1 pb-1">
           <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-[#111827] truncate">
             {doc?.name}
           </DialogTitle>
@@ -100,7 +101,7 @@ export default function DocumentPreviewModal({ document: doc, open, onOpenChange
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-[320px] max-h-[60vh] overflow-auto rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] flex items-center justify-center">
+        <div className="flex-1 min-h-[320px] max-h-[60vh] overflow-auto rounded-xl border border-[#E7E9EE] bg-[#FAFAFA] flex items-center justify-center">
           {loading ? (
             <div className="flex items-center text-sm text-[#6B7280]">
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -127,22 +128,23 @@ export default function DocumentPreviewModal({ document: doc, open, onOpenChange
           )}
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0 pt-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleDownload}
-            disabled={downloading}
-            className="rounded-xl border-[#E5E7EB] gap-1.5"
-          >
-            {downloading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Download className="w-4 h-4" />
-            )}
-            {t("documents.download")}
-          </Button>
-        </DialogFooter>
+        <DetailModalFooter
+          primary={
+            <ActionButton variant="secondary" onClick={() => onOpenChange(false)}>
+              {t("actions.close")}
+            </ActionButton>
+          }
+          secondary={
+            <ActionButton variant="quick" onClick={handleDownload} disabled={downloading} className="h-10 px-4 text-sm gap-1.5">
+              {downloading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5" />
+              )}
+              {t("actions.downloadPdf")}
+            </ActionButton>
+          }
+        />
       </DialogContent>
     </Dialog>
   );

@@ -12,8 +12,8 @@ import {
   UserPlus,
   Wand2,
 } from "lucide-react";
-import { toast } from "sonner";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
+import ImportSuccessPanel from "@/components/dashboard/ImportSuccessPanel";
 import { analyzeImport, confirmImport } from "@/lib/importApi";
 import {
   ANALYSIS_STAGE_KEYS,
@@ -71,6 +71,7 @@ const LABEL_CLASS = "text-sm font-medium text-[#374151]";
 const SELECT_CONTENT_CLASS = "z-[110] rounded-xl border border-[#E7E9EE] bg-white text-[#111827] shadow-lg";
 
 const STEPS = [1, 2, 3, 4];
+const SUCCESS_STEP = 5;
 const SUMMARY_FIELDS = getDetectedSummaryFields();
 
 function StepBadge({ active, done, label }) {
@@ -183,9 +184,6 @@ function DetectedSummaryGrid({ session, form, t }) {
         <h3 className="font-cabinet text-sm font-bold text-[#111827]">
           {t("importWizard.detectedResults")}
         </h3>
-        <span className="ml-auto text-xs text-[#6B7280]">
-          {Math.round((session?.analysis?.overallConfidence || 0) * 100)}% {t("importWizard.globalConfidence")}
-        </span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {SUMMARY_FIELDS.map((fieldKey) => {
@@ -237,8 +235,6 @@ function DetectedLineItemsPanel({ session, t }) {
           {lineItems.length} {t("importWizard.lineItems.countLabel")}
         </span>
       </div>
-      <p className="text-xs text-[#6B7280] mb-3">{t("importWizard.lineItems.hint")}</p>
-
       <div className="hidden sm:block overflow-x-auto rounded-xl border border-[#E7E9EE] bg-white">
         <table className="min-w-full text-sm">
           <thead className="bg-[#F9FAFB] text-[#6B7280]">
@@ -318,10 +314,6 @@ function ClientMatchCard({ match, selected, onSelect, onUse, t }) {
             <span className="font-medium text-[#111827]">{match.clientName}</span>
             <ConfidenceBadge level={level} t={t} />
           </div>
-          <p className="text-xs text-[#6B7280] mt-1">
-            {t("importWizard.matchScore")} : {Math.round(match.score)}%
-          </p>
-          <p className="text-[11px] text-[#9CA3AF] mt-0.5">{match.reasons.join(" · ")}</p>
         </div>
       </div>
       <Button
@@ -410,6 +402,7 @@ export default function ImportWizard({
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState(null);
   const [dragging, setDragging] = useState(false);
+  const [createdSummary, setCreatedSummary] = useState(null);
 
   const reset = useCallback(() => {
     setStep(1);
@@ -423,6 +416,7 @@ export default function ImportWizard({
     setConfirming(false);
     setError(null);
     setDragging(false);
+    setCreatedSummary(null);
   }, []);
 
   useEffect(() => {
@@ -530,14 +524,20 @@ export default function ImportWizard({
         }
       );
       const result = await confirmImport(session.id, payload);
-      toast.success(t("importWizard.success"));
       onSuccess?.(result);
-      onOpenChange(false);
-      if (result.created?.entityType === "invoice") {
-        navigate("/dashboard/invoices");
-      } else if (result.created?.entityType === "quote") {
-        navigate("/dashboard/quotes");
-      }
+      const clientLabel =
+        clientAction === "use_existing"
+          ? session.clientMatches?.find((m) => m.clientId === selectedClientId)?.clientName
+          : form.clientName || form.company;
+      setCreatedSummary({
+        entityType: result.created?.entityType || form.targetKind,
+        entityId: result.created?.entityId || result.created?.quoteId || result.created?.invoiceId,
+        number: result.created?.entityNumber || form.externalNumber,
+        clientName: clientLabel,
+        amountTTC: form.amountTTC,
+        documentDate: form.documentDate,
+      });
+      setStep(SUCCESS_STEP);
     } catch (err) {
       setError(err.message || t("importWizard.errors.confirm"));
     } finally {
@@ -552,6 +552,20 @@ export default function ImportWizard({
     t("importWizard.steps.confirm"),
   ];
 
+  const handleViewDocument = () => {
+    if (!createdSummary?.entityId) return;
+    onOpenChange(false);
+    const base =
+      createdSummary.entityType === "invoice" ? "/dashboard/invoices" : "/dashboard/quotes";
+    navigate(`${base}?open=${createdSummary.entityId}`);
+  };
+
+  const handleImportAnother = () => {
+    reset();
+  };
+
+  const onSuccessStep = step === SUCCESS_STEP;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -561,26 +575,32 @@ export default function ImportWizard({
       >
         <DialogHeader>
           <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-[#111827] flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[#0066FF]" />
-            {t("importWizard.title")}
+            {!onSuccessStep ? <Sparkles className="w-5 h-5 text-[#0066FF]" /> : null}
+            {onSuccessStep ? t("importWizard.successTitle") : t("importWizard.title")}
           </DialogTitle>
-          <DialogDescription className="text-[#4B5563]">
-            {t("importWizard.subtitle")}
-          </DialogDescription>
+          {!onSuccessStep ? (
+            <DialogDescription className="text-[#4B5563]">
+              {t("importWizard.subtitle")}
+            </DialogDescription>
+          ) : null}
         </DialogHeader>
 
-        <div className="flex items-center justify-between gap-2 py-2">
-          {STEPS.map((n) => (
-            <StepBadge key={n} label={n} active={step === n} done={step > n} />
-          ))}
-        </div>
-        <div className="grid grid-cols-4 gap-1 text-[10px] text-[#6B7280] uppercase tracking-wide mb-4">
-          {stepLabels.map((label) => (
-            <span key={label} className="truncate">
-              {label}
-            </span>
-          ))}
-        </div>
+        {!onSuccessStep ? (
+          <>
+            <div className="flex items-center justify-between gap-2 py-2">
+              {STEPS.map((n) => (
+                <StepBadge key={n} label={n} active={step === n} done={step > n} />
+              ))}
+            </div>
+            <div className="grid grid-cols-4 gap-1 text-[10px] text-[#6B7280] uppercase tracking-wide mb-4">
+              {stepLabels.map((label) => (
+                <span key={label} className="truncate">
+                  {label}
+                </span>
+              ))}
+            </div>
+          </>
+        ) : null}
 
         {error && (
           <div className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm text-[#991B1B]">
@@ -854,6 +874,15 @@ export default function ImportWizard({
           />
         )}
 
+        {onSuccessStep && createdSummary ? (
+          <ImportSuccessPanel
+            summary={createdSummary}
+            onView={handleViewDocument}
+            onImportAnother={handleImportAnother}
+          />
+        ) : null}
+
+        {!onSuccessStep ? (
         <DialogFooter className="gap-2 sm:gap-0 pt-2">
           {step > 1 && step < 4 && (
             <Button type="button" variant="outline" className="rounded-xl" onClick={() => setStep((s) => s - 1)}>
@@ -886,14 +915,12 @@ export default function ImportWizard({
                   {t("importWizard.confirming")}
                 </>
               ) : (
-                <>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  {t("importWizard.confirmAuto")}
-                </>
+                t("importWizard.confirm")
               )}
             </Button>
           )}
         </DialogFooter>
+        ) : null}
       </DialogContent>
     </Dialog>
   );

@@ -42,10 +42,13 @@ export default function SearchResultsList({
     return (
       <div
         data-testid={`${testId}-empty`}
-        className={compact ? "px-3 py-4 text-center text-[12px] text-[#6B7280]" : "py-10 text-center"}
+        className={compact ? "px-3 py-4 text-center" : "py-10 text-center max-w-sm mx-auto"}
       >
-        <p className={compact ? "" : "text-sm text-[#6B7280]"}>
+        <p className={compact ? "text-[12px] font-medium text-[#374151]" : "text-sm font-medium text-[#374151]"}>
           {t("search.noResults").replace("{query}", query || "")}
+        </p>
+        <p className={compact ? "text-[11px] text-[#6B7280] mt-1" : "text-[13px] text-[#6B7280] mt-1.5 leading-relaxed"}>
+          {t("search.noResultsHint")}
         </p>
       </div>
     );

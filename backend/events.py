@@ -19,13 +19,17 @@ EventType = Literal[
     "document_deleted",
     "quote_created",
     "quote_updated",
+    "quote_accepted",
     "quote_deleted",
     "quote_converted",
     "invoice_created",
     "invoice_updated",
     "invoice_deleted",
     "invoice_paid",
+    "invoice_payment_recorded",
     "invoice_reopened",
+    "follow_up_recorded",
+    "document_send_prepared",
 ]
 
 EntityType = Literal["client", "note", "document", "quote", "invoice"]

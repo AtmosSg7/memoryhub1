@@ -1,11 +1,13 @@
 import * as LucideIcons from "lucide-react";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import PageHeader from "@/components/dashboard/PageHeader";
 import { integrations } from "@/data/mockData";
 import { toast } from "sonner";
 
 export default function IntegrationsPage() {
   const { t, lang } = useDashboardLang();
+  usePageTitle("page.integrations.title");
 
   return (
     <div className="space-y-6" data-testid="integrations-page">
@@ -46,7 +48,7 @@ export default function IntegrationsPage() {
                 {integ.desc[lang]}
               </p>
               <button
-                onClick={() => toast.success(integ.name, { description: t("toast.mockOnly") })}
+                onClick={() => toast.message(integ.name, { description: t("toast.comingSoon") })}
                 data-testid={`integration-toggle-${integ.id}`}
                 className={
                   integ.connected

@@ -1,4 +1,5 @@
 import { useDashboardLang } from "@/hooks/useDashboardLang";
+import { FILTER_PILL_CLASS } from "@/components/dashboard/detailModalLayout";
 import { QUOTE_STATUSES } from "@/utils/quoteDisplay";
 
 export default function QuoteStatusFilter({ value, onChange, testId = "quote-status-filter" }) {
@@ -12,7 +13,7 @@ export default function QuoteStatusFilter({ value, onChange, testId = "quote-sta
   ];
 
   return (
-    <div className="flex gap-2 overflow-x-auto pb-1" data-testid={testId}>
+    <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none" data-testid={testId}>
       {options.map((option) => {
         const active = value === option.key;
         return (
@@ -22,10 +23,8 @@ export default function QuoteStatusFilter({ value, onChange, testId = "quote-sta
             data-testid={`${testId}-${option.key || "all"}`}
             onClick={() => onChange(option.key)}
             className={[
-              "shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border",
-              active
-                ? "bg-[#0A2540] text-white border-[#0A2540]"
-                : "bg-white text-[#4B5563] border-[#E5E7EB] hover:border-[#D1D5DB]",
+              FILTER_PILL_CLASS.base,
+              active ? FILTER_PILL_CLASS.active : FILTER_PILL_CLASS.inactive,
             ].join(" ")}
           >
             {option.label}

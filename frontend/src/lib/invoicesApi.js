@@ -99,4 +99,12 @@ export async function markInvoiceInProgress(invoiceId) {
   return handleResponse(res, data, "Failed to reopen invoice.");
 }
 
+export async function recordInvoicePayment(invoiceId, payload) {
+  const { res, data } = await apiFetch(`/api/invoices/${invoiceId}/payments`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(res, data, "Failed to record payment.");
+}
+
 
