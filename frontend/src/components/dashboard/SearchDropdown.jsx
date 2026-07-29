@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, CornerDownLeft } from "lucide-react";
+import { Search } from "lucide-react";
 import { useSearch } from "@/hooks/useSearch";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
@@ -68,7 +68,6 @@ export default function SearchDropdown({ query, open, onClose, onNavigate }) {
         >
           <Search className="w-3.5 h-3.5" />
           {t("search.viewAll")}
-          <CornerDownLeft className="w-3 h-3 text-[#9CA3AF]" />
         </button>
       </div>
     </div>

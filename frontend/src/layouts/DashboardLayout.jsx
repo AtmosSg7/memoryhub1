@@ -1,16 +1,25 @@
 import { Outlet } from "react-router-dom";
+import { Suspense } from "react";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Topbar from "@/components/dashboard/Topbar";
+import { PageLoader } from "@/components/dashboard/PageFeedback";
+import { useDashboardLang } from "@/hooks/useDashboardLang";
 import AddClientModal from "@/components/dashboard/AddClientModal";
 import AddNoteModal from "@/components/dashboard/AddNoteModal";
 import AddQuoteModal from "@/components/dashboard/AddQuoteModal";
 import AddInvoiceModal from "@/components/dashboard/AddInvoiceModal";
+import WorkflowPendingOpener from "@/components/dashboard/WorkflowPendingOpener";
 import { AddClientProvider } from "@/context/AddClientContext";
 import { AddNoteProvider } from "@/context/AddNoteContext";
 import { AddQuoteProvider } from "@/context/AddQuoteContext";
 import { AddInvoiceProvider } from "@/context/AddInvoiceContext";
 import { DocumentsProvider } from "@/context/DocumentsContext";
 import { FollowUpProvider } from "@/context/FollowUpContext";
+
+function DashboardRouteFallback() {
+  const { t } = useDashboardLang();
+  return <PageLoader label={t("auth.loading")} compact testId="dashboard-route-loading" />;
+}
 
 export default function DashboardLayout() {
   return (
@@ -29,7 +38,9 @@ export default function DashboardLayout() {
                 data-testid="dashboard-main"
               >
                 <div className="animate-fade-slide">
-                  <Outlet />
+                  <Suspense fallback={<DashboardRouteFallback />}>
+                    <Outlet />
+                  </Suspense>
                 </div>
               </main>
             </div>
@@ -37,6 +48,7 @@ export default function DashboardLayout() {
             <AddNoteModal />
             <AddQuoteModal />
             <AddInvoiceModal />
+            <WorkflowPendingOpener />
           </div>
           </FollowUpProvider>
         </DocumentsProvider>

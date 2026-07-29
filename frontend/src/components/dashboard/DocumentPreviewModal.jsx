@@ -113,6 +113,7 @@ export default function DocumentPreviewModal({ document: doc, open, onOpenChange
             <iframe
               src={blobUrl}
               title={doc.name}
+              sandbox=""
               className="w-full h-[60vh] min-h-[320px] bg-white"
             />
           ) : blobUrl && isImage ? (
@@ -141,7 +142,7 @@ export default function DocumentPreviewModal({ document: doc, open, onOpenChange
               ) : (
                 <Download className="w-3.5 h-3.5" />
               )}
-              {t("actions.downloadPdf")}
+              {t("actions.download")}
             </ActionButton>
           }
         />

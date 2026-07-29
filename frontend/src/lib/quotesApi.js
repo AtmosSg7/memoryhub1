@@ -12,10 +12,13 @@ async function handleResponse(res, data, fallback) {
   return data;
 }
 
-export async function listQuotes({ clientId, status } = {}) {
+export async function listQuotes({ clientId, status, from, to, timezone } = {}) {
   const params = new URLSearchParams();
   if (clientId) params.set("clientId", clientId);
   if (status) params.set("status", status);
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  if (timezone) params.set("timezone", timezone);
   const query = params.toString() ? `?${params.toString()}` : "";
   const { res, data } = await apiFetch(`/api/quotes${query}`);
   return handleResponse(res, data, "Failed to load quotes.");

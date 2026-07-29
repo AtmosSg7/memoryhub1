@@ -1,0 +1,18 @@
+/var/lib/docker/containers/*/*-json.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+}
+
+/opt/memoryhub/deploy/backups/mongo-*.archive.gz {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+}

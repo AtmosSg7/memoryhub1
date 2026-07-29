@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
+import { translateAuthError } from "@/utils/authErrors";
 import { LOGIN } from "@/constants/testIds/auth";
 import {
   Form,
@@ -44,7 +45,7 @@ const Login = () => {
       const redirectTo = location.state?.from || "/dashboard";
       navigate(redirectTo, { replace: true });
     } catch (err) {
-      setServerError(err.message || t("auth.errors.loginFailed"));
+      setServerError(translateAuthError(err.message, t, "auth.errors.loginFailed"));
     } finally {
       setLoading(false);
     }

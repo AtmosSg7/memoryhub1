@@ -8,6 +8,11 @@ from analysis.openai_analyzer import OpenAIAnalyzer
 _analyzer: Optional[DocumentAnalyzer] = None
 
 
+def reset_analyzer_for_tests() -> None:
+    global _analyzer
+    _analyzer = None
+
+
 def get_analyzer() -> DocumentAnalyzer:
     global _analyzer
     if _analyzer is not None:

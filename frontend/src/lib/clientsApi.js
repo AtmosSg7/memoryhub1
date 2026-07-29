@@ -29,6 +29,11 @@ export async function getClient(clientId) {
   return handleResponse(res, data, "Failed to load client.");
 }
 
+export async function getClient360(clientId) {
+  const { res, data } = await apiFetch(`/api/clients/${clientId}/360`);
+  return handleResponse(res, data, "Failed to load client dashboard.");
+}
+
 export async function createClient(payload) {
   const { res, data } = await apiFetch("/api/clients", {
     method: "POST",

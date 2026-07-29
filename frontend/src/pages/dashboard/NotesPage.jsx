@@ -3,13 +3,18 @@ import { useState } from "react";
 import { Plus, StickyNote, Trash2 } from "lucide-react";
 
 import { toast } from "sonner";
+import { toastApiError } from "@/utils/apiErrors";
 
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 import { useAddNote } from "@/context/AddNoteContext";
+import { useClients } from "@/hooks/useClients";
 
 import { useNotes } from "@/hooks/useNotes";
+import { useListPagination } from "@/hooks/useListPagination";
+import ListCollectionFooter from "@/components/dashboard/ListCollectionFooter";
+import ClientFilterSelect from "@/components/dashboard/ClientFilterSelect";
 
 import { deleteNote } from "@/lib/notesApi";
 
@@ -17,7 +22,7 @@ import PageHeader from "@/components/dashboard/PageHeader";
 
 import EmptyState from "@/components/dashboard/EmptyState";
 
-import { PageError, PageLoader } from "@/components/dashboard/PageFeedback";
+import { PageError, TableSkeleton } from "@/components/dashboard/PageFeedback";
 
 import NoteTypeFilter from "@/components/dashboard/NoteTypeFilter";
 
@@ -47,10 +52,21 @@ export default function NotesPage() {
   usePageTitle("page.notes.title");
 
   const { openAddNote, openEditNote, notifyNotesChanged } = useAddNote();
+  const { clients, loading: clientsLoading } = useClients();
 
   const [typeFilter, setTypeFilter] = useState("");
+  const [clientFilter, setClientFilter] = useState("");
+  const { notes, total, loading, error } = useNotes(typeFilter, clientFilter);
 
-  const { notes, loading, error } = useNotes(typeFilter);
+  const {
+    pageItems: pageNotes,
+    page,
+    setPage,
+    totalPages,
+    rangeStart,
+    rangeEnd,
+    totalItems,
+  } = useListPagination(notes, { pageSize: 24, resetKey: `${typeFilter}:${clientFilter}` });
 
   const [deletingNote, setDeletingNote] = useState(null);
 
@@ -78,7 +94,7 @@ export default function NotesPage() {
 
     } catch (err) {
 
-      toast.error(err.message || t("toast.noteError"));
+      toastApiError(err, t, "toast.noteError");
 
     } finally {
 
@@ -90,7 +106,7 @@ export default function NotesPage() {
 
 
 
-  const isFiltered = Boolean(typeFilter);
+  const isFiltered = Boolean(typeFilter || clientFilter);
 
 
 
@@ -116,13 +132,24 @@ export default function NotesPage() {
 
 
 
-      <NoteTypeFilter value={typeFilter} onChange={setTypeFilter} />
+      <div className="flex flex-col lg:flex-row lg:items-end gap-3">
+        <NoteTypeFilter value={typeFilter} onChange={setTypeFilter} />
+        <ClientFilterSelect
+          clients={clients}
+          value={clientFilter}
+          onChange={setClientFilter}
+          disabled={clientsLoading}
+          allLabel={t("communications.allClients")}
+          className="w-full lg:w-64"
+          testId="notes-client-filter"
+        />
+      </div>
 
 
 
       {loading ? (
 
-        <PageLoader label={t("noteForm.loading")} testId="notes-loading" />
+        <TableSkeleton rows={6} columns={3} testId="notes-loading" />
 
       ) : error ? (
 
@@ -138,9 +165,16 @@ export default function NotesPage() {
 
           description={isFiltered ? t("notes.empty.filteredDesc") : t("notes.empty.desc")}
 
-          cta={isFiltered ? undefined : t("actions.createNote")}
+          cta={isFiltered ? t("common.clearFilter") : t("actions.createNote")}
 
-          onCta={isFiltered ? undefined : () => openAddNote()}
+          onCta={
+            isFiltered
+              ? () => {
+                  setTypeFilter("");
+                  setClientFilter("");
+                }
+              : () => openAddNote()
+          }
 
           testId="notes-empty"
 
@@ -148,9 +182,10 @@ export default function NotesPage() {
 
       ) : (
 
+        <div className="space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
 
-          {notes.map((note) => {
+          {pageNotes.map((note) => {
 
             const typeKey = normalizeNoteType(note.type);
 
@@ -158,32 +193,13 @@ export default function NotesPage() {
 
             return (
 
-              <article
-
+              <button
+                type="button"
                 key={note.id}
-
-                role="button"
-
-                tabIndex={0}
-
                 onClick={() => openEditNote(note)}
-
-                onKeyDown={(e) => {
-
-                  if (e.key === "Enter" || e.key === " ") {
-
-                    e.preventDefault();
-
-                    openEditNote(note);
-
-                  }
-
-                }}
-
                 data-testid={`note-card-${note.id}`}
-
-                className="bg-white border border-[#E5E7EB] rounded-xl p-5 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-16px_rgba(10,37,64,0.2)] transition-all cursor-pointer"
-
+                aria-label={note.title || t("page.notes.title")}
+                className="bg-white border border-[#E5E7EB] rounded-xl p-5 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-16px_rgba(10,37,64,0.2)] transition-all cursor-pointer w-full text-left"
               >
 
                 <div className="flex items-center justify-between mb-3 gap-2">
@@ -264,12 +280,24 @@ export default function NotesPage() {
 
                 </div>
 
-              </article>
+              </button>
 
             );
 
           })}
 
+        </div>
+        <ListCollectionFooter
+          t={t}
+          loadedCount={totalItems}
+          total={total}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          testId="notes-list-footer"
+        />
         </div>
 
       )}

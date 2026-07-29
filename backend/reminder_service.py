@@ -36,6 +36,8 @@ INVOICE_PROJECTION = {"_id": 0, "userId": 0}
 
 QUOTE_PROJECTION = {"_id": 0, "userId": 0}
 
+REMINDER_SCAN_LIMIT = int(os.environ.get("REMINDER_SCAN_LIMIT", "150"))
+
 
 
 
@@ -188,7 +190,7 @@ async def _invoice_overdue_reminders(db, user_id: str) -> List[ReminderPublic]:
 
     query = {**_user_filter(user_id), "status": "overdue"}
 
-    async for doc in db.invoices.find(query, INVOICE_PROJECTION):
+    async for doc in db.invoices.find(query, INVOICE_PROJECTION).limit(REMINDER_SCAN_LIMIT):
 
         ref_date = _invoice_reference_date(doc)
 
@@ -234,7 +236,7 @@ async def _invoice_unpaid_reminders(db, user_id: str) -> List[ReminderPublic]:
 
     query = {**_user_filter(user_id), "status": {"$in": ["in_progress", "sent"]}}
 
-    async for doc in db.invoices.find(query, INVOICE_PROJECTION):
+    async for doc in db.invoices.find(query, INVOICE_PROJECTION).limit(REMINDER_SCAN_LIMIT):
 
         ref_date = _invoice_reference_date(doc)
 
@@ -292,7 +294,7 @@ async def _invoice_due_soon_reminders(db, user_id: str) -> List[ReminderPublic]:
 
     query = {**_user_filter(user_id), "status": {"$in": ["in_progress", "sent"]}}
 
-    async for doc in db.invoices.find(query, INVOICE_PROJECTION):
+    async for doc in db.invoices.find(query, INVOICE_PROJECTION).limit(REMINDER_SCAN_LIMIT):
 
         invoice_date = _parse_iso(_invoice_reference_date(doc))
 
@@ -358,7 +360,7 @@ async def _quote_no_response_reminders(db, user_id: str) -> List[ReminderPublic]
 
     query = {**_user_filter(user_id), "status": "sent"}
 
-    async for doc in db.quotes.find(query, QUOTE_PROJECTION):
+    async for doc in db.quotes.find(query, QUOTE_PROJECTION).limit(REMINDER_SCAN_LIMIT):
 
         ref_date = _quote_activity_date(doc)
 
@@ -414,7 +416,7 @@ async def _quote_expiring_soon_reminders(db, user_id: str) -> List[ReminderPubli
 
     query = {**_user_filter(user_id), "status": "sent"}
 
-    async for doc in db.quotes.find(query, QUOTE_PROJECTION):
+    async for doc in db.quotes.find(query, QUOTE_PROJECTION).limit(REMINDER_SCAN_LIMIT):
 
         quote_date = _parse_iso(_quote_reference_date(doc))
 
@@ -466,7 +468,7 @@ async def _quote_expiring_soon_reminders(db, user_id: str) -> List[ReminderPubli
 async def _quote_accepted_pending_invoice_reminders(db, user_id: str) -> List[ReminderPublic]:
     reminders = []
     query = {**_user_filter(user_id), "status": "accepted"}
-    async for doc in db.quotes.find(query, QUOTE_PROJECTION):
+    async for doc in db.quotes.find(query, QUOTE_PROJECTION).limit(REMINDER_SCAN_LIMIT):
         if doc.get("invoiceId"):
             continue
         ref_date = doc.get("portalAcceptedAt") or _quote_activity_date(doc)
@@ -513,28 +515,33 @@ def _sort_reminders(reminders: List[ReminderPublic]) -> List[ReminderPublic]:
 async def generate_reminders(db, user_id: str) -> List[ReminderPublic]:
 
     """Build actionable reminders that protect time, money or client relationships."""
+    from commercial_follow_up_engine import (
+        automation_reminders,
+        invoice_follow_up_engine_reminders,
+        quote_follow_up_engine_reminders,
+    )
 
     generators = [
-
         _invoice_overdue_reminders,
-
         _invoice_unpaid_reminders,
-
         _invoice_due_soon_reminders,
-
         _quote_no_response_reminders,
-
         _quote_expiring_soon_reminders,
-
         _quote_accepted_pending_invoice_reminders,
-
+        quote_follow_up_engine_reminders,
+        invoice_follow_up_engine_reminders,
+        automation_reminders,
     ]
 
     reminders: List[ReminderPublic] = []
+    seen: set[str] = set()
 
     for generator in generators:
-
-        reminders.extend(await generator(db, user_id))
+        for item in await generator(db, user_id):
+            if item.id in seen:
+                continue
+            seen.add(item.id)
+            reminders.append(item)
 
     return _sort_reminders(reminders)
 

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { listQuotes } from "@/lib/quotesApi";
 import { useAddQuote } from "@/context/AddQuoteContext";
 
-export function useClientQuotes(clientId, statusFilter = "") {
+export function useClientQuotes(clientId, statusFilter = "", { enabled = true } = {}) {
   const { refreshKey } = useAddQuote();
   const [quotes, setQuotes] = useState([]);
   const [total, setTotal] = useState(0);
@@ -10,7 +10,7 @@ export function useClientQuotes(clientId, statusFilter = "") {
   const [error, setError] = useState(null);
 
   const refetch = useCallback(async () => {
-    if (!clientId) {
+    if (!clientId || !enabled) {
       setQuotes([]);
       setTotal(0);
       setLoading(false);
@@ -32,11 +32,15 @@ export function useClientQuotes(clientId, statusFilter = "") {
     } finally {
       setLoading(false);
     }
-  }, [clientId, statusFilter]);
+  }, [clientId, statusFilter, enabled]);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     refetch();
-  }, [refetch, refreshKey]);
+  }, [enabled, refetch, refreshKey]);
 
   return { quotes, total, loading, error, refetch };
 }

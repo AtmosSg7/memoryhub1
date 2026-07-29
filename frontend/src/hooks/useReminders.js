@@ -1,14 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { listReminders } from "@/lib/remindersApi";
-import { useAddClient } from "@/context/AddClientContext";
-import { useAddNote } from "@/context/AddNoteContext";
 import { useDocumentsContext } from "@/context/DocumentsContext";
 import { useAddQuote } from "@/context/AddQuoteContext";
 import { useAddInvoice } from "@/context/AddInvoiceContext";
 
 export function useReminders(limit = 50) {
-  const { refreshKey: clientsRefreshKey } = useAddClient();
-  const { refreshKey: notesRefreshKey } = useAddNote();
   const { refreshKey: documentsRefreshKey } = useDocumentsContext();
   const { refreshKey: quotesRefreshKey } = useAddQuote();
   const { refreshKey: invoicesRefreshKey } = useAddInvoice();
@@ -38,8 +34,6 @@ export function useReminders(limit = 50) {
     refetch();
   }, [
     refetch,
-    clientsRefreshKey,
-    notesRefreshKey,
     documentsRefreshKey,
     quotesRefreshKey,
     invoicesRefreshKey,

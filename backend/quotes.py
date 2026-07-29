@@ -7,6 +7,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pymongo import ReturnDocument
 
+from security_config import MAX_LIST_ITEMS
 from auth import get_current_user, get_db
 from catalog_indexer import index_catalog_line_items, index_catalog_line_items_from_raw
 from commercial_engine import (
@@ -18,15 +19,25 @@ from commercial_engine import (
     serialize_line_items,
 )
 from commercial_models import CommercialLineItem
-from events import record_event
+from commercial_lifecycle import (
+    active_document_filter,
+    archive_quote,
+    lifecycle_fields_for_quote,
+)
 from invoices import InvoicePublic, insert_invoice_document, invoice_public
-from pdf_documents import build_quote_pdf
+from commercial_workflow_service import run_post_conversion_workflow
 from quote_invoice_link import refresh_quote_invoice_link, refresh_quotes_invoice_links
 
 quotes_router = APIRouter(prefix="/quotes", tags=["quotes"])
 
 QuoteStatus = Literal["draft", "sent", "accepted", "rejected", "expired"]
+QuoteDisplayStatus = Literal[
+    "draft", "sent", "viewed", "accepted", "rejected", "expired", "converted", "archived",
+]
 VALID_STATUSES = {"draft", "sent", "accepted", "rejected", "expired"}
+from events import record_event
+from analytics import invalidate_user
+from transactional_email_service import notify_artisan_quote_decision
 DEFAULT_VAT_RATE = 20
 DEFAULT_TITLE = "Devis sans titre"
 
@@ -89,6 +100,13 @@ class QuotePublic(BaseModel):
     invoiceId: Optional[str] = None
     invoiceNumber: Optional[str] = None
     portalAcceptedAt: Optional[str] = None
+    displayStatus: QuoteDisplayStatus = "draft"
+    sentAt: Optional[str] = None
+    portalFirstViewedAt: Optional[str] = None
+    portalLastViewedAt: Optional[str] = None
+    portalViewCount: int = 0
+    isArchived: bool = False
+    archivedAt: Optional[str] = None
     createdAt: str
     updatedAt: str
 
@@ -130,7 +148,11 @@ def _resolve_quote_date(doc: dict) -> str:
 
 
 async def _next_quote_number(db, user_id: str) -> str:
+    from company_profile_service import get_document_prefixes
+
     year = datetime.now(timezone.utc).year
+    prefixes = await get_document_prefixes(db, user_id)
+    prefix = prefixes["quotePrefix"]
     key = f"quotes:{user_id}:{year}"
     result = await db.counters.find_one_and_update(
         {"_id": key},
@@ -139,7 +161,7 @@ async def _next_quote_number(db, user_id: str) -> str:
         return_document=ReturnDocument.AFTER,
     )
     seq = result["seq"]
-    return f"DEV-{year}-{seq:04d}"
+    return f"{prefix}-{year}-{seq:04d}"
 
 
 async def _resolve_client(db, user_id: str, client_id: str):
@@ -166,6 +188,7 @@ def _quote_event_metadata(doc: dict) -> dict:
 
 
 def quote_public(doc: dict) -> QuotePublic:
+    lifecycle = lifecycle_fields_for_quote(doc)
     return QuotePublic(
         id=doc["id"],
         number=doc["number"],
@@ -182,6 +205,7 @@ def quote_public(doc: dict) -> QuotePublic:
         invoiceId=doc.get("invoiceId"),
         invoiceNumber=doc.get("invoiceNumber"),
         portalAcceptedAt=doc.get("portalAcceptedAt"),
+        **lifecycle,
         createdAt=doc["createdAt"],
         updatedAt=doc["updatedAt"],
     )
@@ -289,10 +313,13 @@ async def create_quote(
 ):
     user_id = current_user["id"]
     client_id, client_name = await _resolve_client(db, user_id, body.clientId)
+    from company_profile_service import get_default_vat_rate
+
+    default_vat = await get_default_vat_rate(db, user_id)
     amounts = resolve_document_amounts(
         body.lineItems,
         fallback_amount_ht=body.amountHT,
-        fallback_vat_rate=body.vatRate,
+        fallback_vat_rate=default_vat,
     )
     if amounts.totals.amountHT <= 0:
         raise HTTPException(status_code=422, detail={"message": "amountHT is required."})
@@ -309,6 +336,7 @@ async def create_quote(
         internal_notes=body.internalNotes,
         line_items=amounts.lineItems,
     )
+    invalidate_user(user_id)
     return quote_public(doc)
 
 
@@ -316,10 +344,15 @@ async def create_quote(
 async def list_quotes(
     clientId: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
+    from_date: Optional[str] = Query(None, alias="from"),
+    to_date: Optional[str] = Query(None, alias="to"),
+    timezone: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user),
     db=Depends(get_db),
 ):
-    query = _user_filter(current_user["id"])
+    from commercial_list_filters import period_aggregation_stages
+
+    query = {**_user_filter(current_user["id"]), **active_document_filter()}
 
     if clientId:
         client = await db.clients.find_one(
@@ -335,14 +368,32 @@ async def list_quotes(
             raise HTTPException(status_code=422, detail={"message": "Invalid status."})
         query["status"] = status
 
-    total = await db.quotes.count_documents(query)
-    cursor = db.quotes.aggregate([
+    period_stages = period_aggregation_stages(
+        kind="quote",
+        status=status,
+        from_date=from_date,
+        to_date=to_date,
+        timezone_name=timezone,
+    )
+    pipeline = [
         {"$match": query},
-        {"$addFields": {"_sortDate": {"$ifNull": ["$quoteDate", "$createdAt"]}}},
+        *period_stages,
+        {"$addFields": {"_sortDate": {"$ifNull": ["$_filterDate", "$createdAt"]}}},
         {"$sort": {"_sortDate": -1}},
-        {"$project": {"_id": 0, "userId": 0, "_sortDate": 0}},
-    ])
-    raw_items = [doc async for doc in cursor]
+        {
+            "$facet": {
+                "items": [
+                    {"$limit": MAX_LIST_ITEMS},
+                    {"$project": {"_id": 0, "userId": 0, "_sortDate": 0, "_filterDate": 0}},
+                ],
+                "total": [{"$count": "count"}],
+            }
+        },
+    ]
+    facet = await db.quotes.aggregate(pipeline).to_list(1)
+    bucket = facet[0] if facet else {"items": [], "total": []}
+    total = int((bucket.get("total") or [{"count": 0}])[0].get("count", 0))
+    raw_items = bucket.get("items") or []
     refreshed = await refresh_quotes_invoice_links(db, current_user["id"], raw_items)
     items = [quote_public(doc) for doc in refreshed]
     return QuoteListResponse(items=items, total=total)
@@ -377,13 +428,21 @@ async def download_quote_pdf(
     )
     if not doc:
         raise HTTPException(status_code=404, detail={"message": "Quote not found."})
-    public = quote_public(doc)
-    pdf_bytes = build_quote_pdf(public.model_dump(), lang=lang if lang in ("fr", "en") else "fr")
-    filename = f'{doc["number"]}.pdf'
+    from document_export.models import ExportFormat
+    from document_export.service import export_commercial_document
+
+    result = await export_commercial_document(
+        db,
+        user_id=current_user["id"],
+        document_type="quote",
+        document_id=quote_id,
+        fmt=ExportFormat.PDF,
+        lang=lang if lang in ("fr", "en") else "fr",
+    )
     return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        content=result.data,
+        media_type=result.contentType,
+        headers={"Content-Disposition": f'attachment; filename="{result.filename}"'},
     )
 
 
@@ -406,6 +465,22 @@ async def update_quote(
     updates = body.model_dump(exclude_unset=True)
     if not updates:
         return quote_public(existing)
+
+    if "status" in updates:
+        new_status = updates["status"]
+        if new_status == "accepted" and previous_status != "sent":
+            raise HTTPException(
+                status_code=422,
+                detail={"message": "Only sent quotes can be marked as accepted."},
+            )
+        if previous_status == "accepted" and new_status != "accepted":
+            raise HTTPException(
+                status_code=422,
+                detail={"message": "Accepted quotes cannot change status."},
+            )
+        if new_status == "sent" and previous_status == "draft":
+            now = datetime.now(timezone.utc).isoformat()
+            updates["sentAt"] = now
 
     if "clientId" in updates:
         client_id, client_name = await _resolve_client(
@@ -493,6 +568,43 @@ async def update_quote(
                 "source": "dashboard",
             },
         )
+        await notify_artisan_quote_decision(
+            db,
+            user_id=current_user["id"],
+            quote=merged,
+            accepted=True,
+        )
+
+    if merged.get("status") == "rejected" and previous_status != "rejected":
+        await record_event(
+            db,
+            current_user["id"],
+            "quote_rejected",
+            "quote",
+            quote_id,
+            client_id=merged.get("clientId"),
+            metadata={
+                **_quote_event_metadata(merged),
+                "source": "dashboard",
+            },
+        )
+        await notify_artisan_quote_decision(
+            db,
+            user_id=current_user["id"],
+            quote=merged,
+            accepted=False,
+        )
+
+    if merged.get("status") == "sent" and previous_status == "draft":
+        await record_event(
+            db,
+            current_user["id"],
+            "quote_sent",
+            "quote",
+            quote_id,
+            client_id=merged.get("clientId"),
+            metadata={**_quote_event_metadata(merged), "via": "dashboard"},
+        )
 
     if indexed_line_items:
         await index_catalog_line_items(db, current_user["id"], indexed_line_items)
@@ -500,6 +612,7 @@ async def update_quote(
         await index_catalog_line_items_from_raw(db, current_user["id"], merged["lineItems"])
 
     public_doc = {k: v for k, v in merged.items() if k not in ("userId", "_id")}
+    invalidate_user(current_user["id"])
     return quote_public(public_doc)
 
 
@@ -530,13 +643,13 @@ async def convert_quote_to_invoice(
     if quote.get("status") != "accepted":
         raise HTTPException(
             status_code=422,
-            detail={"message": "Seuls les devis acceptés peuvent être convertis en facture."},
+            detail={"message": "Only accepted quotes can be converted to an invoice."},
         )
 
     if quote.get("invoiceId"):
         raise HTTPException(
             status_code=409,
-            detail={"message": "Ce devis a déjà été converti en facture."},
+            detail={"message": "This quote has already been converted to an invoice."},
         )
 
     quote_line_items = parse_line_items(quote.get("lineItems"))
@@ -585,11 +698,11 @@ async def convert_quote_to_invoice(
         if quote and quote.get("invoiceId"):
             raise HTTPException(
                 status_code=409,
-                detail={"message": "Ce devis a déjà été converti en facture."},
+                detail={"message": "This quote has already been converted to an invoice."},
             )
         raise HTTPException(
             status_code=422,
-            detail={"message": "Seuls les devis acceptés peuvent être convertis en facture."},
+            detail={"message": "Only accepted quotes can be converted to an invoice."},
         )
 
     await record_event(
@@ -606,7 +719,19 @@ async def convert_quote_to_invoice(
         },
     )
 
-    return invoice_public(invoice_doc)
+    invalidate_user(user_id)
+    return await run_post_conversion_workflow(db, user_id, invoice_doc["id"])
+
+
+@quotes_router.post("/{quote_id}/archive", response_model=QuotePublic)
+async def archive_quote_endpoint(
+    quote_id: str,
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    doc = await archive_quote(db, current_user["id"], quote_id)
+    doc = await refresh_quote_invoice_link(db, current_user["id"], doc)
+    return quote_public(doc)
 
 
 @quotes_router.delete("/{quote_id}", status_code=204)
@@ -626,7 +751,7 @@ async def delete_quote(
     if existing.get("invoiceId"):
         raise HTTPException(
             status_code=409,
-            detail={"message": "Impossible de supprimer un devis déjà converti en facture."},
+            detail={"message": "Cannot delete a quote that has been converted to an invoice."},
         )
 
     result = await db.quotes.delete_one(
@@ -635,6 +760,7 @@ async def delete_quote(
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail={"message": "Quote not found."})
 
+    invalidate_user(current_user["id"])
     await record_event(
         db,
         current_user["id"],

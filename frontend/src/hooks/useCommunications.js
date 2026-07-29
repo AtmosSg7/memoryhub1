@@ -1,14 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { listCommunications } from "@/lib/communicationsApi";
-import { useAddClient } from "@/context/AddClientContext";
-import { useAddNote } from "@/context/AddNoteContext";
 import { useAddQuote } from "@/context/AddQuoteContext";
 import { useAddInvoice } from "@/context/AddInvoiceContext";
 import { useFollowUpContext } from "@/context/FollowUpContext";
 
 export function useCommunications({ clientId = "", category = "", limit = 50 } = {}) {
-  const { refreshKey: clientsRefreshKey } = useAddClient();
-  const { refreshKey: notesRefreshKey } = useAddNote();
   const { refreshKey: quotesRefreshKey } = useAddQuote();
   const { refreshKey: invoicesRefreshKey } = useAddInvoice();
   const { refreshKey: followUpsRefreshKey } = useFollowUpContext();
@@ -42,7 +38,7 @@ export function useCommunications({ clientId = "", category = "", limit = 50 } =
 
   useEffect(() => {
     refetch();
-  }, [refetch, clientsRefreshKey, notesRefreshKey, quotesRefreshKey, invoicesRefreshKey, followUpsRefreshKey]);
+  }, [refetch, quotesRefreshKey, invoicesRefreshKey, followUpsRefreshKey]);
 
   return { items, total, emailIntegrationReady, loading, error, refetch };
 }

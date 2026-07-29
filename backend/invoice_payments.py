@@ -89,7 +89,7 @@ def build_payment_update(
     current_paid = get_amount_paid(doc)
     amount_due = compute_amount_due(amount_ttc, current_paid)
     if amount > amount_due:
-        raise ValueError("Le montant dépasse le reste à payer.")
+        raise ValueError("Payment amount exceeds the remaining balance.")
 
     now = utc_now_iso()
     payment_date = parse_payment_date(paid_at, now)
@@ -128,7 +128,7 @@ def build_full_payment_update(doc: dict, paid_at: Optional[str] = None) -> dict:
     amount_ttc = int(doc.get("amountTTC") or 0)
     amount_due = compute_amount_due(amount_ttc, get_amount_paid(doc))
     if amount_due <= 0:
-        raise ValueError("Cette facture est déjà entièrement payée.")
+        raise ValueError("This invoice is already fully paid.")
     return build_payment_update(
         doc,
         amount=amount_due,

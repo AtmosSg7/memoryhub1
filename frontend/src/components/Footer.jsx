@@ -27,7 +27,12 @@ export const Footer = () => {
             </ul>
           </div>
           <div>
-            <p className="text-[11px] uppercase tracking-[0.16em] text-[#8A8F98] font-bold mb-5">{t("footer.legal")}</p>
+            <p className="text-[11px] uppercase tracking-[0.16em] text-[#8A8F98] font-bold mb-5">{t("footer.account")}</p>
+            <ul className="space-y-3 text-[14px] text-[#0A0A0B]/85">
+              <li><Link to="/register" className="hover:text-[#4F46E5] transition-colors duration-200">{t("footer.register")}</Link></li>
+              <li><Link to="/login" className="hover:text-[#4F46E5] transition-colors duration-200">{t("footer.login")}</Link></li>
+            </ul>
+            <p className="text-[11px] uppercase tracking-[0.16em] text-[#8A8F98] font-bold mb-5 mt-8">{t("footer.legal")}</p>
             <ul className="space-y-3 text-[14px] text-[#0A0A0B]/85">
               <li><Link to="/mentions-legales" className="hover:text-[#4F46E5] transition-colors duration-200">{t("footer.legalNotice")}</Link></li>
               <li><Link to="/politique-de-confidentialite" className="hover:text-[#4F46E5] transition-colors duration-200">{t("footer.privacy")}</Link></li>

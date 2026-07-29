@@ -1,8 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { toastApiError } from "@/utils/apiErrors";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { useAddQuote } from "@/context/AddQuoteContext";
+import { useAddClient } from "@/context/AddClientContext";
 import { useClients } from "@/hooks/useClients";
+import { useFormSubmitShortcut } from "@/hooks/useFormSubmitShortcut";
 import { createQuote, updateQuote } from "@/lib/quotesApi";
 import QuoteLineItemsEditor from "@/components/dashboard/QuoteLineItemsEditor";
 import {
@@ -28,6 +31,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useCompanyProfile } from "@/hooks/useCompanyProfile";
+import NeedsClientBanner from "@/components/dashboard/NeedsClientBanner";
 
 const EMPTY_FORM = {
   title: "",
@@ -37,7 +42,7 @@ const EMPTY_FORM = {
   internalNotes: "",
 };
 
-function quoteToForm(quote, prefillClient) {
+function quoteToForm(quote, prefillClient, defaultVatRate = 20) {
   if (quote) {
     return {
       title: quote.title === "Devis sans titre" ? "" : quote.title || "",
@@ -52,23 +57,35 @@ function quoteToForm(quote, prefillClient) {
     ...EMPTY_FORM,
     clientId: prefillClient?.id || "",
     quoteDate: toDatetimeLocalValue(new Date().toISOString()),
-    lineItems: [createEmptyLineItem()],
+    lineItems: [createEmptyLineItem(defaultVatRate)],
   };
 }
 
 export default function AddQuoteModal() {
   const { t, lang } = useDashboardLang();
-  const { isOpen, editingQuote, prefillClient, closeAddQuote, notifyQuotesChanged } = useAddQuote();
-  const { clients } = useClients();
+  const { isOpen, editingQuote, prefillClient, closeAddQuote, notifyQuotesChanged, queueOpenQuote } = useAddQuote();
+  const { openAddClient, lastCreatedClient, clearLastCreatedClient } = useAddClient();
+  const { clients } = useClients({ enabled: isOpen });
+  const { defaultVatRate } = useCompanyProfile({ enabled: isOpen });
   const [form, setForm] = useState({ ...EMPTY_FORM, lineItems: [createEmptyLineItem()] });
   const [submitting, setSubmitting] = useState(false);
+  const formRef = useRef(null);
 
   const isEdit = Boolean(editingQuote);
   const clientLocked = Boolean(prefillClient && !isEdit);
+  const needsClientFirst = !isEdit && clients.length === 0;
 
   useEffect(() => {
-    if (isOpen) setForm(quoteToForm(editingQuote, prefillClient));
-  }, [isOpen, editingQuote, prefillClient]);
+    if (isOpen) setForm(quoteToForm(editingQuote, prefillClient, defaultVatRate));
+  }, [isOpen, editingQuote, prefillClient, defaultVatRate]);
+
+  useEffect(() => {
+    if (!isOpen || !lastCreatedClient) return;
+    setForm((prev) => ({ ...prev, clientId: lastCreatedClient.id }));
+    clearLastCreatedClient();
+  }, [isOpen, lastCreatedClient, clearLastCreatedClient]);
+
+  useFormSubmitShortcut(formRef, isOpen && !submitting && !needsClientFirst);
 
   const setField = (field) => (event) => {
     setForm((prev) => ({ ...prev, [field]: event.target.value }));
@@ -104,14 +121,17 @@ export default function AddQuoteModal() {
       if (isEdit) {
         await updateQuote(editingQuote.id, payload);
         toast.success(t("toast.quoteUpdated"));
+        notifyQuotesChanged();
+        closeAddQuote();
       } else {
-        await createQuote(payload);
+        const created = await createQuote(payload);
         toast.success(t("toast.quoteCreated"));
+        notifyQuotesChanged();
+        closeAddQuote();
+        queueOpenQuote(created);
       }
-      notifyQuotesChanged();
-      closeAddQuote();
     } catch (err) {
-      toast.error(err.message || t("toast.quoteError"));
+      toastApiError(err, t, "toast.quoteError");
     } finally {
       setSubmitting(false);
     }
@@ -129,7 +149,13 @@ export default function AddQuoteModal() {
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {needsClientFirst ? (
+          <NeedsClientBanner
+            onCreateClient={() => openAddClient("quote")}
+            testId="quote-needs-client"
+          />
+        ) : (
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
           {isEdit && editingQuote?.number && (
             <div className="text-xs font-semibold text-[#0A2540] bg-[#EFF6FF] px-3 py-2 rounded-lg">
               {editingQuote.number}
@@ -155,22 +181,24 @@ export default function AddQuoteModal() {
 
           <div className="space-y-2">
             <Label htmlFor="quote-title" className={FORM_LABEL_CLASS}>{t("quoteForm.title")}</Label>
-            <Input id="quote-title" value={form.title} onChange={setField("title")} className={FORM_FIELD_CLASS} placeholder={t("quoteForm.titlePlaceholder")} />
+            <Input id="quote-title" value={form.title} onChange={setField("title")} className={FORM_FIELD_CLASS} placeholder={t("quoteForm.titlePlaceholder")} autoFocus={!clientLocked} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className={FORM_LABEL_CLASS}>{t("quoteForm.status")}</Label>
-              <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
-                <SelectTrigger className={FORM_FIELD_CLASS}><SelectValue /></SelectTrigger>
-                <SelectContent className={FORM_SELECT_CONTENT_CLASS}>
-                  {QUOTE_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>{t(`quoteStatus.${s}`)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
+            {isEdit ? (
+              <div className="space-y-2">
+                <Label className={FORM_LABEL_CLASS}>{t("quoteForm.status")}</Label>
+                <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
+                  <SelectTrigger className={FORM_FIELD_CLASS}><SelectValue /></SelectTrigger>
+                  <SelectContent className={FORM_SELECT_CONTENT_CLASS}>
+                    {QUOTE_STATUSES.map((s) => (
+                      <SelectItem key={s} value={s}>{t(`quoteStatus.${s}`)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+            <div className={`space-y-2 ${isEdit ? "" : "sm:col-span-2"}`}>
               <Label htmlFor="quote-date" className={FORM_LABEL_CLASS}>{t("quoteForm.quoteDate")}</Label>
               <Input id="quote-date" type="datetime-local" value={form.quoteDate} onChange={setField("quoteDate")} className={FORM_FIELD_CLASS} />
             </div>
@@ -190,7 +218,7 @@ export default function AddQuoteModal() {
 
           <DetailModalFooter
             primary={
-              <ActionButton type="submit" variant="primary" disabled={submitting}>
+              <ActionButton type="submit" variant="primary" disabled={submitting} data-testid="quote-form-submit">
                 {submitting ? t("quoteForm.saving") : isEdit ? t("quoteForm.save") : t("quoteForm.create")}
               </ActionButton>
             }
@@ -201,6 +229,7 @@ export default function AddQuoteModal() {
             }
           />
         </form>
+        )}
       </DialogContent>
     </Dialog>
   );

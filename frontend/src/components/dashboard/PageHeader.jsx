@@ -4,6 +4,7 @@ export default function PageHeader({
   eyebrow,
   title,
   subtitle,
+  trailing,
   primaryLabel,
   primaryIcon: PrimaryIcon,
   onPrimary,
@@ -15,7 +16,7 @@ export default function PageHeader({
   return (
     <div
       data-testid={testId}
-      className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6 md:mb-8"
+      className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-4 md:mb-6"
     >
       <div>
         {eyebrow && (
@@ -32,8 +33,9 @@ export default function PageHeader({
           </p>
         )}
       </div>
-      {(primaryLabel || secondaryLabel) && (
-        <div className="flex items-center gap-2 shrink-0">
+      {(primaryLabel || secondaryLabel || trailing) && (
+        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          {trailing}
           {secondaryLabel && (
             <ActionButton
               variant="secondary"

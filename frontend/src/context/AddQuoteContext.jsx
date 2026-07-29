@@ -7,6 +7,7 @@ export function AddQuoteProvider({ children }) {
   const [editingQuote, setEditingQuote] = useState(null);
   const [prefillClient, setPrefillClient] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [pendingOpenQuote, setPendingOpenQuote] = useState(null);
 
   const openAddQuote = useCallback((client = null) => {
     setEditingQuote(null);
@@ -30,18 +31,41 @@ export function AddQuoteProvider({ children }) {
     setRefreshKey((key) => key + 1);
   }, []);
 
+  const queueOpenQuote = useCallback((quote) => {
+    setPendingOpenQuote(quote);
+  }, []);
+
+  const clearPendingOpenQuote = useCallback(() => {
+    setPendingOpenQuote(null);
+  }, []);
+
   const value = useMemo(
     () => ({
       isOpen,
       editingQuote,
       prefillClient,
       refreshKey,
+      pendingOpenQuote,
       openAddQuote,
       openEditQuote,
       closeAddQuote,
       notifyQuotesChanged,
+      queueOpenQuote,
+      clearPendingOpenQuote,
     }),
-    [isOpen, editingQuote, prefillClient, refreshKey, openAddQuote, openEditQuote, closeAddQuote, notifyQuotesChanged]
+    [
+      isOpen,
+      editingQuote,
+      prefillClient,
+      refreshKey,
+      pendingOpenQuote,
+      openAddQuote,
+      openEditQuote,
+      closeAddQuote,
+      notifyQuotesChanged,
+      queueOpenQuote,
+      clearPendingOpenQuote,
+    ]
   );
 
   return <AddQuoteContext.Provider value={value}>{children}</AddQuoteContext.Provider>;

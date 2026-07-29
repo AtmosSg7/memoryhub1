@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Loader2 } from "lucide-react";
 
 export const DELETE_MODAL_OVERLAY_CLASS = "z-[100] bg-[#0A0A0B]/50 backdrop-blur-md";
 
@@ -50,9 +51,17 @@ export default function DeleteConfirmDialog({
           <AlertDialogAction
             onClick={onConfirm}
             disabled={submitting}
-            className="rounded-xl bg-[#991B1B] text-white hover:bg-[#7F1D1D]"
+            data-testid={testId ? `${testId}-confirm` : undefined}
+            className="rounded-xl bg-[#991B1B] text-white hover:bg-[#7F1D1D] min-w-[7rem]"
           >
-            {confirmLabel}
+            {submitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin inline" aria-hidden="true" />
+                {confirmLabel}
+              </>
+            ) : (
+              confirmLabel
+            )}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

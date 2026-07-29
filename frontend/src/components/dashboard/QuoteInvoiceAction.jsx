@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ExternalLink, Loader2, Receipt } from "lucide-react";
 import { toast } from "sonner";
+import { toastApiError } from "@/utils/apiErrors";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { useAddQuote } from "@/context/AddQuoteContext";
 import { useAddInvoice } from "@/context/AddInvoiceContext";
@@ -13,25 +14,34 @@ export default function QuoteInvoiceAction({ quote, compact = false, prominent =
   const { t } = useDashboardLang();
   const navigate = useNavigate();
   const { notifyQuotesChanged } = useAddQuote();
-  const { notifyInvoicesChanged, openEditInvoice } = useAddInvoice();
+  const { notifyInvoicesChanged, queueOpenInvoice } = useAddInvoice();
   const [submitting, setSubmitting] = useState(false);
 
   if (!quote) return null;
 
   const hasLinkedInvoice = Boolean(quote.invoiceId);
+  const clientId = quote.clientId;
+
+  const openInvoice = (invoice) => {
+    queueOpenInvoice(invoice);
+    if (clientId) return;
+    navigate(`/dashboard/documents?open=${invoice.id}`);
+  };
 
   const handleViewInvoice = async () => {
     if (!quote.invoiceId) return;
     setSubmitting(true);
     try {
       const invoice = await getInvoice(quote.invoiceId);
-      openEditInvoice(invoice);
+      openInvoice(invoice);
     } catch (err) {
       if (err.message?.includes("not found") || err.message?.includes("introuvable")) {
         notifyQuotesChanged();
         toast.error(t("toast.linkedInvoiceMissing"));
+      } else if (clientId) {
+        navigate(`/dashboard/clients/${clientId}?section=invoices`);
       } else {
-        navigate(`/dashboard/clients/${quote.clientId}?section=invoices`);
+        navigate("/dashboard/documents");
       }
     } finally {
       setSubmitting(false);
@@ -47,12 +57,12 @@ export default function QuoteInvoiceAction({ quote, compact = false, prominent =
       toast.success(t("toast.invoiceCreatedFromQuote"), {
         description: invoice.number,
       });
-      openEditInvoice(invoice);
+      openInvoice(invoice);
     } catch (err) {
       if (err.message?.includes("déjà été converti") || err.message?.includes("already")) {
         notifyQuotesChanged();
       }
-      toast.error(err.message || t("toast.quoteConvertError"));
+      toastApiError(err, t, "toast.quoteConvertError");
     } finally {
       setSubmitting(false);
     }

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Search, CornerDownLeft } from "lucide-react";
+import { Search } from "lucide-react";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 
 export default function SearchPreview() {
@@ -40,9 +40,6 @@ export default function SearchPreview() {
           <span className="text-[13px] text-white/85 flex-1 truncate">
             {t("search.placeholder")}
           </span>
-          <kbd className="hidden sm:inline-flex text-[10px] px-1.5 py-0.5 rounded border border-white/20 bg-white/5 text-white/70 items-center gap-1">
-            <CornerDownLeft className="w-2.5 h-2.5" />
-          </kbd>
         </button>
       </div>
     </section>

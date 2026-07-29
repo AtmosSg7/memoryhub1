@@ -26,20 +26,16 @@ async function handleResponse(res, data, fallback) {
 
 
 
-export async function listInvoices({ clientId, status } = {}) {
-
+export async function listInvoices({ clientId, status, from, to, timezone } = {}) {
   const params = new URLSearchParams();
-
   if (clientId) params.set("clientId", clientId);
-
   if (status) params.set("status", status);
-
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  if (timezone) params.set("timezone", timezone);
   const query = params.toString() ? `?${params.toString()}` : "";
-
   const { res, data } = await apiFetch(`/api/invoices${query}`);
-
   return handleResponse(res, data, "Failed to load invoices.");
-
 }
 
 export async function getInvoice(invoiceId) {

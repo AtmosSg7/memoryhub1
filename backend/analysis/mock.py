@@ -2,13 +2,14 @@ import hashlib
 import re
 from datetime import datetime, timezone
 
-from analysis.base import AnalysisContext, DocumentAnalyzer
+from analysis.base import AnalysisContext, AnalysisPage, DocumentAnalyzer
+from import_analysis_merger import merge_page_analyses
 from import_models import AnalysisResultData, NormalizedCommercialFields, utc_now_iso
 
 _MOCK_SAMPLES = [
     {
         "detectedKind": "quote",
-        "title": "Devis rénovation salle de bain",
+        "title": "Devis travaux rénovation",
         "clientName": "Martin Dupont",
         "company": "Dupont Rénovation",
         "email": "martin.dupont@example.fr",
@@ -19,11 +20,11 @@ _MOCK_SAMPLES = [
         "amountHT": 245000,
         "vatRate": 20,
         "amountTTC": 294000,
-        "internalNotes": "Fourniture et pose carrelage.",
+        "internalNotes": "Fourniture et main d'œuvre.",
     },
     {
         "detectedKind": "invoice",
-        "title": "Facture travaux électricité",
+        "title": "Facture prestation janvier",
         "clientName": "Sophie Bernard",
         "company": "Bernard & Fils",
         "email": "contact@bernard-fils.fr",
@@ -34,7 +35,7 @@ _MOCK_SAMPLES = [
         "amountHT": 89000,
         "vatRate": 20,
         "amountTTC": 106800,
-        "internalNotes": "Mise aux normes tableau électrique.",
+        "internalNotes": "Solde après acompte.",
     },
 ]
 
@@ -49,6 +50,28 @@ class MockAnalyzer(DocumentAnalyzer):
         return "1.0.0"
 
     async def analyze(self, content: bytes, context: AnalysisContext) -> AnalysisResultData:
+        pages = context.pages or [
+            AnalysisPage(
+                index=1,
+                content=content,
+                mime_type=context.mime_type,
+                extension=context.extension,
+            )
+        ]
+        if len(pages) == 1:
+            return self._analyze_page(pages[0], context, content)
+
+        results = [self._analyze_page(page, context, content) for page in pages]
+        return merge_page_analyses(
+            results,
+            failed_pages=[page.index for page, result in zip(pages, results) if result.errors],
+            provider=self.provider_name,
+            provider_version=self.provider_version,
+            analyzed_at=utc_now_iso(),
+            preprocessing_warnings=context.preprocessing_warnings,
+        )
+
+    def _analyze_page(self, page: AnalysisPage, context: AnalysisContext, content: bytes) -> AnalysisResultData:
         digest = hashlib.sha256(content).hexdigest()
         index = int(digest[:8], 16) % len(_MOCK_SAMPLES)
         sample = _MOCK_SAMPLES[index]
@@ -86,6 +109,12 @@ class MockAnalyzer(DocumentAnalyzer):
         raw = {
             "provider": self.provider_name,
             "providerVersion": self.provider_version,
+            "model": "mock-analyzer",
+            "tokenUsage": {
+                "inputTokens": (inp := 800 + (int(digest[:4], 16) % 400)),
+                "outputTokens": (out := 350 + (int(digest[4:8], 16) % 200)),
+                "totalTokens": inp + out,
+            },
             "filename": context.filename,
             "contentSha256": digest,
             "pages": 1,

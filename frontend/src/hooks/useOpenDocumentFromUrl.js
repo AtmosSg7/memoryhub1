@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { toastApiError } from "@/utils/apiErrors";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 
 export function useOpenDocumentFromUrl({ loading, fetchDocument, onOpen }) {
@@ -22,7 +23,7 @@ export function useOpenDocumentFromUrl({ loading, fetchDocument, onOpen }) {
       })
       .catch((err) => {
         if (active) {
-          toast.error(err.message || t("dashboardV2.today.loadError"));
+          toastApiError(err, t, "dashboardV2.today.loadError");
         }
       })
       .finally(() => {

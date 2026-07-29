@@ -1,6 +1,6 @@
 import { formatInvoiceAmount } from "@/utils/invoiceDisplay";
 import { formatQuoteAmount } from "@/utils/quoteDisplay";
-import { getEventRoute } from "@/utils/eventDisplay";
+import { getEventRoute, getEventPresentation, formatEventTime } from "@/utils/eventDisplay";
 
 export const COMMUNICATION_CATEGORIES = [
   "all",
@@ -50,4 +50,23 @@ export function getCommunicationCategoryKey(category) {
 
 export function getCommunicationChannelKey(channel) {
   return `communications.channels.${channel || "app"}`;
+}
+
+export function getActivityRowData(item, lang, t) {
+  const event = communicationToEvent(item);
+  const presentation = event ? getEventPresentation(event, lang) : null;
+  const typeLabel = presentation
+    ? t(presentation.labelKey)
+    : t(getCommunicationCategoryKey(item.category));
+  const clientName = item.clientName || presentation?.clientName || "—";
+  const amount = formatCommunicationAmount(item, lang) || presentation?.amount || "";
+  const date = formatEventTime(item.occurredAt, lang);
+
+  return {
+    typeLabel,
+    clientName,
+    amount,
+    date,
+    route: getCommunicationRoute(item),
+  };
 }

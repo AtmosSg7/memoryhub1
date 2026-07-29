@@ -5,7 +5,7 @@ import { ActionButton } from "@/components/dashboard/ActionButton";
 import DocumentSendModal from "@/components/dashboard/DocumentSendModal";
 import { canSendDocument } from "@/utils/documentSendDisplay";
 
-export default function DocumentSendAction({ entityType, entity, compact = false, onRecorded }) {
+export default function DocumentSendAction({ entityType, entity, compact = false, prominent = false, onRecorded }) {
   const { t } = useDashboardLang();
   const [open, setOpen] = useState(false);
 
@@ -14,7 +14,7 @@ export default function DocumentSendAction({ entityType, entity, compact = false
   return (
     <>
       <ActionButton
-        variant="quick"
+        variant={prominent ? "primary" : "quick"}
         onClick={() => setOpen(true)}
         className={compact ? "gap-1.5" : "h-10 px-4 text-sm gap-1.5"}
         data-testid={`send-${entityType}-${entity.id}`}

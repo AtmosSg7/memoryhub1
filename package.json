@@ -1,0 +1,12 @@
+{
+  "name": "memoryhub",
+  "private": true,
+  "scripts": {
+    "test:backend": "cd backend && EMAIL_PROVIDER=fake ANALYZER_PROVIDER=mock pytest -q",
+    "test:e2e": "cd e2e && npm test",
+    "test:e2e:chromium": "cd e2e && npm run test:chromium",
+    "build:frontend": "cd frontend && CI=true npm run build",
+    "e2e:start": "./scripts/e2e-start.sh",
+    "e2e:stop": "./scripts/e2e-stop.sh"
+  }
+}

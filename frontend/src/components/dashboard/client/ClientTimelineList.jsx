@@ -1,5 +1,9 @@
-import CommercialTimeline from "@/components/dashboard/CommercialTimeline";
+import ClientTimeline from "@/components/dashboard/client/ClientTimeline";
 
+/**
+ * Thin adapter used by ClientDetailPage (overview + full timeline section).
+ * Keeps the page API stable while ClientTimeline owns the rich UI.
+ */
 export default function ClientTimelineList({
   events,
   loading,
@@ -7,16 +11,22 @@ export default function ClientTimelineList({
   emptyLabel,
   limit,
   compact = false,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
 }) {
   return (
-    <CommercialTimeline
+    <ClientTimeline
       events={events}
       loading={loading}
       error={error}
+      emptyLabel={emptyLabel}
       limit={limit}
       compact={compact}
-      emptyLabel={emptyLabel}
-      testIdPrefix="client-timeline"
+      hasMore={hasMore}
+      loadingMore={loadingMore}
+      onLoadMore={onLoadMore}
+      testId="client-timeline"
     />
   );
 }

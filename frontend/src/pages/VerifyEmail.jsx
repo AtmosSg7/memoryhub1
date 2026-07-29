@@ -5,6 +5,7 @@ import { AuthLayout } from "@/components/auth/AuthLayout";
 import { useLang } from "@/context/LanguageContext";
 import { apiFetch } from "@/lib/api";
 import { VERIFY_EMAIL } from "@/constants/testIds/auth";
+import { translateAuthError } from "@/utils/authErrors";
 
 const VerifyEmail = () => {
   const { t } = useLang();
@@ -28,7 +29,9 @@ const VerifyEmail = () => {
         setMessage(data?.message || t("auth.verifyEmail.success"));
       } else {
         setStatus("error");
-        setMessage(data?.detail?.message || t("auth.verifyEmail.error"));
+        setMessage(
+          translateAuthError(data?.detail?.message || data?.detail, t, "auth.verifyEmail.error")
+        );
       }
     })();
 

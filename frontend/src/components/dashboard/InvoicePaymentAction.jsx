@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { CheckCircle2, Loader2, RotateCcw, Wallet } from "lucide-react";
 import { toast } from "sonner";
+import { toastApiError } from "@/utils/apiErrors";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { useAddInvoice } from "@/context/AddInvoiceContext";
-import { markInvoiceInProgress } from "@/lib/invoicesApi";
+import { markInvoiceInProgress, markInvoicePaid } from "@/lib/invoicesApi";
 import { getInvoiceAmountDue, getInvoiceAmountPaid, normalizeInvoiceStatus } from "@/utils/invoiceDisplay";
 import { ActionButton } from "@/components/dashboard/ActionButton";
 import InvoicePaymentModal from "@/components/dashboard/InvoicePaymentModal";
@@ -24,6 +25,20 @@ export default function InvoicePaymentAction({ invoice, compact = false, onUpdat
   const canCollect = amountDue > 0 && (status === "in_progress" || status === "overdue");
   const canReopen = amountPaid > 0;
 
+  const handleMarkPaid = async () => {
+    setSubmitting(true);
+    try {
+      const updated = await markInvoicePaid(invoice.id);
+      notifyInvoicesChanged();
+      onUpdated?.(updated);
+      toast.success(t("toast.invoicePaymentRecorded"), { description: invoice.number });
+    } catch (err) {
+      toastApiError(err, t, "toast.invoicePaymentError");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleReopen = async () => {
     setSubmitting(true);
     try {
@@ -32,7 +47,7 @@ export default function InvoicePaymentAction({ invoice, compact = false, onUpdat
       onUpdated?.(updated);
       toast.success(t("toast.invoiceReopened"), { description: updated.number });
     } catch (err) {
-      toast.error(err.message || t("toast.invoicePaymentError"));
+      toastApiError(err, t, "toast.invoicePaymentError");
     } finally {
       setSubmitting(false);
     }
@@ -41,16 +56,31 @@ export default function InvoicePaymentAction({ invoice, compact = false, onUpdat
   return (
     <>
       {canCollect ? (
-        <ActionButton
-          variant="success"
-          onClick={() => setModalOpen(true)}
-          disabled={submitting}
-          className={compact ? "gap-1.5" : "h-10 px-4 text-sm gap-1.5"}
-          data-testid={`invoice-collect-${invoice.id}`}
-        >
-          <Wallet className="w-3.5 h-3.5" />
-          {t("actions.collect")}
-        </ActionButton>
+        <div className={compact ? "inline-flex items-center gap-1" : "inline-flex items-center gap-1.5"}>
+          <ActionButton
+            variant="success"
+            onClick={handleMarkPaid}
+            disabled={submitting}
+            className={compact ? "gap-1.5" : "h-10 px-4 text-sm gap-1.5"}
+            data-testid={`invoice-collect-${invoice.id}`}
+          >
+            {submitting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Wallet className="w-3.5 h-3.5" />
+            )}
+            {t("actions.markPaid")}
+          </ActionButton>
+          <ActionButton
+            variant="quick"
+            onClick={() => setModalOpen(true)}
+            disabled={submitting}
+            className={compact ? "px-2 text-[11px]" : "h-10 px-3 text-sm"}
+            data-testid={`invoice-partial-${invoice.id}`}
+          >
+            {t("actions.partialPayment")}
+          </ActionButton>
+        </div>
       ) : null}
 
       {canReopen ? (

@@ -1,15 +1,24 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Layers } from "lucide-react";
+import { Layers } from "lucide-react";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useCatalog } from "@/hooks/useCatalog";
 import PageHeader from "@/components/dashboard/PageHeader";
 import EmptyState from "@/components/dashboard/EmptyState";
-import { PageError, PageLoader } from "@/components/dashboard/PageFeedback";
-import { LIST_TABLE_CONTAINER_CLASS } from "@/components/dashboard/detailModalLayout";
+import { PageError, TableSkeleton } from "@/components/dashboard/PageFeedback";
+import {
+  LIST_TABLE_CONTAINER_CLASS,
+  METRIC_CARD_CLASS,
+  METRIC_LABEL_CLASS,
+  METRIC_VALUE_CLASS,
+  TABLE_BODY_CELL_CLASS,
+  TABLE_BODY_ROW_CLASS,
+  TABLE_HEAD_CELL_CLASS,
+  TABLE_HEAD_ROW_CLASS,
+} from "@/components/dashboard/detailModalLayout";
+import SearchField from "@/components/dashboard/SearchField";
 import { formatQuoteAmount, formatQuoteDate } from "@/utils/quoteDisplay";
-import { Input } from "@/components/ui/input";
 
 export default function CatalogPage() {
   const { t, lang } = useDashboardLang();
@@ -28,34 +37,31 @@ export default function CatalogPage() {
 
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-            <div className="text-xs text-[#6B7280] mb-2">{t("catalog.stats.items")}</div>
-            <div className="font-cabinet text-2xl font-bold text-[#111827]">{stats.totalItems}</div>
+          <div className={METRIC_CARD_CLASS}>
+            <div className={METRIC_LABEL_CLASS}>{t("catalog.stats.items")}</div>
+            <div className={METRIC_VALUE_CLASS}>{stats.totalItems}</div>
           </div>
-          <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-            <div className="text-xs text-[#6B7280] mb-2">{t("catalog.stats.usages")}</div>
-            <div className="font-cabinet text-2xl font-bold text-[#111827]">{stats.totalUsages}</div>
+          <div className={METRIC_CARD_CLASS}>
+            <div className={METRIC_LABEL_CLASS}>{t("catalog.stats.usages")}</div>
+            <div className={METRIC_VALUE_CLASS}>{stats.totalUsages}</div>
           </div>
-          <div className="bg-white border border-[#E5E7EB] rounded-xl p-5">
-            <div className="text-xs text-[#6B7280] mb-2">{t("catalog.stats.average")}</div>
-            <div className="font-cabinet text-2xl font-bold text-[#111827]">{stats.averageUsagePerItem}</div>
+          <div className={METRIC_CARD_CLASS}>
+            <div className={METRIC_LABEL_CLASS}>{t("catalog.stats.average")}</div>
+            <div className={METRIC_VALUE_CLASS}>{stats.averageUsagePerItem}</div>
           </div>
         </div>
       )}
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={t("catalog.searchPlaceholder")}
-          className="h-10 pl-9 rounded-xl border border-[#E7E9EE] bg-white"
-          data-testid="catalog-search"
-        />
-      </div>
+      <SearchField
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder={t("catalog.searchPlaceholder")}
+        wrapperClassName="max-w-md"
+        data-testid="catalog-search"
+      />
 
       {loading ? (
-        <PageLoader label={t("catalog.loading")} testId="catalog-loading" />
+        <TableSkeleton rows={8} columns={7} testId="catalog-loading" />
       ) : error ? (
         <PageError message={error} testId="catalog-error" />
       ) : items.length === 0 ? (
@@ -63,8 +69,8 @@ export default function CatalogPage() {
           icon={Layers}
           title={search.trim() ? t("catalog.empty.filteredTitle") : t("catalog.empty.title")}
           description={search.trim() ? t("catalog.empty.filteredDesc") : t("catalog.empty.desc")}
-          cta={search.trim() ? undefined : t("catalog.empty.cta")}
-          onCta={search.trim() ? undefined : () => navigate("/dashboard/documents")}
+          cta={search.trim() ? t("common.clearFilter") : t("catalog.empty.cta")}
+          onCta={search.trim() ? () => setSearch("") : () => navigate("/dashboard/files")}
           testId="catalog-empty"
         />
       ) : (
@@ -75,7 +81,7 @@ export default function CatalogPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[880px]">
               <thead>
-                <tr className="bg-[#FAFAFA] border-b border-[#F3F4F6]">
+                <tr className={TABLE_HEAD_ROW_CLASS}>
                   {[
                     t("catalog.col.description"),
                     t("catalog.col.usage"),
@@ -85,10 +91,7 @@ export default function CatalogPage() {
                     t("catalog.col.vat"),
                     t("catalog.col.lastUsed"),
                   ].map((label) => (
-                    <th
-                      key={label}
-                      className="text-left px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6B7280]"
-                    >
+                    <th key={label} className={TABLE_HEAD_CELL_CLASS}>
                       {label}
                     </th>
                   ))}
@@ -98,22 +101,22 @@ export default function CatalogPage() {
                 {items.map((item) => (
                   <tr
                     key={item.id}
-                    className="border-b border-[#F3F4F6] last:border-0 hover:bg-[#FAFAFA]"
+                    className={TABLE_BODY_ROW_CLASS}
                     data-testid={`catalog-row-${item.id}`}
                   >
-                    <td className="px-4 py-3 font-medium text-[#111827]">{item.description}</td>
-                    <td className="px-4 py-3 text-[#4B5563] tabular-nums">{item.usageCount}</td>
-                    <td className="px-4 py-3 font-medium text-[#111827] tabular-nums">
+                    <td className={`${TABLE_BODY_CELL_CLASS} font-medium text-[#111827]`}>{item.description}</td>
+                    <td className={`${TABLE_BODY_CELL_CLASS} text-[#4B5563] tabular-nums`}>{item.usageCount}</td>
+                    <td className={`${TABLE_BODY_CELL_CLASS} font-medium text-[#111827] tabular-nums`}>
                       {formatQuoteAmount(item.unitPriceHTAvg, lang)}
                     </td>
-                    <td className="px-4 py-3 text-[#4B5563] tabular-nums">
+                    <td className={`${TABLE_BODY_CELL_CLASS} text-[#4B5563] tabular-nums`}>
                       {formatQuoteAmount(item.unitPriceHTMin, lang)}
                     </td>
-                    <td className="px-4 py-3 text-[#4B5563] tabular-nums">
+                    <td className={`${TABLE_BODY_CELL_CLASS} text-[#4B5563] tabular-nums`}>
                       {formatQuoteAmount(item.unitPriceHTMax, lang)}
                     </td>
-                    <td className="px-4 py-3 text-[#4B5563] tabular-nums">{item.defaultVatRate} %</td>
-                    <td className="px-4 py-3 text-[#6B7280]">{formatQuoteDate(item.lastUsedAt, lang)}</td>
+                    <td className={`${TABLE_BODY_CELL_CLASS} text-[#4B5563] tabular-nums`}>{item.defaultVatRate} %</td>
+                    <td className={`${TABLE_BODY_CELL_CLASS} text-[#6B7280]`}>{formatQuoteDate(item.lastUsedAt, lang)}</td>
                   </tr>
                 ))}
               </tbody>

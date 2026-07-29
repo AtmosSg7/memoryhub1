@@ -11,6 +11,22 @@ const config = {
   enableHealthCheck: process.env.ENABLE_HEALTH_CHECK === "true",
 };
 
+function normalizeAllowedHosts(allowedHosts) {
+  if (allowedHosts === "all" || allowedHosts === "auto") {
+    return allowedHosts;
+  }
+  if (typeof allowedHosts === "string" && allowedHosts.trim()) {
+    return allowedHosts.trim();
+  }
+  if (Array.isArray(allowedHosts)) {
+    const hosts = allowedHosts.filter((host) => typeof host === "string" && host.trim().length > 0);
+    if (hosts.length > 0) {
+      return hosts;
+    }
+  }
+  return "all";
+}
+
 function makeDevServerV5Compatible(devServerConfig) {
   const {
     https,
@@ -31,6 +47,37 @@ function makeDevServerV5Compatible(devServerConfig) {
     ...compatibleConfig.headers,
     "Cross-Origin-Resource-Policy": "same-origin",
   };
+
+  compatibleConfig.allowedHosts = normalizeAllowedHosts(compatibleConfig.allowedHosts);
+
+  const apiProxyTarget =
+    process.env.E2E_PROXY_TARGET ||
+    process.env.REACT_APP_DEV_API_PROXY ||
+    "http://127.0.0.1:8000";
+
+  // Always proxy /api in dev so cookies stay same-site (localhost:3000 → localhost:3000/api).
+  compatibleConfig.proxy = {
+    ...(compatibleConfig.proxy || {}),
+    "/api": {
+      target: apiProxyTarget,
+      changeOrigin: true,
+    },
+  };
+  compatibleConfig.allowedHosts = "all";
+
+  if (process.env.REACT_APP_API_URL && process.env.REACT_APP_API_URL.trim()) {
+    console.warn(
+      "[memoryhub] REACT_APP_API_URL is set — cross-origin cookies may break auth in dev. " +
+        "Leave it empty and use the /api proxy instead.",
+    );
+  }
+
+  if (process.env.E2E_PROXY_TARGET) {
+    compatibleConfig.client = {
+      ...(compatibleConfig.client || {}),
+      overlay: false,
+    };
+  }
 
   if (onBeforeSetupMiddleware || setupMiddlewares) {
     compatibleConfig.setupMiddlewares = (middlewares, devServer) => {

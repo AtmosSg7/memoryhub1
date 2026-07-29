@@ -1,17 +1,30 @@
-from typing import Literal, Optional, Tuple
+from datetime import datetime, timezone
+from typing import Literal, Optional
 
 from fastapi import HTTPException
 
+from email_templates import (
+    EmailLang,
+    build_invoice_send_email,
+    build_quote_send_email,
+    format_amount,
+    resolve_sender_name,
+)
 from events import record_event
 from follow_up_service import (
     FollowUpLang,
     _client_greeting,
-    _format_amount,
     _load_client,
     _load_invoice,
+    _load_portal_url,
     _load_quote,
 )
-from portal_service import build_portal_url
+from invoice_payments import compute_amount_due, get_amount_paid
+from transactional_email_service import (
+    resolve_artisan_locale,
+    send_invoice_email,
+    send_quote_email,
+)
 
 BLOCKED_QUOTE_STATUSES = {"rejected", "expired"}
 
@@ -24,14 +37,8 @@ def _normalize_invoice_status(status: Optional[str]) -> str:
     return "in_progress"
 
 
-async def _load_portal_url(db, user_id: str, client_id: str) -> Optional[str]:
-    portal = await db.client_portals.find_one(
-        {"userId": user_id, "clientId": client_id, "isActive": True},
-        {"_id": 0, "token": 1},
-    )
-    if not portal:
-        return None
-    return build_portal_url(portal["token"])
+def _format_amount(cents: int, lang: FollowUpLang) -> str:
+    return format_amount(cents, lang)
 
 
 def _validate_quote_send(quote: dict) -> None:
@@ -50,88 +57,17 @@ def _validate_invoice_send(invoice: dict) -> None:
         )
 
 
-def _build_quote_send_message(
-    *,
-    lang: FollowUpLang,
-    greeting: str,
-    number: str,
-    title: str,
-    amount_ttc: int,
+def _resolve_sender(
     company_name: str,
-    portal_url: Optional[str],
-) -> Tuple[str, str]:
-    amount = _format_amount(amount_ttc, lang)
-    title_part = f" « {title} »" if title else ""
-    if lang == "en":
-        subject = f"Quote {number}"
-        body = (
-            f"Hello {greeting},\n\n"
-            f"Please find attached our quote {number}{title_part} for {amount}.\n"
-        )
-        if portal_url:
-            body += (
-                f"\nYou can review and accept it online:\n{portal_url}\n"
-            )
-        else:
-            body += "\nThe PDF is attached to this email.\n"
-        body += (
-            f"\nPlease let me know if you have any questions.\n\n"
-            f"Best regards,\n{company_name}"
-        )
-    else:
-        subject = f"Devis {number}"
-        body = (
-            f"Bonjour {greeting},\n\n"
-            f"Veuillez trouver ci-joint notre devis {number}{title_part}, "
-            f"d'un montant de {amount}.\n"
-        )
-        if portal_url:
-            body += (
-                f"\nVous pouvez le consulter et le valider en ligne :\n{portal_url}\n"
-            )
-        else:
-            body += "\nLe PDF est joint à cet e-mail.\n"
-        body += (
-            f"\nJe reste à votre disposition pour toute question.\n\n"
-            f"Cordialement,\n{company_name}"
-        )
-    return subject, body
-
-
-def _build_invoice_send_message(
+    lang: EmailLang,
     *,
-    lang: FollowUpLang,
-    greeting: str,
-    number: str,
-    amount_ttc: int,
-    company_name: str,
-    portal_url: Optional[str],
-) -> Tuple[str, str]:
-    amount = _format_amount(amount_ttc, lang)
-    if lang == "en":
-        subject = f"Invoice {number}"
-        body = (
-            f"Hello {greeting},\n\n"
-            f"Please find attached invoice {number} for {amount}.\n"
-        )
-        if portal_url:
-            body += f"\nYou can also view it online:\n{portal_url}\n"
-        else:
-            body += "\nThe PDF is attached to this email.\n"
-        body += f"\nBest regards,\n{company_name}"
-    else:
-        subject = f"Facture {number}"
-        body = (
-            f"Bonjour {greeting},\n\n"
-            f"Veuillez trouver ci-joint la facture {number}, "
-            f"d'un montant de {amount}.\n"
-        )
-        if portal_url:
-            body += f"\nVous pouvez aussi la consulter en ligne :\n{portal_url}\n"
-        else:
-            body += "\nLe PDF est joint à cet e-mail.\n"
-        body += f"\nCordialement,\n{company_name}"
-    return subject, body
+    first_name: str = "",
+    last_name: str = "",
+    email_signature: str = "",
+) -> str:
+    if (email_signature or "").strip():
+        return email_signature.strip()
+    return resolve_sender_name(company_name, lang, first_name=first_name, last_name=last_name)
 
 
 async def build_document_send_preview(
@@ -141,9 +77,14 @@ async def build_document_send_preview(
     entity_type: str,
     entity_id: str,
     lang: FollowUpLang = "fr",
-    company_name: str = "MemoryHub",
+    company_name: str = "",
+    sender_first_name: str = "",
+    sender_last_name: str = "",
 ) -> dict:
-    portal_url: Optional[str] = None
+    from company_profile_service import get_user_with_profile, resolve_sender_display
+
+    user = await get_user_with_profile(db, user_id)
+    sender = resolve_sender_display(user, user["companyProfile"], lang=lang)
 
     if entity_type == "quote":
         quote = await _load_quote(db, user_id, entity_id)
@@ -151,13 +92,13 @@ async def build_document_send_preview(
         client = await _load_client(db, user_id, quote["clientId"])
         portal_url = await _load_portal_url(db, user_id, quote["clientId"])
         greeting = _client_greeting(client, quote.get("clientName", ""))
-        subject, message = _build_quote_send_message(
+        email = build_quote_send_email(
             lang=lang,
             greeting=greeting,
             number=quote.get("number", ""),
             title=quote.get("title") or "",
             amount_ttc=quote.get("amountTTC", 0),
-            company_name=company_name,
+            sender_name=sender,
             portal_url=portal_url,
         )
         return {
@@ -166,8 +107,9 @@ async def build_document_send_preview(
             "clientId": quote["clientId"],
             "clientName": quote.get("clientName", ""),
             "clientEmail": client.get("email"),
-            "subject": subject,
-            "message": message,
+            "subject": email.subject,
+            "preheader": email.preheader,
+            "message": email.body,
             "documentNumber": quote.get("number", ""),
             "portalUrl": portal_url,
         }
@@ -178,12 +120,12 @@ async def build_document_send_preview(
         client = await _load_client(db, user_id, invoice["clientId"])
         portal_url = await _load_portal_url(db, user_id, invoice["clientId"])
         greeting = _client_greeting(client, invoice.get("clientName", ""))
-        subject, message = _build_invoice_send_message(
+        email = build_invoice_send_email(
             lang=lang,
             greeting=greeting,
             number=invoice.get("number", ""),
             amount_ttc=invoice.get("amountTTC", 0),
-            company_name=company_name,
+            sender_name=sender,
             portal_url=portal_url,
         )
         return {
@@ -192,13 +134,21 @@ async def build_document_send_preview(
             "clientId": invoice["clientId"],
             "clientName": invoice.get("clientName", ""),
             "clientEmail": client.get("email"),
-            "subject": subject,
-            "message": message,
+            "subject": email.subject,
+            "preheader": email.preheader,
+            "message": email.body,
             "documentNumber": invoice.get("number", ""),
             "portalUrl": portal_url,
         }
 
     raise HTTPException(status_code=400, detail={"message": "Invalid entity type."})
+
+
+async def _mark_quote_sent_if_draft(db, user_id: str, quote_id: str) -> None:
+    from commercial_lifecycle import mark_quote_sent
+
+    quote = await _load_quote(db, user_id, quote_id)
+    await mark_quote_sent(db, user_id, quote, via="document_send")
 
 
 async def record_document_send_prepared(
@@ -210,7 +160,9 @@ async def record_document_send_prepared(
     message: str,
     subject: Optional[str] = None,
     lang: FollowUpLang = "fr",
-    company_name: str = "MemoryHub",
+    company_name: str = "",
+    sender_first_name: str = "",
+    sender_last_name: str = "",
 ) -> dict:
     preview = await build_document_send_preview(
         db,
@@ -219,7 +171,12 @@ async def record_document_send_prepared(
         entity_id=entity_id,
         lang=lang,
         company_name=company_name,
+        sender_first_name=sender_first_name,
+        sender_last_name=sender_last_name,
     )
+
+    if entity_type == "quote":
+        await _mark_quote_sent_if_draft(db, user_id, entity_id)
 
     final_subject = (subject or preview["subject"]).strip()
     final_message = message.strip()
@@ -259,5 +216,129 @@ async def record_document_send_prepared(
         "entityId": entity_id,
         "subject": final_subject,
         "message": final_message,
+        "recordedAt": event["createdAt"],
+    }
+
+
+async def send_document_email(
+    db,
+    user_id: str,
+    *,
+    entity_type: str,
+    entity_id: str,
+    recipient_email: str,
+    lang: FollowUpLang = "fr",
+    company_name: str = "",
+    sender_first_name: str = "",
+    sender_last_name: str = "",
+    idempotency_key: Optional[str] = None,
+) -> dict:
+    """Send quote/invoice email to client; records send event either way."""
+    from email_utils import normalize_email
+
+    try:
+        to = normalize_email(recipient_email)
+    except Exception:
+        raise HTTPException(status_code=422, detail={"message": "Invalid client email address."})
+
+    preview = await build_document_send_preview(
+        db,
+        user_id,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        lang=lang,
+        company_name=company_name,
+        sender_first_name=sender_first_name,
+        sender_last_name=sender_last_name,
+    )
+
+    artisan_locale = await resolve_artisan_locale(db, user_id)
+    client_lang: EmailLang = lang if lang in ("fr", "en") else artisan_locale
+
+    from company_profile_service import get_user_with_profile, resolve_sender_display
+
+    owner = await get_user_with_profile(db, user_id)
+    sender = resolve_sender_display(owner, owner["companyProfile"], lang=client_lang)
+    greeting = _client_greeting(
+        await _load_client(db, user_id, preview["clientId"]),
+        preview.get("clientName", ""),
+    )
+
+    key = idempotency_key or f"doc-send:{entity_type}:{entity_id}:{to}"
+
+    if entity_type == "quote":
+        await _mark_quote_sent_if_draft(db, user_id, entity_id)
+        quote = await _load_quote(db, user_id, entity_id)
+        delivery = await send_quote_email(
+            db,
+            user_id=user_id,
+            to=to,
+            greeting=greeting,
+            number=quote.get("number", ""),
+            title=quote.get("title") or "",
+            amount_ttc=int(quote.get("amountTTC") or 0),
+            sender_name=sender,
+            portal_url=preview.get("portalUrl"),
+            locale=client_lang,
+            entity_id=entity_id,
+            idempotency_key=key,
+            status=quote.get("status", "sent"),
+        )
+    elif entity_type == "invoice":
+        invoice = await _load_invoice(db, user_id, entity_id)
+        from commercial_lifecycle import mark_invoice_sent
+
+        await mark_invoice_sent(db, user_id, invoice, via="document_send")
+        invoice = await _load_invoice(db, user_id, entity_id)
+        amount_paid = get_amount_paid(invoice)
+        amount_due = compute_amount_due(int(invoice.get("amountTTC") or 0), amount_paid)
+        delivery = await send_invoice_email(
+            db,
+            user_id=user_id,
+            to=to,
+            greeting=greeting,
+            number=invoice.get("number", ""),
+            amount_ttc=int(invoice.get("amountTTC") or 0),
+            amount_due=amount_due,
+            sender_name=sender,
+            portal_url=preview.get("portalUrl"),
+            locale=client_lang,
+            entity_id=entity_id,
+            idempotency_key=key,
+        )
+    else:
+        raise HTTPException(status_code=400, detail={"message": "Invalid entity type."})
+
+    excerpt = preview.get("message", "")[:160]
+    metadata = {
+        "clientName": preview["clientName"],
+        "clientEmail": to,
+        "channel": "email",
+        "sendType": entity_type,
+        "subject": preview["subject"],
+        "excerpt": excerpt,
+        "documentNumber": preview["documentNumber"],
+        "portalUrl": preview.get("portalUrl"),
+        "emailStatus": delivery.status,
+        "emailEventId": delivery.event_id,
+    }
+    entity_type_event = "quote" if entity_type == "quote" else "invoice"
+    event = await record_event(
+        db,
+        user_id,
+        "document_send_prepared",
+        entity_type_event,
+        entity_id,
+        client_id=preview["clientId"],
+        metadata=metadata,
+    )
+
+    return {
+        "id": event["id"],
+        "entityType": entity_type,
+        "entityId": entity_id,
+        "emailStatus": delivery.status,
+        "emailDelivered": delivery.delivered,
+        "emailEventId": delivery.event_id,
         "recordedAt": event["createdAt"],
     }

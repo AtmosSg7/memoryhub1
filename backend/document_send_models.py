@@ -14,6 +14,7 @@ class DocumentSendPreviewResponse(BaseModel):
     clientName: str
     clientEmail: Optional[str] = None
     subject: str
+    preheader: str = ""
     message: str
     documentNumber: str
     portalUrl: Optional[str] = None
@@ -34,4 +35,23 @@ class DocumentSendRecordResponse(BaseModel):
     entityId: str
     subject: str
     message: str
+    recordedAt: str
+
+
+class DocumentSendEmailRequest(BaseModel):
+    entityType: DocumentSendEntityType
+    entityId: str = Field(..., min_length=1)
+    recipientEmail: str = Field(..., min_length=3, max_length=254)
+    idempotencyKey: Optional[str] = Field(None, max_length=128)
+
+
+class DocumentSendEmailResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    id: str
+    entityType: DocumentSendEntityType
+    entityId: str
+    emailStatus: str
+    emailDelivered: bool
+    emailEventId: str
     recordedAt: str

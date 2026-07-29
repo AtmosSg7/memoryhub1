@@ -1,8 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { toastApiError } from "@/utils/apiErrors";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { useAddInvoice } from "@/context/AddInvoiceContext";
+import { useAddClient } from "@/context/AddClientContext";
 import { useClients } from "@/hooks/useClients";
+import { useFormSubmitShortcut } from "@/hooks/useFormSubmitShortcut";
 import { createInvoice, updateInvoice } from "@/lib/invoicesApi";
 import CommercialLineItemsEditor from "@/components/dashboard/CommercialLineItemsEditor";
 import {
@@ -34,6 +37,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useCompanyProfile } from "@/hooks/useCompanyProfile";
+import NeedsClientBanner from "@/components/dashboard/NeedsClientBanner";
 
 const EMPTY_FORM = {
   title: "",
@@ -43,7 +48,7 @@ const EMPTY_FORM = {
   internalNotes: "",
 };
 
-function invoiceToForm(invoice, prefillClient) {
+function invoiceToForm(invoice, prefillClient, defaultVatRate = 20) {
   if (invoice) {
     return {
       title: invoice.title === "Facture sans titre" ? "" : invoice.title || "",
@@ -58,23 +63,35 @@ function invoiceToForm(invoice, prefillClient) {
     ...EMPTY_FORM,
     clientId: prefillClient?.id || "",
     invoiceDate: toDatetimeLocalValue(new Date().toISOString()),
-    lineItems: [createEmptyLineItem()],
+    lineItems: [createEmptyLineItem(defaultVatRate)],
   };
 }
 
 export default function AddInvoiceModal() {
   const { t, lang } = useDashboardLang();
-  const { isOpen, editingInvoice, prefillClient, closeAddInvoice, notifyInvoicesChanged } = useAddInvoice();
-  const { clients } = useClients();
+  const { isOpen, editingInvoice, prefillClient, closeAddInvoice, notifyInvoicesChanged, queueOpenInvoice } = useAddInvoice();
+  const { openAddClient, lastCreatedClient, clearLastCreatedClient } = useAddClient();
+  const { clients } = useClients({ enabled: isOpen });
+  const { defaultVatRate } = useCompanyProfile({ enabled: isOpen });
   const [form, setForm] = useState({ ...EMPTY_FORM, lineItems: [createEmptyLineItem()] });
   const [submitting, setSubmitting] = useState(false);
+  const formRef = useRef(null);
 
   const isEdit = Boolean(editingInvoice);
   const clientLocked = Boolean(prefillClient && !isEdit);
+  const needsClientFirst = !isEdit && clients.length === 0;
 
   useEffect(() => {
-    if (isOpen) setForm(invoiceToForm(editingInvoice, prefillClient));
-  }, [isOpen, editingInvoice, prefillClient]);
+    if (isOpen) setForm(invoiceToForm(editingInvoice, prefillClient, defaultVatRate));
+  }, [isOpen, editingInvoice, prefillClient, defaultVatRate]);
+
+  useEffect(() => {
+    if (!isOpen || !lastCreatedClient) return;
+    setForm((prev) => ({ ...prev, clientId: lastCreatedClient.id }));
+    clearLastCreatedClient();
+  }, [isOpen, lastCreatedClient, clearLastCreatedClient]);
+
+  useFormSubmitShortcut(formRef, isOpen && !submitting && !needsClientFirst);
 
   const setField = (field) => (event) => {
     setForm((prev) => ({ ...prev, [field]: event.target.value }));
@@ -110,14 +127,17 @@ export default function AddInvoiceModal() {
       if (isEdit) {
         await updateInvoice(editingInvoice.id, payload);
         toast.success(t("toast.invoiceUpdated"));
+        notifyInvoicesChanged();
+        closeAddInvoice();
       } else {
-        await createInvoice(payload);
+        const created = await createInvoice(payload);
         toast.success(t("toast.invoiceCreated"));
+        notifyInvoicesChanged();
+        closeAddInvoice();
+        queueOpenInvoice(created);
       }
-      notifyInvoicesChanged();
-      closeAddInvoice();
     } catch (err) {
-      toast.error(err.message || t("toast.invoiceError"));
+      toastApiError(err, t, "toast.invoiceError");
     } finally {
       setSubmitting(false);
     }
@@ -135,7 +155,13 @@ export default function AddInvoiceModal() {
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {needsClientFirst ? (
+          <NeedsClientBanner
+            onCreateClient={() => openAddClient("invoice")}
+            testId="invoice-needs-client"
+          />
+        ) : (
+        <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
           {isEdit && editingInvoice?.number && (
             <div className="text-xs font-semibold text-[#065F46] bg-[#ECFDF5] px-3 py-2 rounded-lg">
               {editingInvoice.number}
@@ -161,22 +187,24 @@ export default function AddInvoiceModal() {
 
           <div className="space-y-2">
             <Label htmlFor="invoice-title" className={FORM_LABEL_CLASS}>{t("invoiceForm.title")}</Label>
-            <Input id="invoice-title" value={form.title} onChange={setField("title")} className={FORM_FIELD_CLASS} placeholder={t("invoiceForm.titlePlaceholder")} />
+            <Input id="invoice-title" value={form.title} onChange={setField("title")} className={FORM_FIELD_CLASS} placeholder={t("invoiceForm.titlePlaceholder")} autoFocus={!clientLocked} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className={FORM_LABEL_CLASS}>{t("invoiceForm.status")}</Label>
-              <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
-                <SelectTrigger className={FORM_FIELD_CLASS}><SelectValue /></SelectTrigger>
-                <SelectContent className={FORM_SELECT_CONTENT_CLASS}>
-                  {INVOICE_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>{t(`invoiceStatus.${s}`)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
+            {isEdit ? (
+              <div className="space-y-2">
+                <Label className={FORM_LABEL_CLASS}>{t("invoiceForm.status")}</Label>
+                <Select value={form.status} onValueChange={(v) => setForm((p) => ({ ...p, status: v }))}>
+                  <SelectTrigger className={FORM_FIELD_CLASS}><SelectValue /></SelectTrigger>
+                  <SelectContent className={FORM_SELECT_CONTENT_CLASS}>
+                    {INVOICE_STATUSES.map((s) => (
+                      <SelectItem key={s} value={s}>{t(`invoiceStatus.${s}`)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+            <div className={`space-y-2 ${isEdit ? "" : "sm:col-span-2"}`}>
               <Label htmlFor="invoice-date" className={FORM_LABEL_CLASS}>{t("invoiceForm.invoiceDate")}</Label>
               <Input id="invoice-date" type="datetime-local" value={form.invoiceDate} onChange={setField("invoiceDate")} className={FORM_FIELD_CLASS} />
             </div>
@@ -204,7 +232,7 @@ export default function AddInvoiceModal() {
 
           <DetailModalFooter
             primary={
-              <ActionButton type="submit" variant="primary" disabled={submitting}>
+              <ActionButton type="submit" variant="primary" disabled={submitting} data-testid="invoice-form-submit">
                 {submitting ? t("invoiceForm.saving") : isEdit ? t("invoiceForm.save") : t("invoiceForm.create")}
               </ActionButton>
             }
@@ -215,6 +243,7 @@ export default function AddInvoiceModal() {
             }
           />
         </form>
+        )}
       </DialogContent>
     </Dialog>
   );

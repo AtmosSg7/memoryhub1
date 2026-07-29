@@ -33,7 +33,8 @@ def totals_from_lines(
         if line.amountHT <= 0:
             continue
         total_ht += line.amountHT
-        total_ttc += (line.amountHT * (100 + line.vatRate)) // 100
+        rate = line.vatRate if line.vatRate is not None else fallback_vat_rate
+        total_ttc += (line.amountHT * (100 + rate)) // 100
 
     if total_ht <= 0:
         return compute_global_totals(0, fallback_vat_rate)
@@ -88,7 +89,10 @@ def normalize_line_item(raw: dict, *, default_vat_rate: int = DEFAULT_VAT_RATE) 
     if unit_price_ht is None:
         unit_price_ht = int(round(amount_ht / quantity)) if quantity else amount_ht
 
-    vat_rate = _parse_vat_rate(raw.get("vatRate") or raw.get("vat"), default_vat_rate)
+    vat_raw = raw.get("vatRate")
+    if vat_raw is None:
+        vat_raw = raw.get("vat")
+    vat_rate = _parse_vat_rate(vat_raw, default_vat_rate)
     item = CommercialLineItem(
         description=description,
         quantity=quantity,
@@ -132,9 +136,15 @@ def resolve_document_amounts(
             if line.description.strip() and line.amountHT > 0
         ]
         if valid:
+            normalized = [
+                line.model_copy(update={"vatRate": fallback_vat_rate})
+                if line.vatRate is None
+                else line
+                for line in valid
+            ]
             return CommercialDocumentAmounts(
-                lineItems=valid,
-                totals=totals_from_lines(valid, fallback_vat_rate=fallback_vat_rate),
+                lineItems=normalized,
+                totals=totals_from_lines(normalized, fallback_vat_rate=fallback_vat_rate),
             )
     return CommercialDocumentAmounts(
         lineItems=None,

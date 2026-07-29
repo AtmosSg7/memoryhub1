@@ -1,3 +1,4 @@
+from company_profile_service import get_default_vat_rate, resolve_import_vat_rate
 from import_handlers.base import ImportEntityHandler
 from import_models import CreatedEntities, NormalizedCommercialFields
 from invoices import DEFAULT_STATUS, DEFAULT_TITLE, INPUT_STATUSES, insert_invoice_document
@@ -25,7 +26,17 @@ class InvoiceImportHandler(ImportEntityHandler):
         source_document_id: str,
     ) -> CreatedEntities:
         amount_ht = fields.amountHT or 0
-        vat_rate = fields.vatRate if fields.vatRate is not None else 20
+        default_vat = await get_default_vat_rate(db, user_id)
+        session = await db.import_sessions.find_one(
+            {"userId": user_id, "id": import_session_id},
+            {"_id": 0, "analysis.confidence.vatRate": 1},
+        )
+        vat_confidence = (
+            (session or {}).get("analysis", {}).get("confidence", {}).get("vatRate")
+            if session
+            else None
+        )
+        vat_rate = resolve_import_vat_rate(fields.vatRate, vat_confidence, default_vat)
         status = fields.status if fields.status in INPUT_STATUSES else DEFAULT_STATUS
 
         doc = await insert_invoice_document(

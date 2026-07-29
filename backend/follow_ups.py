@@ -20,9 +20,16 @@ from follow_up_service import (
 follow_ups_router = APIRouter(prefix="/follow-ups", tags=["follow-ups"])
 
 
-async def _company_name(db, user_id: str) -> str:
-    user = await db.users.find_one({"id": user_id}, {"_id": 0, "companyName": 1})
-    return (user or {}).get("companyName") or "MemoryHub"
+async def _sender_profile(db, user_id: str) -> dict:
+    from company_profile_service import get_seller_dict, get_user_with_profile
+
+    user = await get_user_with_profile(db, user_id)
+    seller = get_seller_dict(user, user["companyProfile"])
+    return {
+        "companyName": seller.get("companyName") or "",
+        "firstName": user.get("firstName") or "",
+        "lastName": user.get("lastName") or "",
+    }
 
 
 @follow_ups_router.get("/preview", response_model=FollowUpPreviewResponse)
@@ -33,14 +40,16 @@ async def preview_follow_up(
     current_user: dict = Depends(get_current_user),
     db=Depends(get_db),
 ):
-    company = await _company_name(db, current_user["id"])
+    profile = await _sender_profile(db, current_user["id"])
     data = await build_follow_up_preview(
         db,
         current_user["id"],
         entity_type=entityType,
         entity_id=entityId,
         lang=lang,
-        company_name=company,
+        company_name=profile.get("companyName") or "",
+        sender_first_name=profile.get("firstName") or "",
+        sender_last_name=profile.get("lastName") or "",
     )
     return FollowUpPreviewResponse(**data)
 
@@ -86,7 +95,7 @@ async def create_follow_up_record(
     current_user: dict = Depends(get_current_user),
     db=Depends(get_db),
 ):
-    company = await _company_name(db, current_user["id"])
+    profile = await _sender_profile(db, current_user["id"])
     data = await record_follow_up(
         db,
         current_user["id"],
@@ -95,6 +104,8 @@ async def create_follow_up_record(
         message=body.message,
         subject=body.subject,
         lang=lang,
-        company_name=company,
+        company_name=profile.get("companyName") or "",
+        sender_first_name=profile.get("firstName") or "",
+        sender_last_name=profile.get("lastName") or "",
     )
     return FollowUpRecordResponse(**data)

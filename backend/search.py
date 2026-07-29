@@ -1,3 +1,6 @@
+"""Global Search V2 — fast multi-collection lookup for artisans."""
+
+import asyncio
 import re
 from typing import List, Literal, Optional
 
@@ -5,12 +8,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
 
 from auth import get_current_user, get_db
+from rate_limit import rate_limit
 
 search_router = APIRouter(prefix="/search", tags=["search"])
+search_rate_limit = rate_limit(max_requests=60, window_seconds=60)
 
-MIN_QUERY_LEN = 3
+MIN_QUERY_LEN = 2
 MAX_QUERY_LEN = 100
-RESULT_LIMIT = 10
+RESULT_LIMIT = 12
 
 SEARCH_PROJECTION = {"_id": 0, "userId": 0}
 
@@ -22,19 +27,31 @@ CLIENT_SEARCH_FIELDS = [
     "phone",
     "activity",
     "city",
+    "postalCode",
+    "siret",
+    "vatNumber",
     "notes",
+    "tags",
+    "emails.value",
+    "phones.value",
+    "addresses.city",
+    "addresses.postalCode",
+    "addresses.line1",
 ]
 NOTE_SEARCH_FIELDS = ["title", "content", "clientName", "type"]
 DOCUMENT_SEARCH_FIELDS = ["name", "clientName", "extension"]
 QUOTE_SEARCH_FIELDS = ["number", "title", "clientName", "internalNotes"]
 INVOICE_SEARCH_FIELDS = ["number", "title", "clientName", "internalNotes", "status"]
+COMM_SEARCH_FIELDS = ["subject", "preview", "metadata.fromEmail", "metadata.toEmail", "metadata.clientName"]
+# Reserved for future Search V2 channels (WhatsApp / calls / calendar)
+FUTURE_SEARCH_HINTS = ("whatsapp", "call", "calendar")
 
 
 class SearchResultItem(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: str
-    type: Literal["client", "note", "document", "quote", "invoice"]
+    type: Literal["client", "note", "document", "quote", "invoice", "email", "communication"]
     title: str
     subtitle: Optional[str] = None
     clientId: Optional[str] = None
@@ -56,6 +73,11 @@ class SearchGroups(BaseModel):
     documents: SearchGroup
     quotes: SearchGroup
     invoices: SearchGroup
+    emails: SearchGroup
+    # Reserved empty groups for future connectors (architecture only)
+    whatsapp: SearchGroup = SearchGroup(total=0, items=[])
+    calls: SearchGroup = SearchGroup(total=0, items=[])
+    calendar: SearchGroup = SearchGroup(total=0, items=[])
 
 
 class SearchResponse(BaseModel):
@@ -104,6 +126,12 @@ def _invoice_url(client_id: Optional[str]) -> str:
     return "/dashboard/invoices"
 
 
+def _email_url(client_id: Optional[str]) -> str:
+    if client_id:
+        return f"/dashboard/clients/{client_id}?section=emails"
+    return "/dashboard/communications?category=email"
+
+
 def _match_preview(content: str, query: str, max_len: int = 120) -> str:
     if not content:
         return ""
@@ -142,6 +170,9 @@ def _client_subtitle(doc: dict) -> Optional[str]:
     city = (doc.get("city") or "").strip()
     if city:
         parts.append(city)
+    tags = doc.get("tags") or []
+    if isinstance(tags, list) and tags:
+        parts.append(", ".join(str(t) for t in tags[:3]))
     if parts:
         return " · ".join(parts)
     return doc.get("email") or doc.get("phone")
@@ -157,8 +188,8 @@ def _client_to_result(doc: dict) -> SearchResultItem:
         clientId=doc["id"],
         clientName=display,
         url=_client_url(doc["id"]),
-        createdAt=doc["createdAt"],
-        updatedAt=doc["updatedAt"],
+        createdAt=doc.get("createdAt") or "",
+        updatedAt=doc.get("updatedAt") or doc.get("createdAt") or "",
     )
 
 
@@ -172,8 +203,8 @@ def _note_to_result(doc: dict, query: str) -> SearchResultItem:
         clientId=client_id,
         clientName=doc.get("clientName"),
         url=_note_url(client_id),
-        createdAt=doc["createdAt"],
-        updatedAt=doc["updatedAt"],
+        createdAt=doc.get("createdAt") or "",
+        updatedAt=doc.get("updatedAt") or doc.get("createdAt") or "",
         matchPreview=_match_preview(doc.get("content", ""), query),
     )
 
@@ -189,8 +220,8 @@ def _document_to_result(doc: dict) -> SearchResultItem:
         clientId=client_id,
         clientName=doc.get("clientName"),
         url=_document_url(client_id),
-        createdAt=doc["createdAt"],
-        updatedAt=doc["updatedAt"],
+        createdAt=doc.get("createdAt") or "",
+        updatedAt=doc.get("updatedAt") or doc.get("createdAt") or "",
     )
 
 
@@ -204,8 +235,8 @@ def _quote_to_result(doc: dict, query: str) -> SearchResultItem:
         clientId=client_id,
         clientName=doc.get("clientName"),
         url=_quote_url(client_id),
-        createdAt=doc["createdAt"],
-        updatedAt=doc["updatedAt"],
+        createdAt=doc.get("createdAt") or "",
+        updatedAt=doc.get("updatedAt") or doc.get("createdAt") or "",
         matchPreview=_match_preview(doc.get("internalNotes") or "", query),
     )
 
@@ -220,19 +251,36 @@ def _invoice_to_result(doc: dict, query: str) -> SearchResultItem:
         clientId=client_id,
         clientName=doc.get("clientName"),
         url=_invoice_url(client_id),
-        createdAt=doc["createdAt"],
-        updatedAt=doc["updatedAt"],
+        createdAt=doc.get("createdAt") or "",
+        updatedAt=doc.get("updatedAt") or doc.get("createdAt") or "",
         matchPreview=_match_preview(doc.get("internalNotes") or "", query),
     )
 
 
-async def _search_collection(db, collection, fields, base_filter, pattern, to_result):
+def _communication_to_result(doc: dict, query: str) -> SearchResultItem:
+    client_id = doc.get("clientId")
+    meta = doc.get("metadata") or {}
+    return SearchResultItem(
+        id=doc["id"],
+        type="email",
+        title=doc.get("subject") or "E-mail",
+        subtitle=meta.get("clientName") or meta.get("fromEmail") or doc.get("provider"),
+        clientId=client_id,
+        clientName=meta.get("clientName"),
+        url=_email_url(client_id),
+        createdAt=doc.get("createdAt") or "",
+        updatedAt=doc.get("updatedAt") or doc.get("createdAt") or "",
+        matchPreview=_match_preview(doc.get("preview") or "", query),
+    )
+
+
+async def _search_collection(db, collection, fields, base_filter, pattern, to_result, *, sort_field="updatedAt"):
     query = {**base_filter, "$or": _build_or_filter(fields, pattern)}
     total = await db[collection].count_documents(query)
     cursor = (
         db[collection]
         .find(query, SEARCH_PROJECTION)
-        .sort("updatedAt", -1)
+        .sort(sort_field, -1)
         .limit(RESULT_LIMIT)
     )
     items = [to_result(doc) async for doc in cursor]
@@ -244,6 +292,7 @@ async def global_search(
     q: str = Query(..., min_length=MIN_QUERY_LEN, max_length=MAX_QUERY_LEN),
     current_user: dict = Depends(get_current_user),
     db=Depends(get_db),
+    _rate=Depends(search_rate_limit),
 ):
     query = q.strip()
     if len(query) < MIN_QUERY_LEN:
@@ -256,38 +305,63 @@ async def global_search(
     pattern = _regex_pattern(query)
     base = _user_filter(user_id)
 
-    clients_total, client_items = await _search_collection(
-        db, "clients", CLIENT_SEARCH_FIELDS, base, pattern, _client_to_result
-    )
-    notes_total, note_items = await _search_collection(
-        db,
-        "notes",
-        NOTE_SEARCH_FIELDS,
-        base,
-        pattern,
-        lambda doc: _note_to_result(doc, query),
-    )
-    docs_total, doc_items = await _search_collection(
-        db, "documents", DOCUMENT_SEARCH_FIELDS, base, pattern, _document_to_result
-    )
-    quotes_total, quote_items = await _search_collection(
-        db,
-        "quotes",
-        QUOTE_SEARCH_FIELDS,
-        base,
-        pattern,
-        lambda doc: _quote_to_result(doc, query),
-    )
-    invoices_total, invoice_items = await _search_collection(
-        db,
-        "invoices",
-        INVOICE_SEARCH_FIELDS,
-        base,
-        pattern,
-        lambda doc: _invoice_to_result(doc, query),
+    (
+        (clients_total, client_items),
+        (notes_total, note_items),
+        (docs_total, doc_items),
+        (quotes_total, quote_items),
+        (invoices_total, invoice_items),
+        (emails_total, email_items),
+    ) = await asyncio.gather(
+        _search_collection(
+            db, "clients", CLIENT_SEARCH_FIELDS, base, pattern, _client_to_result
+        ),
+        _search_collection(
+            db,
+            "notes",
+            NOTE_SEARCH_FIELDS,
+            base,
+            pattern,
+            lambda doc: _note_to_result(doc, query),
+        ),
+        _search_collection(
+            db, "documents", DOCUMENT_SEARCH_FIELDS, base, pattern, _document_to_result
+        ),
+        _search_collection(
+            db,
+            "quotes",
+            QUOTE_SEARCH_FIELDS,
+            base,
+            pattern,
+            lambda doc: _quote_to_result(doc, query),
+        ),
+        _search_collection(
+            db,
+            "invoices",
+            INVOICE_SEARCH_FIELDS,
+            base,
+            pattern,
+            lambda doc: _invoice_to_result(doc, query),
+        ),
+        _search_collection(
+            db,
+            "communications",
+            COMM_SEARCH_FIELDS,
+            {**base, "type": "email"},
+            pattern,
+            lambda doc: _communication_to_result(doc, query),
+            sort_field="createdAt",
+        ),
     )
 
-    total = clients_total + notes_total + docs_total + quotes_total + invoices_total
+    total = (
+        clients_total
+        + notes_total
+        + docs_total
+        + quotes_total
+        + invoices_total
+        + emails_total
+    )
 
     return SearchResponse(
         query=query,
@@ -298,5 +372,9 @@ async def global_search(
             documents=SearchGroup(total=docs_total, items=doc_items),
             quotes=SearchGroup(total=quotes_total, items=quote_items),
             invoices=SearchGroup(total=invoices_total, items=invoice_items),
+            emails=SearchGroup(total=emails_total, items=email_items),
+            whatsapp=SearchGroup(total=0, items=[]),
+            calls=SearchGroup(total=0, items=[]),
+            calendar=SearchGroup(total=0, items=[]),
         ),
     )

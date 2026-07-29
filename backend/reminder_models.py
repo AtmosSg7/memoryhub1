@@ -7,19 +7,19 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 ReminderType = Literal[
-
     "invoice_overdue",
-
     "invoice_unpaid",
-
     "invoice_due_soon",
-
     "quote_no_response",
-
     "quote_expiring_soon",
-
     "quote_accepted_pending_invoice",
-
+    "quote_viewed_no_response",
+    "quote_follow_up_second",
+    "quote_follow_up_third",
+    "invoice_follow_up_second",
+    "invoice_follow_up_third",
+    "automation_archive_invoice",
+    "automation_follow_up_invoice",
 ]
 
 

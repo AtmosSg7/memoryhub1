@@ -1,32 +1,23 @@
-import { Loader2, Mail } from "lucide-react";
+import { ScrollText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
+import EmptyState from "@/components/dashboard/EmptyState";
+import { InlineLoader, PageError } from "@/components/dashboard/PageFeedback";
 import {
-  formatCommunicationAmount,
   getCommunicationCategoryKey,
-  getCommunicationChannelKey,
-  getCommunicationRoute,
-  communicationToEvent,
+  getActivityRowData,
 } from "@/utils/communicationDisplay";
-import { formatEventTime, getEventPresentation } from "@/utils/eventDisplay";
 import { FILTER_PILL_CLASS } from "@/components/dashboard/detailModalLayout";
 
-const CATEGORY_STYLES = {
-  note: "bg-[#FFFBEB] text-[#92400E] border-[#FDE68A]",
-  payment: "bg-[#ECFDF5] text-[#047857] border-[#A7F3D0]",
-  quote_acceptance: "bg-[#EFF6FF] text-[#1E40AF] border-[#DBEAFE]",
-  follow_up: "bg-[#FFF7ED] text-[#C2410C] border-[#FED7AA]",
-  document_send: "bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]",
-  email: "bg-[#F5F3FF] text-[#5B21B6] border-[#DDD6FE]",
-  commercial: "bg-[#F3F4F6] text-[#374151] border-[#E5E7EB]",
-};
+const ROW_GRID_CLASS =
+  "grid grid-cols-1 sm:grid-cols-[minmax(7.5rem,1.1fr)_minmax(0,2fr)_5.5rem_5.5rem] sm:items-center gap-1 sm:gap-3";
 
 export function CommunicationCategoryPills({ value, onChange }) {
   const { t } = useDashboardLang();
   const categories = ["all", "note", "payment", "quote_acceptance", "follow_up", "document_send", "email", "commercial"];
 
   return (
-    <div className="flex flex-wrap gap-2" data-testid="communication-filters">
+    <div className="flex flex-wrap gap-1.5" data-testid="communication-filters">
       {categories.map((key) => (
         <button
           key={key}
@@ -34,6 +25,7 @@ export function CommunicationCategoryPills({ value, onChange }) {
           onClick={() => onChange(key === "all" ? "" : key)}
           className={[
             FILTER_PILL_CLASS.base,
+            "text-xs py-1",
             (value || "") === (key === "all" ? "" : key) ? FILTER_PILL_CLASS.active : FILTER_PILL_CLASS.inactive,
           ].join(" ")}
           data-testid={`communication-filter-${key}`}
@@ -45,85 +37,80 @@ export function CommunicationCategoryPills({ value, onChange }) {
   );
 }
 
-export default function CommunicationTimeline({ items, loading, error, emptyLabel, testIdPrefix = "communications" }) {
+export default function CommunicationTimeline({
+  items,
+  loading,
+  error,
+  emptyLabel,
+  emptyCta,
+  onEmptyCta,
+  testIdPrefix = "communications",
+}) {
   const { t, lang } = useDashboardLang();
   const navigate = useNavigate();
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-10 text-[#6B7280]">
-        <Loader2 className="w-5 h-5 animate-spin mr-2" />
-      </div>
-    );
+    return <InlineLoader label={t("communications.loading")} testId={`${testIdPrefix}-loading`} className="py-6" />;
   }
 
   if (error) {
-    return <p className="text-sm text-[#991B1B] py-4">{error}</p>;
+    return <PageError message={error} testId={`${testIdPrefix}-error`} />;
   }
 
   if (!items.length) {
     return (
-      <p className="text-sm text-[#6B7280] py-8 text-center" data-testid={`${testIdPrefix}-empty`}>
-        {emptyLabel}
-      </p>
+      <EmptyState
+        icon={ScrollText}
+        title={t("communications.emptyTitle")}
+        description={emptyLabel}
+        cta={emptyCta}
+        onCta={onEmptyCta}
+        testId={`${testIdPrefix}-empty`}
+        compact
+        inline
+      />
     );
   }
 
   return (
-    <ul className="relative space-y-3" data-testid={testIdPrefix}>
-      <div className="absolute left-4 top-2 bottom-2 w-px bg-[#F3F4F6]" aria-hidden="true" />
-      {items.map((item) => {
-        const route = getCommunicationRoute(item);
-        const event = communicationToEvent(item);
-        const presentation = event ? getEventPresentation(event, lang) : null;
-        const amount = formatCommunicationAmount(item, lang) || presentation?.amount;
-        const Tag = route ? "button" : "div";
-        const categoryStyle = CATEGORY_STYLES[item.category] || CATEGORY_STYLES.commercial;
+    <div className="overflow-x-auto" data-testid={testIdPrefix}>
+      <div
+        className={`${ROW_GRID_CLASS} hidden sm:grid px-4 py-2 border-b border-[#F3F4F6] bg-[#FAFAFA] text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9CA3AF]`}
+        aria-hidden="true"
+      >
+        <span>{t("communications.col.type")}</span>
+        <span>{t("communications.col.client")}</span>
+        <span className="text-right">{t("communications.col.amount")}</span>
+        <span className="text-right">{t("communications.col.date")}</span>
+      </div>
 
-        return (
-          <li key={item.id} className="relative flex gap-3" data-testid={`${testIdPrefix}-item-${item.id}`}>
-            <div className="relative z-10 w-8 h-8 rounded-lg flex items-center justify-center border border-[#E5E7EB] bg-white shrink-0">
-              {item.category === "email" ? (
-                <Mail className="w-4 h-4 text-[#5B21B6]" />
-              ) : (
-                <span className="w-2 h-2 rounded-full bg-[#0A2540]" />
-              )}
-            </div>
-            <Tag
-              type={route ? "button" : undefined}
-              onClick={route ? () => navigate(route) : undefined}
-              className={[
-                "flex-1 min-w-0 rounded-xl border border-[#E7E9EE] bg-white px-4 py-3 text-left",
-                route ? "hover:border-[#0A2540]/20 hover:bg-[#FAFAFA] cursor-pointer" : "",
-              ].join(" ")}
-            >
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold border ${categoryStyle}`}>
-                  {t(getCommunicationCategoryKey(item.category))}
+      <ul className="divide-y divide-[#F3F4F6]">
+        {items.map((item) => {
+          const { typeLabel, clientName, amount, date, route } = getActivityRowData(item, lang, t);
+          const Tag = route ? "button" : "div";
+
+          return (
+            <li key={item.id} data-testid={`${testIdPrefix}-item-${item.id}`}>
+              <Tag
+                type={route ? "button" : undefined}
+                onClick={route ? () => navigate(route) : undefined}
+                className={[
+                  ROW_GRID_CLASS,
+                  "w-full px-4 py-2.5 text-left transition-colors",
+                  route ? "hover:bg-[#FAFAFA] cursor-pointer" : "",
+                ].join(" ")}
+              >
+                <span className="text-[12px] font-medium text-[#374151] truncate">{typeLabel}</span>
+                <span className="text-[13px] font-medium text-[#111827] truncate">{clientName}</span>
+                <span className="text-[12px] font-semibold text-[#0A2540] tabular-nums sm:text-right">
+                  {amount || <span className="text-[#D1D5DB] font-normal">—</span>}
                 </span>
-                <span className="text-[10px] text-[#9CA3AF] uppercase tracking-wide">
-                  {t(getCommunicationChannelKey(item.channel))}
-                </span>
-                <span className="ml-auto text-[11px] text-[#9CA3AF] tabular-nums">
-                  {formatEventTime(item.occurredAt, lang)}
-                </span>
-              </div>
-              <p className="text-sm font-medium text-[#111827] truncate">
-                {presentation ? t(presentation.labelKey) : item.title}
-                {item.clientName ? ` · ${item.clientName}` : ""}
-              </p>
-              {(item.summary || presentation?.subtitle) && (
-                <p className="text-xs text-[#6B7280] mt-0.5 truncate">
-                  {item.summary || presentation?.subtitle}
-                </p>
-              )}
-              {amount ? (
-                <p className="text-xs font-semibold text-[#0A2540] mt-1 tabular-nums">{amount}</p>
-              ) : null}
-            </Tag>
-          </li>
-        );
-      })}
-    </ul>
+                <span className="text-[11px] text-[#9CA3AF] tabular-nums sm:text-right">{date}</span>
+              </Tag>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

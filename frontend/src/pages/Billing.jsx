@@ -1,4 +1,5 @@
-import { ComingSoonPage } from "@/components/auth/ComingSoonPage";
+import { Navigate } from "react-router-dom";
 
-const Billing = () => <ComingSoonPage pageKey="billing" />;
-export default Billing;
+export default function Billing() {
+  return <Navigate to="/dashboard/billing" replace />;
+}

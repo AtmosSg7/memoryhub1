@@ -9,7 +9,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from openai import AsyncOpenAI
 
-from analysis.base import AnalysisContext, DocumentAnalyzer
+from analysis.base import AnalysisContext, AnalysisPage, DocumentAnalyzer
+from import_analysis_merger import merge_page_analyses
+from import_classification import normalize_detected_kind
+from import_constants import IMPORT_BATCH_PAGE_LIMIT
 from import_models import AnalysisResultData, DocumentKind, NormalizedCommercialFields, utc_now_iso
 
 logger = logging.getLogger(__name__)
@@ -21,6 +24,7 @@ VALID_KINDS = {
     "delivery_note",
     "receipt",
     "supplier_invoice",
+    "administrative_document",
     "contract",
     "other",
 }
@@ -39,6 +43,9 @@ KIND_ALIASES = {
     "receipt": "receipt",
     "facture fournisseur": "supplier_invoice",
     "supplier_invoice": "supplier_invoice",
+    "document administratif": "administrative_document",
+    "administrative_document": "administrative_document",
+    "attestation": "administrative_document",
     "contrat": "contract",
     "contract": "contract",
     "other": "other",
@@ -71,7 +78,7 @@ externalNumber est le numéro du devis/facture visible sur le document.
 
 Retourne un JSON avec exactement cette forme :
 {
-  "detectedKind": "quote|invoice|purchase_order|delivery_note|receipt|supplier_invoice|contract|other",
+  "detectedKind": "quote|invoice|purchase_order|delivery_note|receipt|supplier_invoice|administrative_document|contract|other",
   "detectedKindConfidence": 0.0,
   "overallConfidence": 0.0,
   "warnings": [],
@@ -111,7 +118,7 @@ Retourne un JSON avec exactement cette forme :
 Exemple lineItems :
 [
   {
-    "label": "Pose carrelage salle de bain",
+    "label": "Main d'œuvre — journée",
     "quantity": 12,
     "unitPriceHT": 4500,
     "amountHT": 54000,
@@ -149,12 +156,7 @@ def _clamp_confidence(value: Any) -> float:
 
 
 def _normalize_kind(value: Any) -> DocumentKind:
-    if not value:
-        return "other"
-    raw = str(value).strip().lower()
-    if raw in VALID_KINDS:
-        return raw
-    return KIND_ALIASES.get(raw, "other")
+    return normalize_detected_kind(str(value) if value is not None else None)
 
 
 def _has_euro_decimal_format(text: str) -> bool:
@@ -442,20 +444,24 @@ def _infer_overall_confidence(confidence: Dict[str, float], overall: Any) -> flo
     return round(sum(values) / len(values), 4)
 
 
-def _build_content_part(content: bytes, context: AnalysisContext) -> dict:
+def _build_content_part(content: bytes, context: AnalysisContext, *, page: Optional[AnalysisPage] = None) -> dict:
     encoded = base64.b64encode(content).decode("ascii")
-    ext = context.extension.lower()
+    ext = (page.extension if page else context.extension).lower()
 
     if ext == "pdf":
+        filename = context.filename
+        if page and context.page_count > 1:
+            stem = context.filename.rsplit(".", 1)[0]
+            filename = f"{stem}-page-{page.index}.pdf"
         return {
             "type": "file",
             "file": {
-                "filename": context.filename,
+                "filename": filename,
                 "file_data": f"data:application/pdf;base64,{encoded}",
             },
         }
 
-    mime = context.mime_type or "image/jpeg"
+    mime = (page.mime_type if page else context.mime_type) or "image/jpeg"
     if ext in {"jpg", "jpeg"}:
         mime = "image/jpeg"
     elif ext == "png":
@@ -470,6 +476,20 @@ def _build_content_part(content: bytes, context: AnalysisContext) -> dict:
             "detail": "high",
         },
     }
+
+
+def _page_context(context: AnalysisContext, page: AnalysisPage) -> AnalysisContext:
+    return AnalysisContext(
+        filename=context.filename,
+        mime_type=page.mime_type,
+        extension=page.extension,
+        user_id=context.user_id,
+        pages=[page],
+        source_type=context.source_type,
+        page_count=1,
+        image_count=context.image_count,
+        preprocessing_warnings=context.preprocessing_warnings,
+    )
 
 
 def _supports_custom_temperature(model: str) -> bool:
@@ -499,15 +519,79 @@ class OpenAIAnalyzer(DocumentAnalyzer):
         return self._version
 
     async def analyze(self, content: bytes, context: AnalysisContext) -> AnalysisResultData:
+        pages = context.pages or [
+            AnalysisPage(
+                index=1,
+                content=content,
+                mime_type=context.mime_type,
+                extension=context.extension,
+            )
+        ]
         digest = hashlib.sha256(content).hexdigest()
         now = utc_now_iso()
-        warnings: List[str] = []
+
+        if len(pages) == 1:
+            return await self._analyze_single_page(
+                pages[0],
+                context,
+                content_digest=digest,
+                analyzed_at=now,
+            )
+
+        batch_limit = IMPORT_BATCH_PAGE_LIMIT or len(pages)
+        if len(pages) <= batch_limit:
+            batch_result = await self._analyze_batch(pages, context, content_digest=digest, analyzed_at=now)
+            if batch_result and not batch_result.errors:
+                if context.preprocessing_warnings:
+                    batch_result.warnings = list(context.preprocessing_warnings) + batch_result.warnings
+                return batch_result
+
+        page_results: List[AnalysisResultData] = []
+        failed_pages: List[int] = []
+        for page in pages:
+            result = await self._analyze_single_page(
+                page,
+                _page_context(context, page),
+                content_digest=digest,
+                analyzed_at=now,
+            )
+            page_results.append(result)
+            if result.errors:
+                failed_pages.append(page.index)
+
+        merged = merge_page_analyses(
+            page_results,
+            failed_pages=failed_pages,
+            provider=self.provider_name,
+            provider_version=self.provider_version,
+            analyzed_at=now,
+            preprocessing_warnings=context.preprocessing_warnings,
+        )
+        raw = merged.rawExtracted or {}
+        raw["contentSha256"] = digest
+        raw["pageCount"] = len(pages)
+        merged.rawExtracted = raw
+        return merged
+
+    async def _analyze_single_page(
+        self,
+        page: AnalysisPage,
+        context: AnalysisContext,
+        *,
+        content_digest: str,
+        analyzed_at: str,
+    ) -> AnalysisResultData:
+        warnings: List[str] = list(context.preprocessing_warnings)
         errors: List[str] = []
 
-        if len(content) < 32:
+        if len(page.content) < 32:
             warnings.append("Document très petit ou vide — analyse limitée.")
 
-        parsed, call_errors, call_warnings = await self._call_model(content, context)
+        parsed, call_errors, call_warnings, token_usage = await self._call_model(
+            page.content,
+            context,
+            page=page,
+        )
         warnings.extend(call_warnings)
         errors.extend(call_errors)
 
@@ -518,16 +602,127 @@ class OpenAIAnalyzer(DocumentAnalyzer):
                 normalized=NormalizedCommercialFields(status="draft"),
                 confidence={field: 0.0 for field in CONFIDENCE_FIELDS},
                 overall_confidence=0.0,
-                raw_payload={"parseFailed": True},
-                digest=digest,
+                raw_payload={"parseFailed": True, "pageIndex": page.index},
+                digest=content_digest,
                 context=context,
                 warnings=warnings or ["Impossible d'extraire des données exploitables."],
                 errors=errors or ["Analyse IA indisponible."],
-                analyzed_at=now,
+                analyzed_at=analyzed_at,
                 line_items=[],
                 description=None,
+                page_index=page.index,
             )
 
+        return self._build_parsed_result(
+            parsed,
+            context=context,
+            digest=content_digest,
+            analyzed_at=analyzed_at,
+            warnings=warnings,
+            errors=errors,
+            token_usage=token_usage,
+            page_index=page.index,
+        )
+
+    async def _analyze_batch(
+        self,
+        pages: List[AnalysisPage],
+        context: AnalysisContext,
+        *,
+        content_digest: str,
+        analyzed_at: str,
+    ) -> Optional[AnalysisResultData]:
+        errors: List[str] = []
+        warnings: List[str] = list(context.preprocessing_warnings)
+        token_usage: Optional[Dict[str, int]] = None
+
+        user_content: List[dict] = [
+            {
+                "type": "text",
+                "text": (
+                    f"{USER_PROMPT}\n\n"
+                    f"Ce document comporte {len(pages)} page(s) du même dossier. "
+                    "Analyse-les comme un seul document commercial."
+                ),
+            }
+        ]
+        for page in pages:
+            user_content.append(_build_content_part(page.content, context, page=page))
+
+        try:
+            request_kwargs: Dict[str, Any] = {
+                "model": self._model,
+                "response_format": {"type": "json_object"},
+                "messages": [
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_content},
+                ],
+            }
+            if _supports_custom_temperature(self._model):
+                request_kwargs["temperature"] = 0.1
+
+            response = await self._client.chat.completions.create(**request_kwargs)
+        except Exception as exc:
+            logger.error("OpenAI batch API error — %s", exc)
+            errors.append(f"OpenAI request failed: {exc}")
+            return None
+
+        usage = getattr(response, "usage", None)
+        if usage is not None:
+            input_tokens = (
+                getattr(usage, "prompt_tokens", None)
+                or getattr(usage, "input_tokens", None)
+                or 0
+            )
+            output_tokens = (
+                getattr(usage, "completion_tokens", None)
+                or getattr(usage, "output_tokens", None)
+                or 0
+            )
+            total_tokens = getattr(usage, "total_tokens", None) or (
+                int(input_tokens) + int(output_tokens)
+            )
+            token_usage = {
+                "inputTokens": int(input_tokens or 0),
+                "outputTokens": int(output_tokens or 0),
+                "totalTokens": int(total_tokens or 0),
+            }
+
+        message_content = response.choices[0].message.content if response.choices else None
+        if not message_content:
+            return None
+
+        try:
+            parsed = json.loads(message_content)
+        except json.JSONDecodeError:
+            return None
+
+        if not isinstance(parsed, dict):
+            return None
+
+        return self._build_parsed_result(
+            parsed,
+            context=context,
+            digest=content_digest,
+            analyzed_at=analyzed_at,
+            warnings=warnings,
+            errors=errors,
+            token_usage=token_usage,
+            page_index=None,
+        )
+
+    def _build_parsed_result(
+        self,
+        parsed: Dict[str, Any],
+        *,
+        context: AnalysisContext,
+        digest: str,
+        analyzed_at: str,
+        warnings: List[str],
+        errors: List[str],
+        token_usage: Optional[Dict[str, int]],
+        page_index: Optional[int],
+    ) -> AnalysisResultData:
         detected_kind = _normalize_kind(parsed.get("detectedKind"))
         detected_kind_confidence = _clamp_confidence(parsed.get("detectedKindConfidence"))
         raw_fields = parsed.get("normalized") if isinstance(parsed.get("normalized"), dict) else parsed
@@ -561,29 +756,38 @@ class OpenAIAnalyzer(DocumentAnalyzer):
             warnings.append("Montant HT non détecté — à compléter manuellement.")
             confidence["amountHT"] = min(confidence.get("amountHT", 0.0), 0.2)
 
+        raw_payload = dict(parsed)
+        if page_index is not None:
+            raw_payload["pageIndex"] = page_index
+
         return self._build_result_from_parts(
             detected_kind=detected_kind,
             detected_kind_confidence=detected_kind_confidence,
             normalized=normalized,
             confidence=confidence,
             overall_confidence=overall_confidence,
-            raw_payload=parsed,
+            raw_payload=raw_payload,
             digest=digest,
             context=context,
             warnings=warnings,
             errors=errors,
-            analyzed_at=now,
+            analyzed_at=analyzed_at,
             line_items=line_items,
             description=description,
+            token_usage=token_usage,
+            page_index=page_index,
         )
 
     async def _call_model(
         self,
         content: bytes,
         context: AnalysisContext,
-    ) -> Tuple[Optional[Dict[str, Any]], List[str], List[str]]:
+        *,
+        page: Optional[AnalysisPage] = None,
+    ) -> Tuple[Optional[Dict[str, Any]], List[str], List[str], Optional[Dict[str, int]]]:
         errors: List[str] = []
         warnings: List[str] = []
+        token_usage: Optional[Dict[str, int]] = None
 
         try:
             request_kwargs: Dict[str, Any] = {
@@ -595,7 +799,7 @@ class OpenAIAnalyzer(DocumentAnalyzer):
                         "role": "user",
                         "content": [
                             {"type": "text", "text": USER_PROMPT},
-                            _build_content_part(content, context),
+                            _build_content_part(content, context, page=page),
                         ],
                     },
                 ],
@@ -616,27 +820,46 @@ class OpenAIAnalyzer(DocumentAnalyzer):
                     api_error.get("param"),
                 )
             else:
-                logger.error("OpenAI API error — body=%s", body if body is not None else exc)
+                logger.error("OpenAI API error — %s", exc)
             errors.append(f"OpenAI request failed: {exc}")
-            return None, errors, warnings
+            return None, errors, warnings, token_usage
+
+        usage = getattr(response, "usage", None)
+        if usage is not None:
+            input_tokens = (
+                getattr(usage, "prompt_tokens", None)
+                or getattr(usage, "input_tokens", None)
+                or 0
+            )
+            output_tokens = (
+                getattr(usage, "completion_tokens", None)
+                or getattr(usage, "output_tokens", None)
+                or 0
+            )
+            total_tokens = getattr(usage, "total_tokens", None) or (int(input_tokens) + int(output_tokens))
+            token_usage = {
+                "inputTokens": int(input_tokens or 0),
+                "outputTokens": int(output_tokens or 0),
+                "totalTokens": int(total_tokens or 0),
+            }
 
         message_content = response.choices[0].message.content if response.choices else None
         if not message_content:
             errors.append("OpenAI returned an empty response.")
-            return None, errors, warnings
+            return None, errors, warnings, token_usage
 
         try:
             parsed = json.loads(message_content)
         except json.JSONDecodeError:
             errors.append("OpenAI returned invalid JSON.")
             warnings.append("Réponse IA illisible — vérifiez le document manuellement.")
-            return None, errors, warnings
+            return None, errors, warnings, token_usage
 
         if not isinstance(parsed, dict):
             errors.append("OpenAI returned an unexpected payload.")
-            return None, errors, warnings
+            return None, errors, warnings, token_usage
 
-        return parsed, errors, warnings
+        return parsed, errors, warnings, token_usage
 
     def _build_result_from_parts(
         self,
@@ -654,6 +877,8 @@ class OpenAIAnalyzer(DocumentAnalyzer):
         analyzed_at: str,
         line_items: List[Dict[str, Any]],
         description: Optional[str],
+        token_usage: Optional[Dict[str, int]] = None,
+        page_index: Optional[int] = None,
     ) -> AnalysisResultData:
         raw_extracted = {
             "provider": self.provider_name,
@@ -667,7 +892,14 @@ class OpenAIAnalyzer(DocumentAnalyzer):
             "lineItems": line_items,
             "description": description,
             "payload": raw_payload,
+            "sourceType": context.source_type,
+            "pageCount": context.page_count,
+            "imageCount": context.image_count,
         }
+        if page_index is not None:
+            raw_extracted["pageIndex"] = page_index
+        if token_usage:
+            raw_extracted["tokenUsage"] = token_usage
 
         return AnalysisResultData(
             rawExtracted=raw_extracted,

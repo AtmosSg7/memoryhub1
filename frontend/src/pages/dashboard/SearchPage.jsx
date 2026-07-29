@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Search, Clock3, ArrowUpRight, X } from "lucide-react";
+import { Search, Clock3, X } from "lucide-react";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useSearch, SEARCH_MIN_CHARS } from "@/hooks/useSearch";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
 import PageHeader from "@/components/dashboard/PageHeader";
+import SearchField from "@/components/dashboard/SearchField";
 import SearchResultsList from "@/components/dashboard/SearchResultsList";
 import EmptyState from "@/components/dashboard/EmptyState";
+import { ActionButton } from "@/components/dashboard/ActionButton";
 
 export default function SearchPage() {
   const { t } = useDashboardLang();
@@ -47,34 +49,30 @@ export default function SearchPage() {
   return (
     <div className="space-y-6" data-testid="search-page">
       <PageHeader
-        eyebrow={t("search.eyebrow")}
         title={t("page.search.title")}
         subtitle={t("page.search.subtitle")}
         testId="search-header"
       />
 
       <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 md:p-6">
-        <form onSubmit={handleSubmit}>
-          <div className="flex items-center gap-2 border border-[#E5E7EB] rounded-lg px-3 py-3 bg-[#FAFAFA] focus-within:bg-white focus-within:border-[#0A2540]/40 focus-within:ring-2 focus-within:ring-[#0A2540]/10 transition-all">
-            <Search className="w-4 h-4 text-[#9CA3AF] shrink-0" />
-            <input
-              data-testid="search-page-input"
-              type="text"
-              value={inputValue}
-              onChange={(event) => setInputValue(event.target.value)}
-              placeholder={t("search.placeholder")}
-              className="flex-1 bg-transparent outline-none text-sm placeholder:text-[#9CA3AF] text-[#111827]"
-              autoFocus
-            />
-            <button
-              type="submit"
-              data-testid="search-page-submit"
-              disabled={trimmed.length < minChars}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#0A2540] hover:bg-[#173A5E] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-medium transition-colors"
-            >
-              {t("search.submit")}
-            </button>
-          </div>
+        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2">
+          <SearchField
+            data-testid="search-page-input"
+            value={inputValue}
+            onChange={(event) => setInputValue(event.target.value)}
+            placeholder={t("search.placeholder")}
+            wrapperClassName="flex-1"
+            autoFocus
+          />
+          <ActionButton
+            type="submit"
+            variant="primary"
+            data-testid="search-page-submit"
+            disabled={trimmed.length < minChars}
+            className="h-10 px-4 shrink-0"
+          >
+            {t("search.submit")}
+          </ActionButton>
         </form>
 
         {trimmed.length > 0 && trimmed.length < minChars && (
@@ -96,7 +94,7 @@ export default function SearchPage() {
           </div>
         )}
 
-        {!showResults && (
+        {!showResults && trimmed.length === 0 && (
           <div className="mt-6">
             <EmptyState
               icon={Search}
@@ -149,12 +147,12 @@ export default function SearchPage() {
                 <button
                   type="button"
                   onClick={() => removeSearch(query)}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-[#9CA3AF] hover:text-[#991B1B] transition-all"
+                  className="p-1.5 text-[#9CA3AF] hover:text-[#991B1B] transition-colors sm:opacity-0 sm:group-hover:opacity-100 shrink-0"
                   aria-label={t("search.historyRemove")}
+                  data-testid={`search-history-remove-${index}`}
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
-                <ArrowUpRight className="w-3.5 h-3.5 text-[#9CA3AF] group-hover:text-[#0A2540] transition-colors shrink-0" />
               </li>
             ))}
           </ul>

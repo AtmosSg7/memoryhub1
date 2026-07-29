@@ -1,6 +1,9 @@
+import EmptyState from "@/components/dashboard/EmptyState";
+import InvoiceStatusBadge from "@/components/dashboard/InvoiceStatusBadge";
 import StatusBadge from "@/components/dashboard/StatusBadge";
 import { formatQuoteAmount, formatQuoteDate, getQuoteDate } from "@/utils/quoteDisplay";
 import { formatInvoiceAmount, formatInvoiceDate, getInvoiceDate } from "@/utils/invoiceDisplay";
+import { FileText, Receipt } from "lucide-react";
 
 export default function ClientDocumentHighlight({
   type,
@@ -9,12 +12,20 @@ export default function ClientDocumentHighlight({
   lang,
   t,
   onClick,
+  onEmptyAction,
+  emptyActionLabel,
 }) {
   if (!document) {
     return (
-      <div className="rounded-xl border border-dashed border-[#E7E9EE] bg-[#FAFAFA] px-4 py-3 text-sm text-[#6B7280]">
-        {emptyLabel}
-      </div>
+      <EmptyState
+        compact
+        inline
+        icon={type === "quote" ? FileText : Receipt}
+        title={emptyLabel}
+        cta={emptyActionLabel}
+        onCta={onEmptyAction}
+        testId={`client-last-${type}-empty`}
+      />
     );
   }
 
@@ -37,7 +48,11 @@ export default function ClientDocumentHighlight({
         <span className="text-[10px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
           {isQuote ? t("clientDetail.lastQuote") : t("clientDetail.lastInvoice")}
         </span>
-        <StatusBadge kind={isQuote ? "quote" : "invoice"} status={document.status} size="sm" />
+        {isQuote ? (
+          <StatusBadge kind="quote" status={document.status} size="sm" />
+        ) : (
+          <InvoiceStatusBadge invoice={document} size="sm" />
+        )}
       </div>
       <div className="font-medium text-sm text-[#111827] truncate">
         {document.number} · {document.title}

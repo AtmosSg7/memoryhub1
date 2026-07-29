@@ -5,17 +5,12 @@ export default function EmailIntegrationBanner() {
   const { t } = useDashboardLang();
 
   return (
-    <div
-      className="rounded-xl border border-dashed border-[#C7D2FE] bg-[#F5F3FF] px-4 py-4 flex items-start gap-3"
+    <p
+      className="text-xs text-[#6B7280] rounded-lg border border-dashed border-[#E5E7EB] bg-[#FAFAFA] px-3 py-2 flex items-center gap-2"
       data-testid="email-integration-banner"
     >
-      <div className="w-10 h-10 rounded-xl bg-white border border-[#DDD6FE] flex items-center justify-center shrink-0">
-        <Plug className="w-5 h-5 text-[#5B21B6]" />
-      </div>
-      <div>
-        <p className="font-cabinet text-sm font-bold text-[#111827]">{t("communications.emailBanner.title")}</p>
-        <p className="text-xs text-[#6B7280] mt-1">{t("communications.emailBanner.desc")}</p>
-      </div>
-    </div>
+      <Plug className="w-3.5 h-3.5 text-[#9CA3AF] shrink-0" aria-hidden="true" />
+      <span>{t("communications.emailBanner.desc")}</span>
+    </p>
   );
 }

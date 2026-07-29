@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { listNotes } from "@/lib/notesApi";
 import { useAddNote } from "@/context/AddNoteContext";
 
-export function useNotes(typeFilter = "") {
+export function useNotes(typeFilter = "", clientId = "") {
   const { refreshKey } = useAddNote();
   const [notes, setNotes] = useState([]);
   const [total, setTotal] = useState(0);
@@ -13,7 +13,10 @@ export function useNotes(typeFilter = "") {
     setLoading(true);
     setError(null);
     try {
-      const data = await listNotes({ type: typeFilter || undefined });
+      const data = await listNotes({
+        type: typeFilter || undefined,
+        clientId: clientId || undefined,
+      });
       setNotes(data.items || []);
       setTotal(data.total ?? 0);
     } catch (err) {
@@ -23,7 +26,7 @@ export function useNotes(typeFilter = "") {
     } finally {
       setLoading(false);
     }
-  }, [typeFilter]);
+  }, [typeFilter, clientId]);
 
   useEffect(() => {
     refetch();

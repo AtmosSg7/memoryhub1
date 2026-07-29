@@ -1,7 +1,6 @@
 import {
   FileText,
   FolderClosed,
-  Loader2,
   Receipt,
   StickyNote,
   Upload,
@@ -15,6 +14,8 @@ import {
   getEventPresentation,
   getEventRoute,
 } from "@/utils/eventDisplay";
+import { InlineLoader, PageError } from "@/components/dashboard/PageFeedback";
+import EmptyState from "@/components/dashboard/EmptyState";
 
 const ICONS = {
   quote: { Icon: FileText, bg: "bg-[#EFF6FF]", color: "text-[#0A2540]" },
@@ -40,25 +41,21 @@ export default function CommercialTimeline({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8 text-[#6B7280]" data-testid={`${testIdPrefix}-loading`}>
-        <Loader2 className="w-5 h-5 animate-spin mr-2" aria-hidden="true" />
-      </div>
+      <InlineLoader
+        label={t("activity.loading")}
+        testId={`${testIdPrefix}-loading`}
+        className="py-8"
+      />
     );
   }
 
   if (error) {
-    return (
-      <p className="text-sm text-[#991B1B] py-2" data-testid={`${testIdPrefix}-error`}>
-        {error}
-      </p>
-    );
+    return <PageError message={error} testId={`${testIdPrefix}-error`} />;
   }
 
   if (!visible.length) {
     return emptyLabel ? (
-      <p className="text-sm text-[#6B7280] py-2" data-testid={`${testIdPrefix}-empty`}>
-        {emptyLabel}
-      </p>
+      <EmptyState compact inline title={emptyLabel} testId={`${testIdPrefix}-empty`} />
     ) : null;
   }
 

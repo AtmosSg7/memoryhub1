@@ -1,41 +1,28 @@
-import { useMemo } from "react";
-import { useClients } from "@/hooks/useClients";
-import { useQuotes } from "@/hooks/useQuotes";
-import { useInvoices } from "@/hooks/useInvoices";
-import { useCatalog } from "@/hooks/useCatalog";
-import {
-  countPendingQuotes,
-  countUnpaidInvoices,
-  computeMonthlyRevenue,
-  computeTopClients,
-} from "@/utils/dashboardDisplay";
-import { normalizeInvoiceStatus } from "@/utils/invoiceDisplay";
+import { useQuery } from "@tanstack/react-query";
+import { getDashboardStats } from "@/lib/dashboardApi";
 
 export function useDashboardStats() {
-  const { total: clientsTotal, loading: clientsLoading } = useClients();
-  const { quotes, loading: quotesLoading } = useQuotes("");
-  const { invoices, loading: invoicesLoading } = useInvoices("");
-  const { stats: catalogStats, loading: catalogLoading } = useCatalog("");
+  const query = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: getDashboardStats,
+    staleTime: 60_000,
+  });
 
-  const loading = clientsLoading || quotesLoading || invoicesLoading || catalogLoading;
+  const data = query.data;
 
-  const kpis = useMemo(
-    () => ({
-      clientsTotal,
-      pendingQuotes: countPendingQuotes(quotes),
-      unpaidInvoices: countUnpaidInvoices(invoices),
-      quotesTotal: quotes.length,
-      invoicesTotal: invoices.filter(
-        (inv) => normalizeInvoiceStatus(inv.status) !== "cancelled"
-      ).length,
-      monthlyRevenue: computeMonthlyRevenue(invoices),
-    }),
-    [clientsTotal, quotes, invoices]
-  );
-
-  const topClients = useMemo(() => computeTopClients(quotes, invoices), [quotes, invoices]);
-
-  const topServices = catalogStats?.mostUsed || [];
-
-  return { kpis, topClients, topServices, loading };
+  return {
+    kpis: {
+      clientsTotal: data?.kpis?.clientsTotal ?? 0,
+      pendingQuotes: data?.kpis?.pendingQuotes ?? 0,
+      unpaidInvoices: data?.kpis?.unpaidInvoices ?? 0,
+      quotesTotal: data?.kpis?.quotesTotal ?? 0,
+      invoicesTotal: data?.kpis?.invoicesTotal ?? 0,
+      monthlyRevenue: data?.kpis?.monthlyRevenue ?? { total: 0, count: 0 },
+    },
+    topClients: data?.topClients ?? [],
+    topServices: [],
+    loading: query.isLoading,
+    error: query.error?.message || null,
+    refetch: query.refetch,
+  };
 }

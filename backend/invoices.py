@@ -16,6 +16,7 @@ from pymongo import ReturnDocument
 
 
 from auth import get_current_user, get_db
+from security_config import MAX_LIST_ITEMS
 
 from catalog_indexer import index_catalog_line_items, index_catalog_line_items_from_raw
 
@@ -30,8 +31,15 @@ from commercial_engine import (
 
 from commercial_models import CommercialLineItem
 
-from events import record_event
+from commercial_lifecycle import (
+    active_document_filter,
+    archive_invoice,
+    lifecycle_fields_for_invoice,
+)
 
+from events import record_event
+from analytics import invalidate_user
+from observability import log_event
 from invoice_payments import (
     InvoicePaymentCreate,
     InvoicePaymentRecord,
@@ -43,7 +51,7 @@ from invoice_payments import (
     parse_payment_records,
 )
 
-from pdf_documents import build_invoice_pdf
+from commercial_status import DEFAULT_EXPORT_STATUS, derive_lifecycle_status, normalize_export_status
 
 from quote_invoice_link import clear_invoice_quote_links
 
@@ -54,6 +62,9 @@ invoices_router = APIRouter(prefix="/invoices", tags=["invoices"])
 
 
 InvoiceStatus = Literal["in_progress", "paid", "overdue", "cancelled"]
+InvoiceDisplayStatus = Literal[
+    "issued", "viewed", "partial", "paid", "overdue", "cancelled", "archived",
+]
 
 VALID_STATUSES = {"in_progress", "paid", "overdue", "cancelled"}
 
@@ -237,6 +248,21 @@ class InvoicePublic(BaseModel):
 
     payments: Optional[List[InvoicePaymentRecord]] = None
 
+    exportStatus: str = DEFAULT_EXPORT_STATUS
+    exportValidatedAt: Optional[str] = None
+    exportReadyAt: Optional[str] = None
+    exportExportedAt: Optional[str] = None
+    lifecycleStatus: Optional[str] = None
+
+    displayStatus: InvoiceDisplayStatus = "issued"
+    issuedAt: Optional[str] = None
+    sentAt: Optional[str] = None
+    portalFirstViewedAt: Optional[str] = None
+    portalLastViewedAt: Optional[str] = None
+    portalViewCount: int = 0
+    isArchived: bool = False
+    archivedAt: Optional[str] = None
+
     createdAt: str
 
     updatedAt: str
@@ -336,7 +362,13 @@ def _resolve_invoice_date(doc: dict) -> str:
 
 async def _next_invoice_number(db, user_id: str) -> str:
 
+    from company_profile_service import get_document_prefixes
+
     year = datetime.now(timezone.utc).year
+
+    prefixes = await get_document_prefixes(db, user_id)
+
+    prefix = prefixes["invoicePrefix"]
 
     key = f"invoices:{user_id}:{year}"
 
@@ -354,7 +386,7 @@ async def _next_invoice_number(db, user_id: str) -> str:
 
     seq = result["seq"]
 
-    return f"FAC-{year}-{seq:04d}"
+    return f"{prefix}-{year}-{seq:04d}"
 
 
 
@@ -415,6 +447,7 @@ def invoice_public(doc: dict) -> InvoicePublic:
     amount_paid = get_amount_paid(doc)
 
     amount_ttc = doc.get("amountTTC", 0)
+    lifecycle = lifecycle_fields_for_invoice(doc)
 
     return InvoicePublic(
 
@@ -453,6 +486,17 @@ def invoice_public(doc: dict) -> InvoicePublic:
         amountDue=compute_amount_due(amount_ttc, amount_paid),
 
         payments=parse_payment_records(doc.get("payments")) or None,
+
+        exportStatus=normalize_export_status(doc.get("exportStatus")),
+        exportValidatedAt=doc.get("exportValidatedAt"),
+        exportReadyAt=doc.get("exportReadyAt"),
+        exportExportedAt=doc.get("exportExportedAt"),
+        lifecycleStatus=derive_lifecycle_status(
+            export_status=normalize_export_status(doc.get("exportStatus")),
+            payment_status=_normalize_status(doc.get("status")),
+        ),
+
+        **lifecycle,
 
         createdAt=doc["createdAt"],
 
@@ -531,6 +575,8 @@ async def insert_invoice_document(
         "internalNotes": internal_notes,
         "quoteId": quote_id,
         "quoteNumber": quote_number,
+        "exportStatus": DEFAULT_EXPORT_STATUS,
+        "issuedAt": now,
         "createdAt": now,
         "updatedAt": now,
     }
@@ -560,6 +606,19 @@ async def insert_invoice_document(
         client_id=client_id,
         metadata=metadata,
     )
+    await record_event(
+        db,
+        user_id,
+        "invoice_issued",
+        "invoice",
+        doc["id"],
+        client_id=client_id,
+        metadata={
+            "invoiceNumber": doc["number"],
+            "clientName": client_name,
+            "amountTTC": doc.get("amountTTC", 0),
+        },
+    )
     if doc.get("lineItems"):
         await index_catalog_line_items_from_raw(db, user_id, doc["lineItems"])
     return doc
@@ -583,11 +642,13 @@ async def create_invoice(
     user_id = current_user["id"]
 
     client_id, client_name = await _resolve_client(db, user_id, body.clientId)
+    from company_profile_service import get_default_vat_rate
 
+    default_vat = await get_default_vat_rate(db, user_id)
     amounts = resolve_document_amounts(
         body.lineItems,
         fallback_amount_ht=body.amountHT,
-        fallback_vat_rate=body.vatRate,
+        fallback_vat_rate=default_vat,
     )
     if amounts.totals.amountHT <= 0:
         raise HTTPException(status_code=422, detail={"message": "amountHT is required."})
@@ -606,6 +667,7 @@ async def create_invoice(
         line_items=amounts.lineItems,
     )
 
+    invalidate_user(current_user["id"])
     return invoice_public(doc)
 
 
@@ -613,63 +675,58 @@ async def create_invoice(
 
 
 @invoices_router.get("", response_model=InvoiceListResponse)
-
 async def list_invoices(
-
     clientId: Optional[str] = Query(None),
-
     status: Optional[str] = Query(None),
-
+    from_date: Optional[str] = Query(None, alias="from"),
+    to_date: Optional[str] = Query(None, alias="to"),
+    timezone: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user),
-
     db=Depends(get_db),
-
 ):
+    from commercial_list_filters import period_aggregation_stages
 
-    query = _user_filter(current_user["id"])
-
-
+    query = {**_user_filter(current_user["id"]), **active_document_filter()}
 
     if clientId:
-
         client = await db.clients.find_one(
-
             {**_user_filter(current_user["id"]), "id": clientId},
-
             {"_id": 1},
-
         )
-
         if not client:
-
             return InvoiceListResponse(items=[], total=0)
-
         query["clientId"] = clientId
-
-
 
     if status:
         _validate_input_status(status)
         query.update(_status_query(status))
 
-
-
-    total = await db.invoices.count_documents(query)
-
-    cursor = db.invoices.aggregate([
-
+    period_stages = period_aggregation_stages(
+        kind="invoice",
+        status=status,
+        from_date=from_date,
+        to_date=to_date,
+        timezone_name=timezone,
+    )
+    pipeline = [
         {"$match": query},
-
-        {"$addFields": {"_sortDate": {"$ifNull": ["$invoiceDate", "$createdAt"]}}},
-
+        *period_stages,
+        {"$addFields": {"_sortDate": {"$ifNull": ["$_filterDate", "$createdAt"]}}},
         {"$sort": {"_sortDate": -1}},
-
-        {"$project": {"_id": 0, "userId": 0, "_sortDate": 0}},
-
-    ])
-
-    items = [invoice_public(doc) async for doc in cursor]
-
+        {
+            "$facet": {
+                "items": [
+                    {"$limit": MAX_LIST_ITEMS},
+                    {"$project": {"_id": 0, "userId": 0, "_sortDate": 0, "_filterDate": 0}},
+                ],
+                "total": [{"$count": "count"}],
+            }
+        },
+    ]
+    facet = await db.invoices.aggregate(pipeline).to_list(1)
+    bucket = facet[0] if facet else {"items": [], "total": []}
+    total = int((bucket.get("total") or [{"count": 0}])[0].get("count", 0))
+    items = [invoice_public(doc) for doc in (bucket.get("items") or [])]
     return InvoiceListResponse(items=items, total=total)
 
 
@@ -719,13 +776,21 @@ async def download_invoice_pdf(
     )
     if not doc:
         raise HTTPException(status_code=404, detail={"message": "Invoice not found."})
-    public = invoice_public(doc)
-    pdf_bytes = build_invoice_pdf(public.model_dump(), lang=lang if lang in ("fr", "en") else "fr")
-    filename = f'{doc["number"]}.pdf'
+    from document_export.models import ExportFormat
+    from document_export.service import export_commercial_document
+
+    result = await export_commercial_document(
+        db,
+        user_id=current_user["id"],
+        document_type="invoice",
+        document_id=invoice_id,
+        fmt=ExportFormat.PDF,
+        lang=lang if lang in ("fr", "en") else "fr",
+    )
     return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        content=result.data,
+        media_type=result.contentType,
+        headers={"Content-Disposition": f'attachment; filename="{result.filename}"'},
     )
 
 
@@ -895,6 +960,7 @@ async def update_invoice(
 
     public_doc = {k: v for k, v in merged.items() if k not in ("userId", "_id")}
 
+    invalidate_user(current_user["id"])
     return invoice_public(public_doc)
 
 
@@ -926,7 +992,7 @@ async def mark_invoice_paid(
     if status not in PAYABLE_STATUSES:
         raise HTTPException(
             status_code=422,
-            detail={"message": "Seules les factures en cours ou en retard peuvent être marquées comme payées."},
+            detail={"message": "Only in-progress or overdue invoices can be marked as paid."},
         )
 
     try:
@@ -951,6 +1017,8 @@ async def mark_invoice_paid(
         client_id=merged.get("clientId"),
         metadata=_invoice_event_metadata(merged),
     )
+    invalidate_user(user_id)
+    log_event("invoice.mark_paid", user_id=user_id, result="ok")
     return invoice_public(merged)
 
 
@@ -967,7 +1035,7 @@ async def record_invoice_payment(
     if status not in PAYABLE_STATUSES:
         raise HTTPException(
             status_code=422,
-            detail={"message": "Seules les factures en cours ou en retard acceptent un paiement."},
+            detail={"message": "Only in-progress or overdue invoices accept a payment."},
         )
 
     try:
@@ -1016,6 +1084,48 @@ async def record_invoice_payment(
             client_id=merged.get("clientId"),
             metadata=_invoice_event_metadata(merged),
         )
+
+    try:
+        client = await db.clients.find_one(
+            {"userId": user_id, "id": merged.get("clientId")},
+            {"_id": 0, "email": 1, "name": 1, "contactName": 1},
+        )
+        if client and client.get("email"):
+            from follow_up_service import _client_greeting, _load_portal_url
+            from transactional_email_service import resolve_artisan_locale, send_payment_recorded_email
+
+            portal_url = await _load_portal_url(db, user_id, merged.get("clientId"))
+            artisan_lang = await resolve_artisan_locale(db, user_id)
+            profile = await db.users.find_one(
+                {"id": user_id},
+                {"_id": 0, "companyName": 1, "firstName": 1, "lastName": 1},
+            )
+            from email_templates import resolve_sender_name
+
+            sender = resolve_sender_name(
+                (profile or {}).get("companyName"),
+                artisan_lang,
+                first_name=(profile or {}).get("firstName") or "",
+                last_name=(profile or {}).get("lastName") or "",
+            )
+            greeting = _client_greeting(client, merged.get("clientName", ""))
+            await send_payment_recorded_email(
+                db,
+                user_id=user_id,
+                to=client["email"],
+                greeting=greeting,
+                number=merged.get("number", ""),
+                amount=record.amount,
+                amount_due=payment_result["amountDue"],
+                invoice_id=invoice_id,
+                portal_url=portal_url,
+                locale=artisan_lang,
+                idempotency_key=f"payment-recorded:{invoice_id}:{record.id}",
+            )
+    except Exception:
+        pass
+
+    invalidate_user(user_id)
     return invoice_public(merged)
 
 
@@ -1030,11 +1140,11 @@ async def mark_invoice_in_progress(
     status = _normalize_status(existing.get("status"))
     amount_paid = get_amount_paid(existing)
     if status == "cancelled":
-        raise HTTPException(status_code=422, detail={"message": "Cette facture est annulée."})
+        raise HTTPException(status_code=422, detail={"message": "This invoice is cancelled."})
     if status != "paid" and amount_paid <= 0:
         raise HTTPException(
             status_code=422,
-            detail={"message": "Seules les factures payées ou partiellement payées peuvent être remises en cours."},
+            detail={"message": "Only paid or partially paid invoices can be reopened."},
         )
 
     update_fields = build_reopen_payment_update(existing)
@@ -1061,6 +1171,16 @@ async def mark_invoice_in_progress(
         metadata=_invoice_event_metadata(merged),
     )
     return invoice_public(merged)
+
+
+@invoices_router.post("/{invoice_id}/archive", response_model=InvoicePublic)
+async def archive_invoice_endpoint(
+    invoice_id: str,
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    doc = await archive_invoice(db, current_user["id"], invoice_id)
+    return invoice_public(doc)
 
 
 @invoices_router.delete("/{invoice_id}", status_code=204)
@@ -1098,6 +1218,8 @@ async def delete_invoice(
     if result.deleted_count == 0:
 
         raise HTTPException(status_code=404, detail={"message": "Invoice not found."})
+
+    invalidate_user(current_user["id"])
 
 
 

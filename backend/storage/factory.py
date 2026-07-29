@@ -1,10 +1,11 @@
 import os
+from typing import Optional
 
 from storage.base import StorageBackend
 from storage.local import LocalStorage
 from storage.s3 import S3Storage
 
-_storage: StorageBackend | None = None
+_storage: Optional[StorageBackend] = None
 
 
 def get_storage() -> StorageBackend:

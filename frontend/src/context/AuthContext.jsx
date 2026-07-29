@@ -1,23 +1,39 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { setSentryUser } from "@/lib/sentry";
+import { extractAuthApiMessage } from "@/utils/authErrors";
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const authEpochRef = useRef(0);
+
+  const bumpAuthEpoch = useCallback(() => {
+    authEpochRef.current += 1;
+    return authEpochRef.current;
+  }, []);
 
   const refreshUser = useCallback(async () => {
+    const epochAtStart = authEpochRef.current;
     try {
-      const { res, data } = await apiFetch("/api/auth/me", {
-        signal: AbortSignal.timeout(15000),
-      });
+      const { res, data } = await apiFetch("/api/auth/me", { timeoutMs: 15_000 });
+      if (epochAtStart !== authEpochRef.current) {
+        return null;
+      }
       if (res.ok) {
         setUser(data);
         return data;
       }
     } catch {
+      if (epochAtStart !== authEpochRef.current) {
+        return null;
+      }
       // Backend unreachable or session invalid — treat as logged out.
+    }
+    if (epochAtStart !== authEpochRef.current) {
+      return null;
     }
     setUser(null);
     return null;
@@ -37,36 +53,45 @@ export const AuthProvider = ({ children }) => {
     };
   }, [refreshUser]);
 
+  useEffect(() => {
+    setSentryUser(user);
+  }, [user]);
+
   const login = useCallback(async (email, password) => {
+    bumpAuthEpoch();
     const { res, data } = await apiFetch("/api/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
+      timeoutMs: 15_000,
     });
     if (!res.ok) {
-      const message = data?.detail?.message || data?.detail || "Login failed";
-      throw new Error(typeof message === "string" ? message : "Login failed");
+      const message = extractAuthApiMessage(data, "Login failed");
+      throw new Error(message);
     }
     setUser(data.user);
     return data.user;
-  }, []);
+  }, [bumpAuthEpoch]);
 
   const register = useCallback(async (payload) => {
+    bumpAuthEpoch();
     const { res, data } = await apiFetch("/api/auth/register", {
       method: "POST",
       body: JSON.stringify(payload),
+      timeoutMs: 15_000,
     });
     if (!res.ok) {
-      const message = data?.detail?.message || data?.detail || "Registration failed";
-      throw new Error(typeof message === "string" ? message : "Registration failed");
+      const message = extractAuthApiMessage(data, "Registration failed");
+      throw new Error(message);
     }
     setUser(data.user);
     return data.user;
-  }, []);
+  }, [bumpAuthEpoch]);
 
   const logout = useCallback(async () => {
-    await apiFetch("/api/auth/logout", { method: "POST" });
+    bumpAuthEpoch();
+    await apiFetch("/api/auth/logout", { method: "POST", timeoutMs: 15_000 });
     setUser(null);
-  }, []);
+  }, [bumpAuthEpoch]);
 
   const value = useMemo(
     () => ({

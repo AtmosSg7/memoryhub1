@@ -1,3 +1,5 @@
+import { CLIENT_PANEL_CLASS } from "@/components/dashboard/client/clientDetailLayout";
+
 export default function SectionPanel({
   id,
   title,
@@ -11,10 +13,10 @@ export default function SectionPanel({
     <section
       id={id}
       data-testid={testId}
-      className="bg-white border border-[#E5E7EB] rounded-xl p-5 md:p-6"
+      className={CLIENT_PANEL_CLASS}
     >
       <div className="flex items-start justify-between gap-3 mb-4">
-        <div>
+        <div className="min-w-0">
           <h3 className="font-cabinet text-lg font-bold text-[#111827] tracking-tight flex items-center gap-2">
             {Icon ? <Icon className="w-4 h-4 text-[#0A2540]" /> : null}
             {title}

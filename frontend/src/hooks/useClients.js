@@ -1,33 +1,31 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listClients } from "@/lib/clientsApi";
 import { useAddClient } from "@/context/AddClientContext";
+import { invalidateCommercialQueries } from "@/utils/invalidateCommercialQueries";
 
-export function useClients() {
+export function useClients({ enabled = true } = {}) {
   const { refreshKey } = useAddClient();
-  const [clients, setClients] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
 
-  const refetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await listClients();
-      setClients(data.items || []);
-      setTotal(data.total ?? 0);
-    } catch (err) {
-      setError(err.message || "Failed to load clients.");
-      setClients([]);
-      setTotal(0);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const query = useQuery({
+    queryKey: ["clients"],
+    queryFn: listClients,
+    enabled,
+    staleTime: 60_000,
+  });
 
   useEffect(() => {
-    refetch();
-  }, [refetch, refreshKey]);
+    if (refreshKey > 0) {
+      invalidateCommercialQueries(queryClient);
+    }
+  }, [refreshKey, queryClient]);
 
-  return { clients, total, loading, error, refetch };
+  return {
+    clients: query.data?.items || [],
+    total: query.data?.total ?? 0,
+    loading: query.isLoading,
+    error: query.error?.message || null,
+    refetch: query.refetch,
+  };
 }

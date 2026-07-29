@@ -1,4 +1,5 @@
-import { ComingSoonPage } from "@/components/auth/ComingSoonPage";
+import { Navigate } from "react-router-dom";
 
-const Profile = () => <ComingSoonPage pageKey="profile" />;
-export default Profile;
+export default function Profile() {
+  return <Navigate to="/dashboard/settings" replace />;
+}

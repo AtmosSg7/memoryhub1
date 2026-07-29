@@ -1,33 +1,43 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listQuotes } from "@/lib/quotesApi";
 import { useAddQuote } from "@/context/AddQuoteContext";
+import { invalidateCommercialQueries } from "@/utils/invalidateCommercialQueries";
 
-export function useQuotes(statusFilter = "") {
+export function useQuotes(statusFilter = "", filters = {}) {
   const { refreshKey } = useAddQuote();
-  const [quotes, setQuotes] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
+  const clientId = filters.clientId || "";
+  const from = filters.from || "";
+  const to = filters.to || "";
+  const timezone = filters.timezone || "";
+  const enabled = filters.enabled !== false;
 
-  const refetch = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await listQuotes({ status: statusFilter || undefined });
-      setQuotes(data.items || []);
-      setTotal(data.total ?? 0);
-    } catch (err) {
-      setError(err.message || "Failed to load quotes.");
-      setQuotes([]);
-      setTotal(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter]);
+  const query = useQuery({
+    queryKey: ["quotes", statusFilter || "all", clientId || "all", from || "-", to || "-", timezone || "-"],
+    queryFn: () =>
+      listQuotes({
+        status: statusFilter || undefined,
+        clientId: clientId || undefined,
+        from: from || undefined,
+        to: to || undefined,
+        timezone: timezone || undefined,
+      }),
+    staleTime: 60_000,
+    enabled,
+  });
 
   useEffect(() => {
-    refetch();
-  }, [refetch, refreshKey]);
+    if (refreshKey > 0) {
+      invalidateCommercialQueries(queryClient);
+    }
+  }, [refreshKey, queryClient]);
 
-  return { quotes, total, loading, error, refetch };
+  return {
+    quotes: query.data?.items || [],
+    total: query.data?.total ?? 0,
+    loading: query.isLoading,
+    error: query.error?.message || null,
+    refetch: query.refetch,
+  };
 }

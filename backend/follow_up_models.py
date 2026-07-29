@@ -13,8 +13,10 @@ class FollowUpPreviewResponse(BaseModel):
     clientId: str
     clientName: str
     subject: str
+    preheader: str = ""
     message: str
     documentNumber: str
+    portalUrl: Optional[str] = None
 
 
 class FollowUpRecordRequest(BaseModel):

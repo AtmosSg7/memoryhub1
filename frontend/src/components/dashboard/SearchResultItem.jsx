@@ -1,22 +1,42 @@
 import { useNavigate } from "react-router-dom";
-import { Users, StickyNote, FileText, Receipt, Banknote } from "lucide-react";
-import { useDashboardLang } from "@/hooks/useDashboardLang";
+import { Users, StickyNote, FileText, Receipt, Mail } from "lucide-react";
+import { useAddNote } from "@/context/AddNoteContext";
+import { getNote } from "@/lib/notesApi";
 
 const TYPE_CONFIG = {
   client: { icon: Users, color: "text-[#0A2540]", bg: "bg-[#EFF6FF]" },
   note: { icon: StickyNote, color: "text-[#065F46]", bg: "bg-[#ECFDF5]" },
   document: { icon: FileText, color: "text-[#7C2D12]", bg: "bg-[#FFF7ED]" },
-  quote: { icon: Receipt, color: "text-[#0A2540]", bg: "bg-[#EFF6FF]" },
-  invoice: { icon: Banknote, color: "text-[#065F46]", bg: "bg-[#ECFDF5]" },
+  quote: { icon: FileText, color: "text-[#0A2540]", bg: "bg-[#EFF6FF]" },
+  invoice: { icon: Receipt, color: "text-[#065F46]", bg: "bg-[#ECFDF5]" },
+  email: { icon: Mail, color: "text-[#1E3A5F]", bg: "bg-[#EEF2FF]" },
+  communication: { icon: Mail, color: "text-[#1E3A5F]", bg: "bg-[#EEF2FF]" },
 };
 
 export default function SearchResultItem({ item, onSelect, compact = false, testId }) {
   const navigate = useNavigate();
+  const { openEditNote } = useAddNote();
   const config = TYPE_CONFIG[item.type] || TYPE_CONFIG.client;
   const Icon = config.icon;
 
-  const handleClick = () => {
+  const handleClick = async () => {
     onSelect?.();
+
+    if (item.type === "quote" || item.type === "invoice") {
+      navigate(`/dashboard/documents?open=${item.id}`);
+      return;
+    }
+
+    if (item.type === "note" && item.id) {
+      try {
+        const note = await getNote(item.id);
+        openEditNote(note);
+      } catch {
+        navigate(item.url);
+      }
+      return;
+    }
+
     navigate(item.url);
   };
 
@@ -44,8 +64,13 @@ export default function SearchResultItem({ item, onSelect, compact = false, test
         {item.subtitle && (
           <div className="text-[11.5px] text-[#6B7280] truncate mt-0.5">{item.subtitle}</div>
         )}
-        {item.matchPreview && !compact && (
-          <div className="text-[11.5px] text-[#9CA3AF] line-clamp-2 mt-1 leading-relaxed">
+        {item.matchPreview && (
+          <div
+            className={[
+              "text-[#9CA3AF] line-clamp-2 mt-1 leading-relaxed",
+              compact ? "text-[10.5px]" : "text-[11.5px]",
+            ].join(" ")}
+          >
             {item.matchPreview}
           </div>
         )}

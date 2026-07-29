@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { listDocuments } from "@/lib/documentsApi";
 import { useDocumentsContext } from "@/context/DocumentsContext";
 
-export function useDocuments() {
+export function useDocuments(clientId = "") {
   const { refreshKey } = useDocumentsContext();
   const [documents, setDocuments] = useState([]);
   const [total, setTotal] = useState(0);
@@ -13,7 +13,7 @@ export function useDocuments() {
     setLoading(true);
     setError(null);
     try {
-      const data = await listDocuments();
+      const data = await listDocuments(clientId || undefined);
       setDocuments(data.items || []);
       setTotal(data.total ?? 0);
     } catch (err) {
@@ -23,7 +23,7 @@ export function useDocuments() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [clientId]);
 
   useEffect(() => {
     refetch();

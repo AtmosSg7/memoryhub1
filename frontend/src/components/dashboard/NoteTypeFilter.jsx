@@ -1,5 +1,7 @@
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { NOTE_TYPES } from "@/utils/noteDisplay";
+import { FILTER_PILL_CLASS } from "@/components/dashboard/detailModalLayout";
+import { cn } from "@/lib/utils";
 
 export default function NoteTypeFilter({ value, onChange, testId = "note-type-filter" }) {
   const { t } = useDashboardLang();
@@ -22,12 +24,10 @@ export default function NoteTypeFilter({ value, onChange, testId = "note-type-fi
             type="button"
             data-testid={`${testId}-${option.key || "all"}`}
             onClick={() => onChange(option.key)}
-            className={[
-              "shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border",
-              active
-                ? "bg-[#0A2540] text-white border-[#0A2540]"
-                : "bg-white text-[#4B5563] border-[#E5E7EB] hover:border-[#D1D5DB] hover:bg-[#F9FAFB]",
-            ].join(" ")}
+            className={cn(
+              FILTER_PILL_CLASS.base,
+              active ? FILTER_PILL_CLASS.active : FILTER_PILL_CLASS.inactive
+            )}
           >
             {option.label}
           </button>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { toastApiError } from "@/utils/apiErrors";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { downloadInvoicePdf, downloadQuotePdf } from "@/lib/commercialPdfApi";
 import { ActionButton } from "@/components/dashboard/ActionButton";
@@ -20,7 +21,7 @@ export default function CommercialPdfDownload({ type, item, compact = false }) {
         await downloadInvoicePdf(item.id, { lang, number: item.number });
       }
     } catch (err) {
-      toast.error(err.message || t("toast.pdfDownloadError"));
+      toastApiError(err, t, "toast.pdfDownloadError");
     } finally {
       setDownloading(false);
     }

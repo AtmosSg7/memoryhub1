@@ -1,3 +1,4 @@
+import * as React from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -18,15 +19,22 @@ export const actionButtonVariants = {
     "h-8 w-8 p-0 rounded-lg text-[#991B1B] hover:text-[#991B1B] hover:bg-[#FEF2F2] border-transparent shadow-none",
   dangerText:
     "h-8 px-3 text-xs font-semibold rounded-lg border border-[#FECACA] bg-white text-[#991B1B] hover:bg-[#FEF2F2] shadow-none",
+  ghost:
+    "h-9 px-3 text-sm font-medium rounded-lg border-transparent bg-transparent text-[#6B7280] hover:text-[#111827] hover:bg-[#F3F4F6] shadow-none",
 };
 
-export function ActionButton({ variant = "secondary", className, ...props }) {
+export const ActionButton = React.forwardRef(function ActionButton(
+  { variant = "secondary", className, ...props },
+  ref
+) {
   return (
     <Button
+      ref={ref}
       type="button"
       variant="outline"
       className={cn(actionButtonVariants[variant], className)}
       {...props}
     />
   );
-}
+});
+ActionButton.displayName = "ActionButton";

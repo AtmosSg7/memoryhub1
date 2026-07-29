@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { searchGlobal } from "@/lib/searchApi";
 
-export const SEARCH_MIN_CHARS = 3;
+export const SEARCH_MIN_CHARS = 2;
 const DEBOUNCE_MS = 300;
 
 export function useSearch(query, { enabled = true } = {}) {

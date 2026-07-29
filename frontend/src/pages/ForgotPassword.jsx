@@ -7,6 +7,7 @@ import { CheckCircle2, Loader2 } from "lucide-react";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { useLang } from "@/context/LanguageContext";
 import { apiFetch } from "@/lib/api";
+import { translateAuthError, extractAuthApiMessage } from "@/utils/authErrors";
 import { FORGOT_PASSWORD } from "@/constants/testIds/auth";
 import {
   Form,
@@ -42,7 +43,9 @@ const ForgotPassword = () => {
         body: JSON.stringify({ email: values.email.trim() }),
       });
       if (!res.ok) {
-        setServerError(data?.detail?.message || t("auth.errors.generic"));
+        setServerError(
+          translateAuthError(extractAuthApiMessage(data, t("auth.errors.generic")), t, "auth.errors.generic")
+        );
         return;
       }
       setSent(true);

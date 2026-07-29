@@ -28,4 +28,25 @@ export async function recordDocumentSend({ entityType, entityId, message, subjec
   return handleResponse(res, data, "Failed to record send.");
 }
 
+export async function sendDocumentEmail({ entityType, entityId, recipientEmail, lang = "fr", idempotencyKey }) {
+  const params = new URLSearchParams({ lang });
+  const body = { entityType, entityId, recipientEmail };
+  if (idempotencyKey) body.idempotencyKey = idempotencyKey;
+  const { res, data } = await apiFetch(`/api/document-sends/send?${params.toString()}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return handleResponse(res, data, "Failed to send email.");
+}
+
+function emailDeliveryToast(status, t) {
+  if (status === "sent") return t("documentSend.emailSent");
+  if (status === "skipped") return t("documentSend.emailSkipped");
+  if (status === "retrying" || status === "pending") return t("documentSend.emailRetrying");
+  return t("documentSend.emailFailed");
+}
+
+export { emailDeliveryToast };
+
 export { resolvePortalUrl } from "@/lib/portalApi";

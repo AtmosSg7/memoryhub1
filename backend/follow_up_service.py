@@ -1,10 +1,18 @@
-from typing import Dict, List, Literal, Optional, Tuple
+from typing import Dict, List, Literal, Optional
 
 from fastapi import HTTPException
 
+from email_templates import (
+    EmailLang,
+    build_invoice_follow_up_email,
+    build_quote_follow_up_email,
+    format_amount,
+    resolve_sender_name,
+)
 from events import record_event
 from follow_up_models import FollowUpHistoryItem, FollowUpLastItem
 from invoice_payments import compute_amount_due, get_amount_paid
+from portal_service import build_portal_url
 
 FollowUpLang = Literal["fr", "en"]
 
@@ -18,10 +26,7 @@ def _normalize_invoice_status(status: Optional[str]) -> str:
 
 
 def _format_amount(cents: int, lang: FollowUpLang) -> str:
-    value = (cents or 0) / 100
-    if lang == "fr":
-        return f"{value:.2f}".replace(".", ",") + " €"
-    return f"€{value:,.2f}"
+    return format_amount(cents, lang)
 
 
 def _client_greeting(client: dict, fallback_name: str = "") -> str:
@@ -49,6 +54,16 @@ async def _load_invoice(db, user_id: str, invoice_id: str) -> dict:
     return invoice
 
 
+async def _load_portal_url(db, user_id: str, client_id: str) -> Optional[str]:
+    portal = await db.client_portals.find_one(
+        {"userId": user_id, "clientId": client_id, "isActive": True},
+        {"_id": 0, "token": 1},
+    )
+    if not portal:
+        return None
+    return build_portal_url(portal["token"])
+
+
 def _validate_quote_follow_up(quote: dict) -> None:
     if quote.get("status") != "sent":
         raise HTTPException(
@@ -66,83 +81,14 @@ def _validate_invoice_follow_up(invoice: dict) -> None:
         raise HTTPException(status_code=400, detail={"message": "This invoice has no amount due."})
 
 
-def _build_quote_message(
-    *,
-    lang: FollowUpLang,
-    greeting: str,
-    number: str,
-    title: str,
-    amount_ttc: int,
+def _resolve_sender(
     company_name: str,
-) -> Tuple[str, str]:
-    amount = _format_amount(amount_ttc, lang)
-    title_part = f" (« {title} »)" if title else ""
-    if lang == "en":
-        subject = f"Follow-up on quote {number}"
-        message = (
-            f"Hello {greeting},\n\n"
-            f"I am following up regarding quote {number}{title_part} for {amount}.\n\n"
-            f"Have you had a chance to review it? Please let me know if you have any questions.\n\n"
-            f"Best regards,\n{company_name}"
-        )
-    else:
-        subject = f"Relance devis {number}"
-        message = (
-            f"Bonjour {greeting},\n\n"
-            f"Je me permets de revenir vers vous concernant le devis {number}{title_part}, "
-            f"d'un montant de {amount}.\n\n"
-            f"Avez-vous eu l'occasion de l'examiner ? Je reste à votre disposition pour toute question.\n\n"
-            f"Cordialement,\n{company_name}"
-        )
-    return subject, message
-
-
-def _build_invoice_message(
+    lang: EmailLang,
     *,
-    lang: FollowUpLang,
-    greeting: str,
-    number: str,
-    amount_ttc: int,
-    amount_due: int,
-    company_name: str,
-) -> Tuple[str, str]:
-    total = _format_amount(amount_ttc, lang)
-    due = _format_amount(amount_due, lang)
-    partial = amount_due < amount_ttc
-    if lang == "en":
-        subject = f"Payment reminder — invoice {number}"
-        if partial:
-            body = (
-                f"Hello {greeting},\n\n"
-                f"Unless we are mistaken, invoice {number} (total {total}) still has an outstanding balance of {due}.\n\n"
-                f"Please let us know when payment is expected, or contact us if you need assistance.\n\n"
-                f"Best regards,\n{company_name}"
-            )
-        else:
-            body = (
-                f"Hello {greeting},\n\n"
-                f"Unless we are mistaken, invoice {number} for {total} remains unpaid.\n\n"
-                f"Please let us know when payment is expected, or contact us if you need assistance.\n\n"
-                f"Best regards,\n{company_name}"
-            )
-    else:
-        subject = f"Relance facture {number}"
-        if partial:
-            body = (
-                f"Bonjour {greeting},\n\n"
-                f"Sauf erreur de notre part, la facture {number} (montant total {total}) "
-                f"présente un reste à régler de {due}.\n\n"
-                f"Merci de nous indiquer la date prévue de règlement ou de nous contacter en cas de difficulté.\n\n"
-                f"Cordialement,\n{company_name}"
-            )
-        else:
-            body = (
-                f"Bonjour {greeting},\n\n"
-                f"Sauf erreur de notre part, la facture {number} d'un montant de {total} reste impayée.\n\n"
-                f"Merci de nous indiquer la date prévue de règlement ou de nous contacter en cas de difficulté.\n\n"
-                f"Cordialement,\n{company_name}"
-            )
-    return subject, body
+    first_name: str = "",
+    last_name: str = "",
+) -> str:
+    return resolve_sender_name(company_name, lang, first_name=first_name, last_name=last_name)
 
 
 async def build_follow_up_preview(
@@ -152,29 +98,42 @@ async def build_follow_up_preview(
     entity_type: str,
     entity_id: str,
     lang: FollowUpLang = "fr",
-    company_name: str = "MemoryHub",
+    company_name: str = "",
+    sender_first_name: str = "",
+    sender_last_name: str = "",
 ) -> dict:
+    sender = _resolve_sender(
+        company_name,
+        lang,
+        first_name=sender_first_name,
+        last_name=sender_last_name,
+    )
+
     if entity_type == "quote":
         quote = await _load_quote(db, user_id, entity_id)
         _validate_quote_follow_up(quote)
         client = await _load_client(db, user_id, quote["clientId"])
+        portal_url = await _load_portal_url(db, user_id, quote["clientId"])
         greeting = _client_greeting(client, quote.get("clientName", ""))
-        subject, message = _build_quote_message(
+        email = build_quote_follow_up_email(
             lang=lang,
             greeting=greeting,
             number=quote.get("number", ""),
             title=quote.get("title") or "",
             amount_ttc=quote.get("amountTTC", 0),
-            company_name=company_name,
+            sender_name=sender,
+            portal_url=portal_url,
         )
         return {
             "entityType": "quote",
             "entityId": quote["id"],
             "clientId": quote["clientId"],
             "clientName": quote.get("clientName", ""),
-            "subject": subject,
-            "message": message,
+            "subject": email.subject,
+            "preheader": email.preheader,
+            "message": email.body,
             "documentNumber": quote.get("number", ""),
+            "portalUrl": portal_url,
         }
 
     if entity_type == "invoice":
@@ -183,21 +142,22 @@ async def build_follow_up_preview(
         client = await _load_client(db, user_id, invoice["clientId"])
         greeting = _client_greeting(client, invoice.get("clientName", ""))
         amount_due = compute_amount_due(invoice.get("amountTTC", 0), get_amount_paid(invoice))
-        subject, message = _build_invoice_message(
+        email = build_invoice_follow_up_email(
             lang=lang,
             greeting=greeting,
             number=invoice.get("number", ""),
             amount_ttc=invoice.get("amountTTC", 0),
             amount_due=amount_due,
-            company_name=company_name,
+            sender_name=sender,
         )
         return {
             "entityType": "invoice",
             "entityId": invoice["id"],
             "clientId": invoice["clientId"],
             "clientName": invoice.get("clientName", ""),
-            "subject": subject,
-            "message": message,
+            "subject": email.subject,
+            "preheader": email.preheader,
+            "message": email.body,
             "documentNumber": invoice.get("number", ""),
         }
 
@@ -213,7 +173,9 @@ async def record_follow_up(
     message: str,
     subject: Optional[str] = None,
     lang: FollowUpLang = "fr",
-    company_name: str = "MemoryHub",
+    company_name: str = "",
+    sender_first_name: str = "",
+    sender_last_name: str = "",
 ) -> dict:
     preview = await build_follow_up_preview(
         db,
@@ -222,6 +184,8 @@ async def record_follow_up(
         entity_id=entity_id,
         lang=lang,
         company_name=company_name,
+        sender_first_name=sender_first_name,
+        sender_last_name=sender_last_name,
     )
 
     final_subject = (subject or preview["subject"]).strip()

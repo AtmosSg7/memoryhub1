@@ -1,6 +1,17 @@
 export const IMPORT_ACCEPT = ".pdf,.jpg,.jpeg,.png,.webp";
+export const IMPORT_MAX_FILES = 10;
 
-export const ANALYSIS_STAGE_KEYS = ["upload", "read", "extract", "match"];
+export const DOCUMENT_KINDS = [
+  "quote",
+  "invoice",
+  "purchase_order",
+  "delivery_note",
+  "receipt",
+  "supplier_invoice",
+  "administrative_document",
+  "contract",
+  "other",
+];
 
 export const CONFIDENCE_LEVELS = {
   reliable: {
@@ -31,16 +42,7 @@ export const FIELD_CONFIDENCE_MAP = {
   title: "title",
 };
 
-export const DOCUMENT_KINDS = [
-  "quote",
-  "invoice",
-  "purchase_order",
-  "delivery_note",
-  "receipt",
-  "supplier_invoice",
-  "contract",
-  "other",
-];
+export const ANALYSIS_STAGE_KEYS = ["upload", "read", "extract", "match"];
 
 export const CONFIRMABLE_KINDS = new Set(["quote", "invoice"]);
 
@@ -50,16 +52,26 @@ export function computeAmountTtc(amountHtCents, vatRate) {
   return Math.round((ht * (100 + rate)) / 100);
 }
 
-export function sessionToFormState(session, defaultKind) {
+export function resolveImportFormVatRate(session, defaultVatRate = 20) {
   const normalized = session?.analysis?.normalized || {};
+  const confidence = session?.analysis?.confidence?.vatRate ?? 0;
+  if (normalized.vatRate != null && confidence >= CONFIDENCE_LEVELS.reliable.minScore) {
+    return normalized.vatRate;
+  }
+  return defaultVatRate;
+}
+
+export function sessionToFormState(session, defaultKind, defaultVatRate = 20) {
+  const normalized = session?.analysis?.normalized || {};
+  const vatRate = resolveImportFormVatRate(session, defaultVatRate);
   return {
     targetKind: defaultKind || session?.detectedKind || "quote",
     title: normalized.title || "",
     externalNumber: normalized.externalNumber || "",
     documentDate: normalized.documentDate || "",
     amountHT: normalized.amountHT ?? 0,
-    vatRate: normalized.vatRate ?? 20,
-    amountTTC: normalized.amountTTC ?? computeAmountTtc(normalized.amountHT, normalized.vatRate),
+    vatRate,
+    amountTTC: normalized.amountTTC ?? computeAmountTtc(normalized.amountHT, vatRate),
     internalNotes: normalized.internalNotes || "",
     clientName: normalized.clientName || "",
     company: normalized.company || "",
@@ -207,3 +219,58 @@ export function formatLineItemQuantity(quantity) {
   if (Number.isNaN(value)) return "—";
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, "");
 }
+
+const WARNING_FIELD_CONFIG = [
+  { fieldKey: "vatRate", warningKey: "vatIncomplete", formKey: "vatRate" },
+  { fieldKey: "documentDate", warningKey: "dateUnclear", formKey: "documentDate" },
+  { fieldKey: "client", warningKey: "clientUnclear", formKey: "clientName" },
+  { fieldKey: "externalNumber", warningKey: "numberUnclear", formKey: "externalNumber" },
+  { fieldKey: "amountHT", warningKey: "amountUnclear", formKey: "amountHT" },
+];
+
+export function getOverallConfidencePercent(session) {
+  const overall = session?.analysis?.overallConfidence;
+  if (overall != null && !Number.isNaN(Number(overall))) {
+    return Math.round(Number(overall) * 100);
+  }
+
+  const confidence = session?.analysis?.confidence || {};
+  const values = Object.values(confidence).filter((v) => v != null && !Number.isNaN(Number(v)));
+  if (values.length === 0) {
+    const kindScore = session?.analysis?.detectedKindConfidence;
+    if (kindScore != null) return Math.round(Number(kindScore) * 100);
+    return null;
+  }
+  const avg = values.reduce((sum, v) => sum + Number(v), 0) / values.length;
+  return Math.round(avg * 100);
+}
+
+export function getVerificationWarnings(session, form, t) {
+  const warnings = [];
+  for (const config of WARNING_FIELD_CONFIG) {
+    const score = getFieldConfidenceScore(session, config.fieldKey);
+    const hasValue = hasFieldValue(form, config.fieldKey);
+    const level = getConfidenceLevel(score, hasValue);
+    if (level === "verify" || level === "missing") {
+      warnings.push({
+        field: config.fieldKey,
+        message: t(`importWizard.warnings.${config.warningKey}`),
+      });
+    }
+  }
+  return warnings;
+}
+
+export function getResolvedClientLabel(session, form, clientAction, selectedClientId) {
+  if (clientAction === "use_existing" && selectedClientId) {
+    const match = session?.clientMatches?.find((m) => m.clientId === selectedClientId);
+    if (match?.clientName) return match.clientName;
+  }
+  return form.company?.trim() || form.clientName?.trim() || "";
+}
+
+export function willCreateNewClient(session, clientAction) {
+  if (clientAction === "create_new") return true;
+  return !(session?.clientMatches?.length > 0);
+}
+

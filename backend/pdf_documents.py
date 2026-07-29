@@ -1,11 +1,18 @@
 from io import BytesIO
 from typing import Literal, Optional
 
+import logging
+
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+logger = logging.getLogger(__name__)
+
+LOGO_MAX_WIDTH = 45 * mm
+LOGO_MAX_HEIGHT = 20 * mm
 
 DocumentType = Literal["quote", "invoice"]
 
@@ -68,6 +75,11 @@ LABELS = {
         "col_discount": "Remise",
         "col_line_total": "Total HT",
         "no_discount": "—",
+        "issuer": "Émetteur",
+        "payment_terms": "Conditions de paiement",
+        "bank_details": "Coordonnées bancaires",
+        "siret": "SIRET",
+        "vat": "N° TVA",
     },
     "en": {
         "quote": "QUOTE",
@@ -91,6 +103,11 @@ LABELS = {
         "col_discount": "Discount",
         "col_line_total": "Total excl. VAT",
         "no_discount": "—",
+        "issuer": "Issuer",
+        "payment_terms": "Payment terms",
+        "bank_details": "Bank details",
+        "siret": "SIRET",
+        "vat": "VAT no.",
     },
 }
 
@@ -271,7 +288,127 @@ def _build_totals_table(data: dict, labels: dict, lang: str) -> Table:
     return table
 
 
-def build_commercial_pdf(doc_type: DocumentType, data: dict, lang: str = "fr") -> bytes:
+def _build_issuer_lines(seller: Optional[dict], labels: dict) -> list:
+    if not seller:
+        return []
+    lines = []
+    name = (seller.get("legalName") or seller.get("companyName") or "").strip()
+    if name:
+        lines.append(f"<b>{name}</b>")
+    trade = (seller.get("tradeName") or "").strip()
+    if trade and trade != name:
+        lines.append(trade)
+    address_parts = [
+        seller.get("address"),
+        " ".join(p for p in [seller.get("postalCode"), seller.get("city")] if p),
+        seller.get("country"),
+    ]
+    for part in address_parts:
+        text = (part or "").strip()
+        if text:
+            lines.append(text)
+    if seller.get("phone"):
+        lines.append(str(seller["phone"]))
+    if seller.get("email"):
+        lines.append(str(seller["email"]))
+    if seller.get("siret"):
+        lines.append(f"{labels['siret']}: {seller['siret']}")
+    if seller.get("vatNumber"):
+        lines.append(f"{labels['vat']}: {seller['vatNumber']}")
+    return lines
+
+
+def _build_logo_image(logo_bytes: bytes) -> Optional[Image]:
+    try:
+        image = Image(BytesIO(logo_bytes))
+        intrinsic_w = float(image.imageWidth or 0)
+        intrinsic_h = float(image.imageHeight or 0)
+        if intrinsic_w <= 0 or intrinsic_h <= 0:
+            return None
+
+        scale = min(LOGO_MAX_WIDTH / intrinsic_w, LOGO_MAX_HEIGHT / intrinsic_h)
+        image.drawWidth = intrinsic_w * scale
+        image.drawHeight = intrinsic_h * scale
+        image.hAlign = "LEFT"
+        return image
+    except Exception:
+        logger.exception("Failed to build PDF logo image")
+        return None
+
+
+def _build_document_header(
+    *,
+    doc_type: DocumentType,
+    data: dict,
+    labels: dict,
+    title_style: ParagraphStyle,
+    subtitle_style: ParagraphStyle,
+    logo_bytes: Optional[bytes],
+) -> list:
+    title = Paragraph(labels[doc_type], title_style)
+    subtitle = Paragraph(data.get("number", ""), subtitle_style)
+
+    if not logo_bytes:
+        return [title, subtitle]
+
+    logo = _build_logo_image(logo_bytes)
+    if not logo:
+        return [title, subtitle]
+
+    header = Table(
+        [[logo, [title, subtitle]]],
+        colWidths=[LOGO_MAX_WIDTH + 5 * mm, 115 * mm],
+        rowHeights=[LOGO_MAX_HEIGHT + 2 * mm],
+    )
+    header.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("ALIGN", (0, 0), (0, 0), "LEFT"),
+                ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ]
+        )
+    )
+    return [header]
+
+
+def _build_footer_lines(seller: Optional[dict], labels: dict, lang_key: str) -> list:
+    if not seller:
+        return []
+    lines = []
+    if seller.get("paymentTerms"):
+        lines.append(f"<b>{labels['payment_terms']}</b>: {seller['paymentTerms']}")
+    elif seller.get("paymentDelayDays"):
+        delay = int(seller.get("paymentDelayDays") or 30)
+        lines.append(
+            f"<b>{labels['payment_terms']}</b>: "
+            + (f"Paiement à {delay} jours" if lang_key == "fr" else f"Payment within {delay} days")
+        )
+    if seller.get("latePenaltyRate"):
+        lines.append(str(seller["latePenaltyRate"]))
+    if seller.get("flatRecoveryIndemnity"):
+        lines.append(str(seller["flatRecoveryIndemnity"]))
+    if seller.get("iban"):
+        bank_line = f"IBAN: {seller['iban']}"
+        if seller.get("bic"):
+            bank_line += f" — BIC: {seller['bic']}"
+        if seller.get("bankName"):
+            bank_line = f"{seller['bankName']} — {bank_line}"
+        lines.append(f"<b>{labels['bank_details']}</b>: {bank_line}")
+    return lines
+
+
+def build_commercial_pdf(
+    doc_type: DocumentType,
+    data: dict,
+    lang: str = "fr",
+    seller: Optional[dict] = None,
+    logo_bytes: Optional[bytes] = None,
+) -> bytes:
     lang_key = "fr" if lang == "fr" else "en"
     labels = LABELS[lang_key]
     buffer = BytesIO()
@@ -290,7 +427,7 @@ def build_commercial_pdf(doc_type: DocumentType, data: dict, lang: str = "fr") -
         "DocTitle",
         parent=styles["Heading1"],
         fontSize=20,
-        textColor=colors.HexColor("#0A2540"),
+        textColor=colors.HexColor((seller or {}).get("primaryColor") or "#0A2540"),
         spaceAfter=6,
     )
     subtitle_style = ParagraphStyle(
@@ -321,11 +458,26 @@ def build_commercial_pdf(doc_type: DocumentType, data: dict, lang: str = "fr") -
     meta_table = Table(meta_rows, colWidths=[45 * mm, 120 * mm])
     meta_table.setStyle(_meta_table_style())
 
-    story = [
-        Paragraph(labels[doc_type], title_style),
-        Paragraph(data.get("number", ""), subtitle_style),
-        meta_table,
-    ]
+    story = _build_document_header(
+        doc_type=doc_type,
+        data=data,
+        labels=labels,
+        title_style=title_style,
+        subtitle_style=subtitle_style,
+        logo_bytes=logo_bytes,
+    )
+
+    issuer_lines = _build_issuer_lines(seller, labels)
+    if issuer_lines:
+        story.extend(
+            [
+                Paragraph(f"<b>{labels['issuer']}</b>", section_style),
+                Paragraph("<br/>".join(issuer_lines), notes_style),
+                Spacer(1, 8),
+            ]
+        )
+
+    story.append(meta_table)
 
     if line_items:
         story.extend(
@@ -368,6 +520,15 @@ def build_commercial_pdf(doc_type: DocumentType, data: dict, lang: str = "fr") -
             ]
         )
 
+    footer_lines = _build_footer_lines(seller, labels, lang_key)
+    if footer_lines:
+        story.extend(
+            [
+                Spacer(1, 12),
+                Paragraph("<br/>".join(footer_lines), notes_style),
+            ]
+        )
+
     story.extend(
         [
             Spacer(1, 24),
@@ -379,9 +540,19 @@ def build_commercial_pdf(doc_type: DocumentType, data: dict, lang: str = "fr") -
     return buffer.getvalue()
 
 
-def build_quote_pdf(quote: dict, lang: str = "fr") -> bytes:
-    return build_commercial_pdf("quote", quote, lang)
+def build_quote_pdf(
+    quote: dict,
+    lang: str = "fr",
+    seller: Optional[dict] = None,
+    logo_bytes: Optional[bytes] = None,
+) -> bytes:
+    return build_commercial_pdf("quote", quote, lang, seller=seller, logo_bytes=logo_bytes)
 
 
-def build_invoice_pdf(invoice: dict, lang: str = "fr") -> bytes:
-    return build_commercial_pdf("invoice", invoice, lang)
+def build_invoice_pdf(
+    invoice: dict,
+    lang: str = "fr",
+    seller: Optional[dict] = None,
+    logo_bytes: Optional[bytes] = None,
+) -> bytes:
+    return build_commercial_pdf("invoice", invoice, lang, seller=seller, logo_bytes=logo_bytes)

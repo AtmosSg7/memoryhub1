@@ -1,36 +1,43 @@
-import { ChevronDown } from "lucide-react";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { computeDashboardStatus } from "@/utils/reminderGroups";
 
 const STATUS_CONFIG = {
   ok: {
-    dot: "🟢",
+    dotClass: "bg-emerald-500",
     messageKey: "dashboardV2.summary.ok",
     bg: "bg-[#ECFDF5] border-[#A7F3D0]",
     text: "text-[#065F46]",
   },
   attention: {
-    dot: "🟠",
+    dotClass: "bg-amber-500",
     messageKey: "dashboardV2.summary.attention",
     bg: "bg-[#FFFBEB] border-[#FDE68A]",
     text: "text-[#92400E]",
   },
   urgent: {
-    dot: "🔴",
+    dotClass: "bg-red-500",
     messageKey: "dashboardV2.summary.urgent",
     bg: "bg-[#FEF2F2] border-[#FECACA]",
     text: "text-[#991B1B]",
   },
 };
 
-export default function DashboardSummary({ reminders, loading }) {
+export default function DashboardSummary({
+  reminders,
+  loading,
+  compact = false,
+  actionsAdjacent = false,
+}) {
   const { t } = useDashboardLang();
 
   if (loading) {
     return (
       <div
         data-testid="dashboard-summary"
-        className="rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] p-4 md:p-5 animate-pulse h-[72px]"
+        className={[
+          "rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] animate-pulse",
+          compact ? "h-12" : "h-[72px]",
+        ].join(" ")}
       />
     );
   }
@@ -43,36 +50,46 @@ export default function DashboardSummary({ reminders, loading }) {
       ? t(config.messageKey)
       : t(config.messageKey).replace("{count}", String(status.count));
 
-  const scrollToActions = () => {
-    document.getElementById("dashboard-actions")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
   return (
     <div
       data-testid="dashboard-summary"
-      className={["rounded-xl border p-4 md:p-5 flex items-center justify-between gap-4", config.bg].join(" ")}
+      role="status"
+      aria-live="polite"
+      className={[
+        "rounded-xl border flex items-center gap-3",
+        compact ? "px-4 py-3" : "p-4 md:p-5",
+        config.bg,
+      ].join(" ")}
     >
-      <p className={["text-base md:text-lg font-semibold font-cabinet tracking-tight", config.text].join(" ")}>
-        <span className="mr-2" aria-hidden="true">
-          {config.dot}
-        </span>
+      <span
+        className={["inline-block w-2.5 h-2.5 rounded-full shrink-0", config.dotClass].join(" ")}
+        aria-hidden="true"
+      />
+      <p
+        className={[
+          "font-medium font-cabinet tracking-tight",
+          compact ? "text-sm md:text-[15px]" : "text-base md:text-lg font-semibold",
+          config.text,
+        ].join(" ")}
+      >
         {message}
       </p>
-      {status.level !== "ok" && (
+      {status.level !== "ok" && !actionsAdjacent ? (
         <button
           type="button"
-          onClick={scrollToActions}
+          onClick={() =>
+            document.getElementById("dashboard-actions")?.scrollIntoView({ behavior: "smooth", block: "start" })
+          }
           data-testid="dashboard-summary-cta"
           className={[
-            "shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium",
+            "ml-auto shrink-0 inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium",
             "bg-white/80 hover:bg-white border border-black/5 transition-colors",
             config.text,
           ].join(" ")}
         >
           {t("dashboardV2.summary.cta")}
-          <ChevronDown className="w-4 h-4" strokeWidth={2} />
         </button>
-      )}
+      ) : null}
     </div>
   );
 }

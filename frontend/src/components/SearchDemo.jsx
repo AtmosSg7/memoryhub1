@@ -114,9 +114,6 @@ export const SearchDemo = React.forwardRef((props, ref) => {
               {typed || <span className="text-[#8A8F98] font-sans">{t("search.placeholder")}</span>}
               {started && typed.length < TARGET.length && <span className="caret" />}
             </div>
-            <span className="hidden sm:inline text-[11px] font-mono text-[#8A8F98] border border-[#E7E9EE] rounded-md px-2 py-0.5 bg-white">
-              {t("search.hint")}
-            </span>
           </div>
         </motion.div>
 
@@ -233,7 +230,7 @@ export const SearchDemo = React.forwardRef((props, ref) => {
                               <p className="font-display text-[32px] font-black text-[#0A0A0B] tracking-[-0.02em] leading-none">8 040 €</p>
                             </div>
                             <div className="rounded-2xl p-5 bg-white border border-[#E7E9EE] shadow-[0_1px_0_rgba(255,255,255,0.8)_inset,0_1px_2px_rgba(10,10,11,0.03)]">
-                              <p className="text-[10.5px] uppercase tracking-[0.14em] text-[#8A8F98] font-bold mb-2">{lang === "fr" ? "Chantiers" : "Projects"}</p>
+                              <p className="text-[10.5px] uppercase tracking-[0.14em] text-[#8A8F98] font-bold mb-2">{d.projectsLabel}</p>
                               <p className="font-display text-[32px] font-black text-[#0A0A0B] tracking-[-0.02em] leading-none">3</p>
                             </div>
                           </div>
@@ -333,10 +330,10 @@ export const SearchDemo = React.forwardRef((props, ref) => {
                           </p>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             <div className="group relative rounded-2xl overflow-hidden aspect-[4/3] border border-[#E7E9EE] shadow-[0_1px_2px_rgba(10,10,11,0.04),0_10px_24px_-14px_rgba(10,10,11,0.2)]">
-                              <img src={PHOTO_1} alt="chantier" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                              <img src={PHOTO_1} alt={d.photoAlt} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                             </div>
                             <div className="group relative rounded-2xl overflow-hidden aspect-[4/3] border border-[#E7E9EE] shadow-[0_1px_2px_rgba(10,10,11,0.04),0_10px_24px_-14px_rgba(10,10,11,0.2)]">
-                              <img src={PHOTO_2} alt="chantier" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                              <img src={PHOTO_2} alt={d.photoAlt} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                             </div>
                             <div className="group relative rounded-2xl overflow-hidden aspect-[4/3] border border-[#E7E9EE] shadow-[0_1px_2px_rgba(10,10,11,0.04),0_10px_24px_-14px_rgba(10,10,11,0.2)]">
                               <img src={AVATAR} alt="client" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
@@ -355,9 +352,9 @@ export const SearchDemo = React.forwardRef((props, ref) => {
                       <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />
                       <span className="relative w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     </span>
-                    {lang === "fr" ? "Synchronisé à l'instant" : "Synced just now"}
+                    {d.syncedNow}
                   </span>
-                  <span className="font-mono tracking-tight">MemoryHub · v0.9 beta</span>
+                  <span className="font-mono tracking-tight">MemoryHub</span>
                 </div>
               </div>
             </motion.div>

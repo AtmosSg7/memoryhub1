@@ -1,0 +1,57 @@
+# Production overrides — use: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  mongo:
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    command: ["mongod", "--auth", "--quiet"]
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  backend:
+    environment:
+      MONGO_URL: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/?authSource=admin
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  frontend:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  nginx:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  scheduler:
+    build:
+      context: ./backend
+    image: memoryhub-backend:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    env_file:
+      - deploy/.env
+    environment:
+      MONGO_URL: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/?authSource=admin
+      LOCAL_UPLOAD_DIR: /app/uploads
+      ENV: ${ENV:-production}
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - internal
+    command: ["python", "scripts/run_scheduled_tasks.py", "--loop", "--interval", "300"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

@@ -12,16 +12,16 @@ export const NOTE_TYPES = ["general", "phone", "meeting", "visit", "reminder"];
 
 const TYPE_LABELS = {
   fr: {
-    general: "Générale",
+    general: "Divers",
     phone: "Appel",
-    meeting: "Rendez-vous",
-    visit: "Visite chantier",
+    meeting: "RDV",
+    visit: "Visite sur site",
     reminder: "Rappel",
   },
   en: {
-    general: "General",
+    general: "Misc",
     phone: "Call",
-    meeting: "Meeting",
+    meeting: "Appointment",
     visit: "Site visit",
     reminder: "Reminder",
   },

@@ -1,14 +1,14 @@
-import React, { useRef, useState } from "react";
+import React, { Suspense } from "react";
 
 import "@/App.css";
 
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, Navigate } from "react-router-dom";
 
 import { Toaster } from "sonner";
 
 import { LanguageProvider } from "@/context/LanguageContext";
 
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
@@ -30,8 +30,6 @@ import { FinalCta } from "@/components/FinalCta";
 
 import { Footer } from "@/components/Footer";
 
-import { JoinModal } from "@/components/JoinModal";
-
 import LegalNotice from "@/pages/LegalNotice";
 
 import PrivacyPolicy from "@/pages/PrivacyPolicy";
@@ -46,13 +44,11 @@ import Register from "@/pages/Register";
 
 import ForgotPassword from "@/pages/ForgotPassword";
 
+import ResetPassword from "@/pages/ResetPassword";
+
 import VerifyEmail from "@/pages/VerifyEmail";
 
-import Settings from "@/pages/Settings";
-
-import Billing from "@/pages/Billing";
-
-import Profile from "@/pages/Profile";
+import NotFoundPage from "@/pages/NotFoundPage";
 
 import ClientPortalPage from "@/pages/portal/ClientPortalPage";
 
@@ -60,82 +56,75 @@ import DashboardLayout from "@/layouts/DashboardLayout";
 
 import DashboardHome from "@/pages/dashboard/DashboardHome";
 
-import ClientsPage from "@/pages/dashboard/ClientsPage";
+const ClientsPage = React.lazy(() => import("@/pages/dashboard/ClientsPage"));
 
-import ClientDetailPage from "@/pages/dashboard/ClientDetailPage";
+const ClientDetailPage = React.lazy(() => import("@/pages/dashboard/ClientDetailPage"));
 
-import SearchPage from "@/pages/dashboard/SearchPage";
+const SearchPage = React.lazy(() => import("@/pages/dashboard/SearchPage"));
 
-import NotesPage from "@/pages/dashboard/NotesPage";
+const NotesPage = React.lazy(() => import("@/pages/dashboard/NotesPage"));
 
-import QuotesPage from "@/pages/dashboard/QuotesPage";
+const LegacyCommercialDocumentsRedirect = React.lazy(
+  () => import("@/pages/dashboard/LegacyCommercialDocumentsRedirect")
+);
 
-import InvoicesPage from "@/pages/dashboard/InvoicesPage";
+const CommercialDocumentsPage = React.lazy(() => import("@/pages/dashboard/CommercialDocumentsPage"));
 
-import DocumentsPage from "@/pages/dashboard/DocumentsPage";
+const AnalyticsPage = React.lazy(() => import("@/pages/dashboard/AnalyticsPage"));
 
-import TimelinePage from "@/pages/dashboard/TimelinePage";
+const FileLibraryPage = React.lazy(() => import("@/pages/dashboard/DocumentsPage"));
 
-import CommunicationsPage from "@/pages/dashboard/CommunicationsPage";
+const TimelinePage = React.lazy(() => import("@/pages/dashboard/TimelinePage"));
 
-import IntegrationsPage from "@/pages/dashboard/IntegrationsPage";
+const CommunicationsPage = React.lazy(() => import("@/pages/dashboard/CommunicationsPage"));
 
-import CatalogPage from "@/pages/dashboard/CatalogPage";
+const IntegrationsPage = React.lazy(() => import("@/pages/dashboard/IntegrationsPage"));
 
-import DashboardSettingsPage from "@/pages/dashboard/SettingsPage";
+const CatalogPage = React.lazy(() => import("@/pages/dashboard/CatalogPage"));
+
+const DashboardSettingsPage = React.lazy(() => import("@/pages/dashboard/SettingsPage"));
+const CompanySettingsPage = React.lazy(() => import("@/pages/dashboard/CompanySettingsPage"));
+const BillingPage = React.lazy(() => import("@/pages/dashboard/BillingPage"));
+const AiUsageHistoryPage = React.lazy(() => import("@/pages/dashboard/AiUsageHistoryPage"));
+
+import { AdminRoute } from "@/components/auth/AdminRoute";
+import AdminLayout from "@/layouts/AdminLayout";
+const AdminOverviewPage = React.lazy(() => import("@/pages/admin/AdminOverviewPage"));
+const AdminUsersPage = React.lazy(() => import("@/pages/admin/AdminUsersPage"));
+const AdminUserDetailPage = React.lazy(() => import("@/pages/admin/AdminUserDetailPage"));
+const AdminSubscriptionsPage = React.lazy(() => import("@/pages/admin/AdminSubscriptionsPage"));
+const AdminAiCreditsPage = React.lazy(() => import("@/pages/admin/AdminAiCreditsPage"));
+const AdminImportsPage = React.lazy(() => import("@/pages/admin/AdminImportsPage"));
+const AdminEmailsPage = React.lazy(() => import("@/pages/admin/AdminEmailsPage"));
+const AdminSystemPage = React.lazy(() => import("@/pages/admin/AdminSystemPage"));
 
 
 
 const Landing = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
 
-  const [modalOpen, setModalOpen] = useState(false);
-
-  const demoRef = useRef(null);
-
-
-
-  const openJoin = () => setModalOpen(true);
-
-  const goDemo = () => {
-
-    const el = document.getElementById("demo");
-
-    if (el) el.scrollIntoView({ behavior: "smooth" });
-
-    setTimeout(() => demoRef.current?.replay?.(), 300);
-
+  const goRegister = () => {
+    navigate(isAuthenticated ? "/dashboard" : "/register");
   };
 
-
+  const goDemo = () => {
+    document.getElementById("demo")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
-
     <div className="App">
-
-      <Navbar onJoin={openJoin} />
-
-      <Hero onJoin={openJoin} onDemo={goDemo} />
-
-      <SearchDemo ref={demoRef} />
-
+      <Navbar onJoin={goRegister} />
+      <Hero onJoin={goRegister} onDemo={goDemo} />
+      <SearchDemo />
       <Features />
-
       <HowItWorks />
-
-      <Pricing onJoin={openJoin} />
-
+      <Pricing onJoin={goRegister} />
       <Faq />
-
-      <FinalCta onJoin={openJoin} />
-
+      <FinalCta onJoin={goRegister} />
       <Footer />
-
-      <JoinModal open={modalOpen} onClose={() => setModalOpen(false)} />
-
     </div>
-
   );
-
 };
 
 
@@ -168,6 +157,8 @@ function App() {
 
             <Route path="/forgot-password" element={<ForgotPassword />} />
 
+            <Route path="/reset-password" element={<ResetPassword />} />
+
             <Route path="/verify-email" element={<VerifyEmail />} />
 
             <Route path="/portal/:token" element={<ClientPortalPage />} />
@@ -198,13 +189,23 @@ function App() {
 
               <Route path="notes" element={<NotesPage />} />
 
-              <Route path="quotes" element={<QuotesPage />} />
+              <Route
+                path="quotes"
+                element={<LegacyCommercialDocumentsRedirect kind="quote" />}
+              />
 
-              <Route path="invoices" element={<InvoicesPage />} />
+              <Route
+                path="invoices"
+                element={<LegacyCommercialDocumentsRedirect kind="invoice" />}
+              />
 
               <Route path="catalog" element={<CatalogPage />} />
 
-              <Route path="documents" element={<DocumentsPage />} />
+              <Route path="documents" element={<CommercialDocumentsPage />} />
+
+              <Route path="analytics" element={<AnalyticsPage />} />
+
+              <Route path="files" element={<FileLibraryPage />} />
 
               <Route path="communications" element={<CommunicationsPage />} />
 
@@ -213,6 +214,11 @@ function App() {
               <Route path="integrations" element={<IntegrationsPage />} />
 
               <Route path="settings" element={<DashboardSettingsPage />} />
+              <Route path="settings/company" element={<CompanySettingsPage />} />
+
+              <Route path="billing" element={<BillingPage />} />
+
+              <Route path="billing/ai-history" element={<AiUsageHistoryPage />} />
 
             </Route>
 
@@ -224,7 +230,7 @@ function App() {
 
                 <ProtectedRoute>
 
-                  <Settings />
+                  <Navigate to="/dashboard/settings" replace />
 
                 </ProtectedRoute>
 
@@ -240,7 +246,7 @@ function App() {
 
                 <ProtectedRoute>
 
-                  <Billing />
+                  <Navigate to="/dashboard/billing" replace />
 
                 </ProtectedRoute>
 
@@ -256,13 +262,33 @@ function App() {
 
                 <ProtectedRoute>
 
-                  <Profile />
+                  <Navigate to="/dashboard/settings" replace />
 
                 </ProtectedRoute>
 
               }
 
             />
+
+            <Route path="*" element={<NotFoundPage />} />
+
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminLayout />
+                </AdminRoute>
+              }
+            >
+              <Route index element={<AdminOverviewPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="users/:id" element={<AdminUserDetailPage />} />
+              <Route path="subscriptions" element={<AdminSubscriptionsPage />} />
+              <Route path="ai" element={<AdminAiCreditsPage />} />
+              <Route path="imports" element={<AdminImportsPage />} />
+              <Route path="emails" element={<AdminEmailsPage />} />
+              <Route path="system" element={<AdminSystemPage />} />
+            </Route>
 
           </Routes>
 

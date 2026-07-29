@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { Upload, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import {
   ALLOWED_EXTENSIONS_LABEL,
@@ -7,6 +8,8 @@ import {
 } from "@/utils/documentDisplay";
 
 const ACCEPT = ".pdf,.jpg,.jpeg,.png,.webp,.zip,.dwg,.doc,.docx,.xls,.xlsx";
+const ALLOWED_EXTENSIONS = new Set(["pdf", "jpg", "jpeg", "png", "webp", "zip", "dwg", "doc", "docx", "xls", "xlsx"]);
+const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
 
 export default function DocumentDropzone({
   onUpload,
@@ -14,7 +17,7 @@ export default function DocumentDropzone({
   compact = false,
   testId = "documents-dropzone",
 }) {
-  const { t, lang } = useDashboardLang();
+  const { t } = useDashboardLang();
   const inputRef = useRef(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -22,6 +25,17 @@ export default function DocumentDropzone({
   const handleFile = useCallback(
     async (file) => {
       if (!file || disabled || uploading) return;
+
+      const ext = file.name.split(".").pop()?.toLowerCase() || "";
+      if (!ALLOWED_EXTENSIONS.has(ext)) {
+        toast.error(t("documents.errors.invalidType"));
+        return;
+      }
+      if (file.size > MAX_UPLOAD_BYTES) {
+        toast.error(t("documents.errors.tooLarge").replace("{size}", String(MAX_UPLOAD_MB)));
+        return;
+      }
+
       setUploading(true);
       try {
         await onUpload(file);
@@ -30,7 +44,7 @@ export default function DocumentDropzone({
         if (inputRef.current) inputRef.current.value = "";
       }
     },
-    [disabled, onUpload, uploading]
+    [disabled, onUpload, uploading, t]
   );
 
   const onDrop = (event) => {
@@ -99,14 +113,10 @@ export default function DocumentDropzone({
           </div>
           <div>
             <div className="text-sm font-medium text-[#111827]">
-              {uploading
-                ? t("documents.uploading")
-                : lang === "fr"
-                  ? "Glissez un fichier ici"
-                  : "Drop a file here"}
+              {uploading ? t("documents.uploading") : t("documents.dropHint")}
             </div>
             <div className="text-[12px] text-[#6B7280]">
-              {ALLOWED_EXTENSIONS_LABEL} — max {MAX_UPLOAD_MB} Mo
+              {ALLOWED_EXTENSIONS_LABEL} — {t("documents.maxSize").replace("{size}", String(MAX_UPLOAD_MB))}
             </div>
           </div>
         </div>

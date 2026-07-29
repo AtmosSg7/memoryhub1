@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Bell, Plus, ChevronDown, Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Bell, ChevronDown, Menu } from "lucide-react";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,23 +12,26 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { useAuth } from "@/context/AuthContext";
-import { useAddClient } from "@/context/AddClientContext";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
 import { SEARCH_MIN_CHARS } from "@/hooks/useSearch";
 import SearchDropdown from "@/components/dashboard/SearchDropdown";
-import { toast } from "sonner";
+import SearchField from "@/components/dashboard/SearchField";
+import MobileNavSheet from "@/components/dashboard/MobileNavSheet";
+import CreditBalanceBadge from "@/components/dashboard/CreditBalanceBadge";
+import BetaFeedbackDialog from "@/components/dashboard/BetaFeedbackDialog";
 import { LOGOUT } from "@/constants/testIds/auth";
 
 export default function Topbar() {
   const { t, lang, setLang } = useDashboardLang();
   const { user, logout } = useAuth();
-  const { openAddClient } = useAddClient();
   const { addSearch } = useSearchHistory();
   const navigate = useNavigate();
   const searchInputRef = useRef(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   const firstName = user?.firstName || "";
   const lastName = user?.lastName || "";
@@ -90,51 +93,45 @@ export default function Topbar() {
       <div className="h-full max-w-[1440px] mx-auto flex items-center gap-3 md:gap-4 px-5 md:px-8">
         <div className="md:hidden flex items-center gap-2">
           <button
-            className="w-9 h-9 rounded-lg border border-[#E5E7EB] flex items-center justify-center text-[#4B5563]"
+            type="button"
+            className="w-9 h-9 rounded-lg border border-[#E5E7EB] flex items-center justify-center text-[#4B5563] hover:bg-[#F9FAFB] transition-colors"
             data-testid="topbar-mobile-menu"
-            aria-label="menu"
+            aria-label={t("topbar.menu.mobileNav")}
+            onClick={() => setMobileNavOpen(true)}
           >
             <Menu className="w-4 h-4" />
           </button>
+          <MobileNavSheet open={mobileNavOpen} onOpenChange={setMobileNavOpen} />
           <div className="w-8 h-8 rounded-lg bg-[#0A2540] flex items-center justify-center">
             <span className="font-cabinet text-white text-sm font-bold">M</span>
           </div>
         </div>
 
-        <div className="flex-1 max-w-xl">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={searchQuery}
-              onChange={handleSearchChange}
-              onKeyDown={handleSearchKeyDown}
-              onFocus={() => {
-                if (searchQuery.trim().length >= SEARCH_MIN_CHARS) {
-                  setDropdownOpen(true);
-                }
-              }}
-              placeholder={t("topbar.search.placeholder")}
-              data-testid="topbar-search-input"
-              className="w-full bg-[#F9FAFB] border border-[#E5E7EB] rounded-lg pl-10 pr-14 py-2.5 text-sm placeholder:text-[#9CA3AF] text-[#111827] focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0A2540]/15 focus:border-[#0A2540]/40 transition-all"
-              autoComplete="off"
-            />
-            <kbd className="hidden md:inline-flex absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] px-1.5 py-0.5 rounded border border-[#E5E7EB] text-[#6B7280] bg-white">
-              ⌘K
-            </kbd>
-            <SearchDropdown
-              query={searchQuery}
-              open={dropdownOpen}
-              onClose={() => setDropdownOpen(false)}
-              onNavigate={() => setSearchQuery("")}
-            />
-          </div>
+        <div className="flex-1 max-w-xl relative">
+          <SearchField
+            ref={searchInputRef}
+            value={searchQuery}
+            onChange={handleSearchChange}
+            onKeyDown={handleSearchKeyDown}
+            onFocus={() => {
+              if (searchQuery.trim().length >= SEARCH_MIN_CHARS) {
+                setDropdownOpen(true);
+              }
+            }}
+            placeholder={t("topbar.search.placeholder")}
+            data-testid="topbar-search-input"
+          />
+          <SearchDropdown
+            query={searchQuery}
+            open={dropdownOpen}
+            onClose={() => setDropdownOpen(false)}
+            onNavigate={() => setSearchQuery("")}
+          />
         </div>
 
         <div className="flex items-center gap-2 md:gap-3">
           <div
-            className="hidden sm:flex items-center bg-[#F3F4F6] rounded-md p-0.5"
+            className="flex items-center bg-[#F3F4F6] rounded-lg p-0.5"
             data-testid="topbar-lang-toggle"
           >
             {["fr", "en"].map((code) => (
@@ -154,24 +151,19 @@ export default function Topbar() {
             ))}
           </div>
 
+          <CreditBalanceBadge className="hidden sm:inline-flex" />
+
           <button
-            className="relative w-9 h-9 rounded-lg border border-[#E5E7EB] hover:bg-[#F9FAFB] flex items-center justify-center text-[#4B5563] transition-colors"
+            type="button"
+            className="relative w-9 h-9 rounded-lg border border-[#E5E7EB] bg-[#FAFAFB] flex items-center justify-center text-[#9CA3AF] cursor-not-allowed"
             data-testid="topbar-notifications-btn"
-            onClick={() => toast.message(t("topbar.notifications"), { description: t("toast.comingSoon") })}
+            disabled
+            aria-disabled="true"
             aria-label={t("topbar.notifications")}
+            title={t("toast.comingSoon")}
           >
             <Bell className="w-4 h-4" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#0066FF] ring-2 ring-white" />
           </button>
-
-          <Button
-            data-testid="topbar-add-client-btn"
-            onClick={openAddClient}
-            className="hidden sm:inline-flex bg-[#0A2540] hover:bg-[#173A5E] text-white text-sm rounded-lg h-9 px-3.5 gap-2 shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            {t("topbar.addClient")}
-          </Button>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -205,21 +197,21 @@ export default function Topbar() {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 data-testid="profile-menu-account"
-                onClick={() => navigate("/profile")}
+                onClick={() => navigate("/dashboard/settings")}
               >
                 {t("topbar.menu.account")}
               </DropdownMenuItem>
               <DropdownMenuItem
-                data-testid="profile-menu-settings"
-                onClick={() => navigate("/dashboard/settings")}
-              >
-                {t("nav.settings")}
-              </DropdownMenuItem>
-              <DropdownMenuItem
                 data-testid="profile-menu-billing"
-                onClick={() => navigate("/billing")}
+                onClick={() => navigate("/dashboard/billing")}
               >
                 {t("topbar.menu.billing")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                data-testid="profile-menu-feedback"
+                onClick={() => setFeedbackOpen(true)}
+              >
+                {t("topbar.menu.feedback")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -233,6 +225,7 @@ export default function Topbar() {
           </DropdownMenu>
         </div>
       </div>
+      <BetaFeedbackDialog open={feedbackOpen} onOpenChange={setFeedbackOpen} />
     </header>
   );
 }

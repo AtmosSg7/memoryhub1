@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { useLang } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
+import { translateAuthError } from "@/utils/authErrors";
 import { REGISTER } from "@/constants/testIds/auth";
 import {
   Form,
@@ -64,7 +65,7 @@ const Register = () => {
       });
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      setServerError(err.message || t("auth.errors.registerFailed"));
+      setServerError(translateAuthError(err.message, t, "auth.errors.registerFailed"));
     } finally {
       setLoading(false);
     }

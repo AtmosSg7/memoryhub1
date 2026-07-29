@@ -24,6 +24,7 @@ export default function CommercialLineItemsEditor({ lines, onChange, t, lang, i1
   const descriptionRefs = useRef({});
   const focusKeyRef = useRef(null);
   const label = (key) => t(`${i18nPrefix}.lineItems.${key}`);
+  const examplesHint = t(`${i18nPrefix}.lineItems.examplesHint`);
   const totalLabel = (key) => t(`${i18nPrefix}.totals.${key}`);
 
   useEffect(() => {
@@ -71,7 +72,10 @@ export default function CommercialLineItemsEditor({ lines, onChange, t, lang, i1
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <Label className="text-sm font-medium text-[#374151]">{label("title")}</Label>
+        <div className="min-w-0">
+          <Label className="text-sm font-medium text-[#374151]">{label("title")}</Label>
+          <p className="text-[11px] text-[#9CA3AF] mt-0.5 leading-snug">{examplesHint}</p>
+        </div>
         <Button type="button" variant="outline" size="sm" className="rounded-lg h-7 text-xs px-2" onClick={addLine}>
           <Plus className="w-3 h-3 mr-1" />
           {label("add")}

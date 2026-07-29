@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { listFollowUps } from "@/lib/followUpsApi";
 import { useFollowUpContext } from "@/context/FollowUpContext";
 
-export function useClientFollowUps(clientId, limit = 20) {
+export function useClientFollowUps(clientId, limit = 20, { enabled = true } = {}) {
   const { refreshKey } = useFollowUpContext();
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
@@ -10,7 +10,7 @@ export function useClientFollowUps(clientId, limit = 20) {
   const [error, setError] = useState(null);
 
   const refetch = useCallback(async () => {
-    if (!clientId) {
+    if (!clientId || !enabled) {
       setItems([]);
       setTotal(0);
       setLoading(false);
@@ -29,11 +29,15 @@ export function useClientFollowUps(clientId, limit = 20) {
     } finally {
       setLoading(false);
     }
-  }, [clientId, limit]);
+  }, [clientId, limit, enabled]);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     refetch();
-  }, [refetch, refreshKey]);
+  }, [enabled, refetch, refreshKey]);
 
   return { items, total, loading, error, refetch };
 }

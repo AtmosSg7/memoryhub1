@@ -12,7 +12,7 @@ class CommercialLineItem(BaseModel):
     description: str = Field(..., min_length=1, max_length=500)
     quantity: float = Field(default=1.0, gt=0)
     unitPriceHT: int = Field(..., ge=0)
-    vatRate: int = Field(default=DEFAULT_COMMERCIAL_VAT_RATE, ge=0, le=100)
+    vatRate: Optional[int] = Field(default=None, ge=0, le=100)
     amountHT: int = Field(..., ge=0)
     discount: Optional[str] = Field(default=None, max_length=100)
 

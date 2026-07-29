@@ -9,11 +9,19 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from file_validation import validate_file_magic, validate_mime_for_extension
 from auth import get_current_user, get_db
+from rate_limit import rate_limit
+from observability import get_logger
+
+logger = get_logger(__name__)
+from security_config import MAX_LIST_ITEMS
 from events import record_event
 from storage import get_storage
 
 documents_router = APIRouter(prefix="/documents", tags=["documents"])
+
+upload_rate_limit = rate_limit(max_requests=30, window_seconds=3600)
 
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", "26214400"))
 
@@ -129,19 +137,7 @@ def _validate_extension(ext: str) -> str:
 
 
 def _validate_mime(ext: str, content_type: Optional[str]) -> str:
-    expected = ALLOWED_EXTENSIONS[ext]
-    if content_type:
-        normalized = content_type.split(";")[0].strip().lower()
-        if normalized in ("application/octet-stream", "binary/octet-stream"):
-            return expected
-        if normalized != expected.lower():
-            alt_map = {
-                "image/jpg": "image/jpeg",
-                "application/x-zip-compressed": "application/zip",
-            }
-            if alt_map.get(normalized) != expected.lower() and normalized != expected.lower():
-                pass
-    return expected
+    return validate_mime_for_extension(ext, content_type, ALLOWED_EXTENSIONS)
 
 
 def _storage_key(user_id: str, document_id: str, filename: str) -> str:
@@ -175,11 +171,16 @@ async def _get_owned_document(db, user_id: str, document_id: str) -> dict:
 
 def _file_response(path: Path, mime_type: str, filename: str, inline: bool) -> FileResponse:
     disposition = "inline" if inline else "attachment"
+    headers = {
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+    }
     return FileResponse(
         path=str(path),
         media_type=mime_type,
         filename=filename,
         content_disposition_type=disposition,
+        headers=headers,
     )
 
 
@@ -189,6 +190,7 @@ async def upload_document(
     clientId: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user),
     db=Depends(get_db),
+    _rate=Depends(upload_rate_limit),
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail={"message": "Filename is required."})
@@ -206,6 +208,8 @@ async def upload_document(
             detail={"message": f"File exceeds maximum size of {MAX_UPLOAD_BYTES} bytes."},
         )
 
+    validate_file_magic(ext, content)
+
     user_id = current_user["id"]
     client_id = clientId.strip() if clientId and clientId.strip() else None
     resolved_client_id, client_name = await _resolve_client(db, user_id, client_id)
@@ -219,6 +223,7 @@ async def upload_document(
     try:
         await storage.save(key, content)
     except Exception:
+        logger.exception("Failed to store uploaded file for user %s", user_id)
         raise HTTPException(status_code=500, detail={"message": "Failed to store file."})
 
     doc = {
@@ -239,10 +244,11 @@ async def upload_document(
     try:
         await db.documents.insert_one(doc)
     except Exception:
+        logger.exception("Failed to save document metadata for user %s", user_id)
         try:
             await storage.delete(key)
         except Exception:
-            pass
+            logger.exception("Failed to roll back stored file for user %s", user_id)
         raise HTTPException(status_code=500, detail={"message": "Failed to save document metadata."})
 
     await record_event(
@@ -276,7 +282,7 @@ async def list_documents(
         query["clientId"] = clientId
 
     total = await db.documents.count_documents(query)
-    cursor = db.documents.find(query, DOCUMENT_PROJECTION).sort("updatedAt", -1)
+    cursor = db.documents.find(query, DOCUMENT_PROJECTION).sort("updatedAt", -1).limit(MAX_LIST_ITEMS)
     items = [document_public(doc) async for doc in cursor]
     return DocumentListResponse(items=items, total=total)
 
@@ -345,6 +351,9 @@ async def update_document(
     updates = body.model_dump(exclude_unset=True)
     if not updates:
         return document_public(existing)
+
+    if "name" in updates:
+        updates["name"] = _safe_filename(updates["name"])
 
     if "clientId" in updates:
         client_id, client_name = await _resolve_client(

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { listDocuments } from "@/lib/documentsApi";
 import { useDocumentsContext } from "@/context/DocumentsContext";
 
-export function useClientDocuments(clientId) {
+export function useClientDocuments(clientId, { enabled = true } = {}) {
   const { refreshKey } = useDocumentsContext();
   const [documents, setDocuments] = useState([]);
   const [total, setTotal] = useState(0);
@@ -33,8 +33,9 @@ export function useClientDocuments(clientId) {
   }, [clientId]);
 
   useEffect(() => {
+    if (!enabled) return;
     refetch();
-  }, [refetch, refreshKey]);
+  }, [enabled, refetch, refreshKey]);
 
   return { documents, total, loading, error, refetch };
 }

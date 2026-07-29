@@ -12,7 +12,67 @@ const ROW_GRID =
 const HEADER_CLASS =
   "text-[10px] font-semibold uppercase tracking-wide text-[#9CA3AF] truncate";
 
-export default function CommercialLineItemsDetail({ document, i18nPrefix = "quoteForm", t, lang }) {
+function LineItemsTotals({ document, vatAmount, vatRate, totalLabel, lang }) {
+  return (
+    <div className="rounded-xl border border-[#E7E9EE] bg-[#FAFAFA] px-4 py-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+      <div>
+        <div className="text-[10px] uppercase tracking-wide text-[#9CA3AF] font-semibold">{totalLabel("amountHT")}</div>
+        <div className="font-semibold text-[#111827] tabular-nums">{formatCommercialAmount(document?.amountHT || 0, lang)}</div>
+      </div>
+      <div>
+        <div className="text-[10px] uppercase tracking-wide text-[#9CA3AF] font-semibold">{totalLabel("vat")}</div>
+        <div className="font-semibold text-[#111827] tabular-nums">
+          {vatRate} % ({formatCommercialAmount(vatAmount, lang)})
+        </div>
+      </div>
+      <div>
+        <div className="text-[10px] uppercase tracking-wide text-[#9CA3AF] font-semibold">{totalLabel("amountTTC")}</div>
+        <div className="font-bold text-[#0A2540] tabular-nums">{formatCommercialAmount(document?.amountTTC || 0, lang)}</div>
+      </div>
+    </div>
+  );
+}
+
+function StackedLineItems({ lineItems, label, lang }) {
+  return (
+    <div className="space-y-2">
+      {lineItems.map((line, index) => (
+        <div
+          key={`${line.description}-${index}`}
+          className="rounded-xl border border-[#E7E9EE] bg-white px-4 py-3.5"
+        >
+          <p className="text-sm font-medium text-[#111827] leading-snug">{line.description}</p>
+          <div className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+            <div>
+              <span className="text-[#9CA3AF] font-medium uppercase tracking-wide">{label("quantityShort")}</span>
+              <p className="text-[#111827] font-medium tabular-nums mt-0.5">{formatLineQuantityDisplay(line.quantity)}</p>
+            </div>
+            <div>
+              <span className="text-[#9CA3AF] font-medium uppercase tracking-wide">{label("unitPriceShort")}</span>
+              <p className="text-[#111827] font-medium tabular-nums mt-0.5">{formatCommercialAmount(line.unitPriceHT || 0, lang)}</p>
+            </div>
+            <div>
+              <span className="text-[#9CA3AF] font-medium uppercase tracking-wide">{label("vatShort")}</span>
+              <p className="text-[#111827] font-medium tabular-nums mt-0.5">{line.vatRate ?? 0} %</p>
+            </div>
+            <div>
+              <span className="text-[#9CA3AF] font-medium uppercase tracking-wide">{label("lineTotalShort")}</span>
+              <p className="text-[#0A2540] font-semibold tabular-nums mt-0.5">{formatCommercialAmount(line.amountHT || 0, lang)}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function CommercialLineItemsDetail({
+  document,
+  i18nPrefix = "quoteForm",
+  t,
+  lang,
+  variant = "table",
+}) {
   const label = (key) => t(`${i18nPrefix}.lineItems.${key}`);
   const totalLabel = (key) => t(`${i18nPrefix}.totals.${key}`);
   const lineItems = getValidDocumentLineItems(document);
@@ -36,6 +96,21 @@ export default function CommercialLineItemsDetail({ document, i18nPrefix = "quot
           <span className="font-medium text-[#374151]">{totalLabel("amountTTC")}</span>
           <span className="font-bold text-[#0A2540] tabular-nums">{formatCommercialAmount(document?.amountTTC || 0, lang)}</span>
         </div>
+      </div>
+    );
+  }
+
+  if (variant === "stacked") {
+    return (
+      <div className="space-y-3">
+        <StackedLineItems lineItems={lineItems} label={label} lang={lang} />
+        <LineItemsTotals
+          document={document}
+          vatAmount={vatAmount}
+          vatRate={vatRate}
+          totalLabel={totalLabel}
+          lang={lang}
+        />
       </div>
     );
   }
@@ -67,22 +142,13 @@ export default function CommercialLineItemsDetail({ document, i18nPrefix = "quot
         </div>
       </div>
 
-      <div className="rounded-xl border border-[#E7E9EE] bg-[#FAFAFA] px-4 py-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
-        <div>
-          <div className="text-[10px] uppercase tracking-wide text-[#9CA3AF] font-semibold">{totalLabel("amountHT")}</div>
-          <div className="font-semibold text-[#111827] tabular-nums">{formatCommercialAmount(document?.amountHT || 0, lang)}</div>
-        </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wide text-[#9CA3AF] font-semibold">{totalLabel("vat")}</div>
-          <div className="font-semibold text-[#111827] tabular-nums">
-            {vatRate} % ({formatCommercialAmount(vatAmount, lang)})
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wide text-[#9CA3AF] font-semibold">{totalLabel("amountTTC")}</div>
-          <div className="font-bold text-[#0A2540] tabular-nums">{formatCommercialAmount(document?.amountTTC || 0, lang)}</div>
-        </div>
-      </div>
+      <LineItemsTotals
+        document={document}
+        vatAmount={vatAmount}
+        vatRate={vatRate}
+        totalLabel={totalLabel}
+        lang={lang}
+      />
     </div>
   );
 }

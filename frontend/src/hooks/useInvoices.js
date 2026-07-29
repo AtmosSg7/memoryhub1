@@ -1,67 +1,50 @@
-import { useCallback, useEffect, useState } from "react";
-
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listInvoices } from "@/lib/invoicesApi";
-
 import { useAddInvoice } from "@/context/AddInvoiceContext";
+import { invalidateCommercialQueries } from "@/utils/invalidateCommercialQueries";
 
-
-
-export function useInvoices(statusFilter = "") {
-
+export function useInvoices(statusFilter = "", options = {}) {
   const { refreshKey } = useAddInvoice();
+  const queryClient = useQueryClient();
+  const clientId = options.clientId || "";
+  const from = options.from || "";
+  const to = options.to || "";
+  const timezone = options.timezone || "";
+  const enabled = options.enabled !== false;
 
-  const [invoices, setInvoices] = useState([]);
-
-  const [total, setTotal] = useState(0);
-
-  const [loading, setLoading] = useState(true);
-
-  const [error, setError] = useState(null);
-
-
-
-  const refetch = useCallback(async () => {
-
-    setLoading(true);
-
-    setError(null);
-
-    try {
-
-      const data = await listInvoices({ status: statusFilter || undefined });
-
-      setInvoices(data.items || []);
-
-      setTotal(data.total ?? 0);
-
-    } catch (err) {
-
-      setError(err.message || "Failed to load invoices.");
-
-      setInvoices([]);
-
-      setTotal(0);
-
-    } finally {
-
-      setLoading(false);
-
-    }
-
-  }, [statusFilter]);
-
-
+  const query = useQuery({
+    queryKey: [
+      "invoices",
+      statusFilter || "all",
+      clientId || "all",
+      from || "-",
+      to || "-",
+      timezone || "-",
+    ],
+    queryFn: () =>
+      listInvoices({
+        status: statusFilter || undefined,
+        clientId: clientId || undefined,
+        from: from || undefined,
+        to: to || undefined,
+        timezone: timezone || undefined,
+      }),
+    staleTime: 60_000,
+    enabled,
+  });
 
   useEffect(() => {
+    if (refreshKey > 0) {
+      invalidateCommercialQueries(queryClient);
+    }
+  }, [refreshKey, queryClient]);
 
-    refetch();
-
-  }, [refetch, refreshKey]);
-
-
-
-  return { invoices, total, loading, error, refetch };
-
+  return {
+    invoices: query.data?.items || [],
+    total: query.data?.total ?? 0,
+    loading: query.isLoading,
+    error: query.error?.message || null,
+    refetch: query.refetch,
+  };
 }
-
-

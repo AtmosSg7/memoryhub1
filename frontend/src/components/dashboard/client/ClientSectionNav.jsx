@@ -1,8 +1,10 @@
-import { FileText, FolderClosed, LayoutGrid, Receipt, StickyNote, Clock3 } from "lucide-react";
+import { Contact, FileText, FolderClosed, LayoutGrid, Mail, Receipt, StickyNote, Clock3 } from "lucide-react";
 import { FILTER_PILL_CLASS } from "@/components/dashboard/detailModalLayout";
 
 const SECTIONS = [
   { key: "overview", icon: LayoutGrid, countKey: null },
+  { key: "contacts", icon: Contact, countKey: null },
+  { key: "emails", icon: Mail, countKey: "emails" },
   { key: "quotes", icon: FileText, countKey: "quotes" },
   { key: "invoices", icon: Receipt, countKey: "invoices" },
   { key: "notes", icon: StickyNote, countKey: "notes" },
@@ -19,9 +21,17 @@ export default function ClientSectionNav({ active, counts, t, onChange }) {
     >
       {SECTIONS.map(({ key, icon: Icon, countKey }) => {
         const isActive = active === key;
-        const count = countKey ? counts[countKey] : null;
-        const labelKey = key === "overview" ? "clientDetail.overview" : `nav.${key}`;
-
+        const count = countKey ? counts?.[countKey] : null;
+        const labelKey =
+          key === "overview"
+            ? "clientDetail.overview"
+            : key === "contacts"
+              ? "clientContacts.nav"
+              : key === "emails"
+                ? "clientEmails.nav"
+                : key === "documents"
+                  ? "nav.files"
+                  : `nav.${key}`;
         return (
           <button
             key={key}

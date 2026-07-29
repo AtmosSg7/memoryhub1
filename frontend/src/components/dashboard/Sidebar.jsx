@@ -1,53 +1,12 @@
 import { NavLink } from "react-router-dom";
-import {
-  LayoutDashboard,
-  Users,
-  Search,
-  StickyNote,
-  FileText,
-  Receipt,
-  FolderClosed,
-  Clock3,
-  Mail,
-  Layers,
-  Plug,
-  Settings,
-  Sparkles,
-} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Sparkles } from "lucide-react";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
-
-const groups = (t) => [
-  {
-    label: t("nav.section.workspace"),
-    items: [
-      { to: "/dashboard", key: "dashboard", icon: LayoutDashboard, label: t("nav.dashboard"), end: true },
-      { to: "/dashboard/clients", key: "clients", icon: Users, label: t("nav.clients") },
-      { to: "/dashboard/search", key: "search", icon: Search, label: t("nav.search") },
-      { to: "/dashboard/notes", key: "notes", icon: StickyNote, label: t("nav.notes") },
-    ],
-  },
-  {
-    label: t("nav.section.pipeline"),
-    items: [
-      { to: "/dashboard/quotes", key: "quotes", icon: FileText, label: t("nav.quotes") },
-      { to: "/dashboard/invoices", key: "invoices", icon: Receipt, label: t("nav.invoices") },
-      { to: "/dashboard/catalog", key: "catalog", icon: Layers, label: t("nav.catalog") },
-      { to: "/dashboard/documents", key: "documents", icon: FolderClosed, label: t("nav.documents") },
-      { to: "/dashboard/communications", key: "communications", icon: Mail, label: t("nav.communications") },
-      { to: "/dashboard/timeline", key: "timeline", icon: Clock3, label: t("nav.timeline") },
-    ],
-  },
-  {
-    label: t("nav.section.system"),
-    items: [
-      { to: "/dashboard/integrations", key: "integrations", icon: Plug, label: t("nav.integrations") },
-      { to: "/dashboard/settings", key: "settings", icon: Settings, label: t("nav.settings") },
-    ],
-  },
-];
+import { getSidebarItems } from "@/components/dashboard/sidebarNav";
 
 export default function Sidebar() {
   const { t } = useDashboardLang();
+  const navigate = useNavigate();
 
   return (
     <aside
@@ -71,48 +30,36 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
-        {groups(t).map((group) => (
-          <div key={group.label}>
-            <div className="px-3 text-[10px] uppercase tracking-[0.14em] text-[#9CA3AF] font-medium mb-2">
-              {group.label}
-            </div>
-            <ul className="space-y-0.5">
-              {group.items.map((item) => (
-                <li key={item.key}>
-                  <NavLink
-                    to={item.to}
-                    end={item.end}
-                    data-testid={`sidebar-nav-${item.key}`}
-                    className={({ isActive }) =>
-                      [
-                        "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all",
-                        isActive
-                          ? "bg-[#0A2540] text-white font-medium shadow-[0_1px_2px_rgba(10,37,64,0.16)]"
-                          : "text-[#4B5563] hover:text-[#111827] hover:bg-[#F3F4F6]",
-                      ].join(" ")
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <item.icon
-                          className="w-[18px] h-[18px]"
-                          strokeWidth={isActive ? 2 : 1.75}
-                        />
-                        <span className="flex-1">{item.label}</span>
-                        {item.key === "search" && (
-                          <kbd className="hidden lg:inline-flex text-[10px] px-1.5 py-0.5 rounded border border-[#E5E7EB] text-[#6B7280] bg-white group-hover:bg-white">
-                            ⌘K
-                          </kbd>
-                        )}
-                      </>
-                    )}
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+      <nav className="flex-1 overflow-y-auto px-3 py-4">
+        <ul className="space-y-0.5">
+          {getSidebarItems(t).map((item) => (
+            <li key={item.key}>
+              <NavLink
+                to={item.to}
+                end={item.end}
+                data-testid={`sidebar-nav-${item.key}`}
+                className={({ isActive }) =>
+                  [
+                    "group flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all",
+                    isActive
+                      ? "bg-[#0A2540] text-white font-medium shadow-[0_1px_2px_rgba(10,37,64,0.16)]"
+                      : "text-[#4B5563] hover:text-[#111827] hover:bg-[#F3F4F6]",
+                  ].join(" ")
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <item.icon
+                      className="w-[18px] h-[18px]"
+                      strokeWidth={isActive ? 2 : 1.75}
+                    />
+                    <span className="flex-1">{item.label}</span>
+                  </>
+                )}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
       </nav>
 
       <div className="p-3 border-t border-[#F3F4F6]">
@@ -127,14 +74,16 @@ export default function Sidebar() {
               MemoryHub AI
             </span>
           </div>
-          <p className="relative text-[13px] leading-snug text-white/90 mb-3">
+          <p className="relative text-[13px] leading-snug text-white/90">
             {t("sidebar.upgrade.body")}
           </p>
           <button
-            className="relative w-full text-xs font-medium bg-white text-[#0A2540] rounded-md py-1.5 hover:bg-[#EFF6FF] transition-colors"
-            data-testid="sidebar-upgrade-btn"
+            type="button"
+            onClick={() => navigate("/dashboard/billing")}
+            className="relative inline-flex mt-3 text-[11px] font-semibold text-white uppercase tracking-wide hover:underline"
+            data-testid="sidebar-upgrade-cta"
           >
-            {t("common.upgrade")}
+            {t("sidebar.upgrade.cta")}
           </button>
         </div>
       </div>

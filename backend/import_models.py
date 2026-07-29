@@ -10,6 +10,7 @@ DocumentKind = Literal[
     "delivery_note",
     "receipt",
     "supplier_invoice",
+    "administrative_document",
     "contract",
     "other",
 ]
@@ -76,6 +77,10 @@ class ImportFileInfo(BaseModel):
     sizeBytes: int
     storageProvider: str
     storageKey: str
+    sourceType: Optional[str] = None
+    pageCount: Optional[int] = None
+    imageCount: Optional[int] = None
+    originalFileCount: Optional[int] = None
 
 
 class ClientMatch(BaseModel):

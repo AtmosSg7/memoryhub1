@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Plus, Trash2, Loader2, Eye, Download } from "lucide-react";
+import { FileText, Receipt, StickyNote, Trash2, Loader2, Eye, Download, FolderClosed } from "lucide-react";
 import { toast } from "sonner";
+import { toastApiError } from "@/utils/apiErrors";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { useAddClient } from "@/context/AddClientContext";
+import { useClients } from "@/hooks/useClients";
 import { useAddNote } from "@/context/AddNoteContext";
 import { useAddQuote } from "@/context/AddQuoteContext";
 import { useAddInvoice } from "@/context/AddInvoiceContext";
@@ -15,11 +17,12 @@ import { useClientDocuments } from "@/hooks/useClientDocuments";
 import { useClientTimeline } from "@/hooks/useClientTimeline";
 import { useClientFollowUps } from "@/hooks/useClientFollowUps";
 import { useFollowUpLastMap } from "@/hooks/useFollowUpLastMap";
+import { useListPagination } from "@/hooks/useListPagination";
 import { useDocumentsContext } from "@/context/DocumentsContext";
-import { deleteClient } from "@/lib/clientsApi";
+import { deleteClient, getClient360, updateClient } from "@/lib/clientsApi";
 import { deleteNote } from "@/lib/notesApi";
-import { deleteQuote } from "@/lib/quotesApi";
-import { deleteInvoice } from "@/lib/invoicesApi";
+import { deleteQuote, getQuote } from "@/lib/quotesApi";
+import { deleteInvoice, getInvoice } from "@/lib/invoicesApi";
 import {
   deleteDocument,
   fetchDocumentBlob,
@@ -27,13 +30,9 @@ import {
   uploadDocument,
 } from "@/lib/documentsApi";
 import QuoteStatusFilter from "@/components/dashboard/QuoteStatusFilter";
-import QuoteInvoiceAction from "@/components/dashboard/QuoteInvoiceAction";
-import FollowUpAction from "@/components/dashboard/FollowUpAction";
-import DocumentSendAction from "@/components/dashboard/DocumentSendAction";
-import CommercialPdfDownload from "@/components/dashboard/CommercialPdfDownload";
+import CommercialDocumentRowActions from "@/components/dashboard/CommercialDocumentRowActions";
 import CommercialDocumentDetailModal from "@/components/dashboard/CommercialDocumentDetailModal";
 import InvoiceStatusFilter from "@/components/dashboard/InvoiceStatusFilter";
-import InvoicePaymentAction from "@/components/dashboard/InvoicePaymentAction";
 import NoteTypeFilter from "@/components/dashboard/NoteTypeFilter";
 import DocumentDropzone from "@/components/dashboard/DocumentDropzone";
 import DocumentPreviewModal from "@/components/dashboard/DocumentPreviewModal";
@@ -41,22 +40,34 @@ import DeleteConfirmDialog from "@/components/dashboard/DeleteConfirmDialog";
 import StatusBadge from "@/components/dashboard/StatusBadge";
 import InvoiceStatusBadge from "@/components/dashboard/InvoiceStatusBadge";
 import { ActionButton } from "@/components/dashboard/ActionButton";
-import { PageLoader } from "@/components/dashboard/PageFeedback";
+import { PageLoader, InlineLoader, PageError } from "@/components/dashboard/PageFeedback";
 import ClientDetailHeader from "@/components/dashboard/client/ClientDetailHeader";
 import ClientPortalAccess from "@/components/dashboard/client/ClientPortalAccess";
-import ClientCommercialSummary from "@/components/dashboard/client/ClientCommercialSummary";
 import ClientDocumentHighlight from "@/components/dashboard/client/ClientDocumentHighlight";
 import ClientTimelineList from "@/components/dashboard/client/ClientTimelineList";
 import ClientFollowUpList from "@/components/dashboard/client/ClientFollowUpList";
 import FollowUpLastHint from "@/components/dashboard/FollowUpLastHint";
+import ListCollectionFooter from "@/components/dashboard/ListCollectionFooter";
 import ClientSectionNav from "@/components/dashboard/client/ClientSectionNav";
+import ClientContactsSection from "@/components/dashboard/client/ClientContactsSection";
+import ClientEmailsSection from "@/components/dashboard/client/ClientEmailsSection";
+import Client360Dashboard from "@/components/dashboard/client/Client360Dashboard";
+import ClientInsightsCard from "@/components/dashboard/client/ClientInsightsCard";
 import SectionPanel from "@/components/dashboard/client/SectionPanel";
+import {
+  CLIENT_DIVIDER_LIST_CLASS,
+  CLIENT_FILTER_WRAP_CLASS,
+  CLIENT_LIST_ROW_STATIC_CLASS,
+  CLIENT_NOTE_CARD_CLASS,
+  ClientSectionAction,
+  ClientSectionLink,
+  ClientTabEmpty,
+} from "@/components/dashboard/client/clientDetailLayout";
 import { formatQuoteAmount, formatQuoteDate, getQuoteDate } from "@/utils/quoteDisplay";
 import {
   formatInvoiceAmount,
   formatInvoiceDate,
   getInvoiceDate,
-  invoiceMatchesStatus,
 } from "@/utils/invoiceDisplay";
 import {
   formatNoteDate,
@@ -70,6 +81,8 @@ import {
   getDocumentTypeStyle,
 } from "@/utils/documentDisplay";
 import { computeClientCommercialStats } from "@/utils/clientCommercialStats";
+import { getDisplayCompany, isClientFavorite, normalizeClient } from "@/utils/clientDisplay";
+import { prepareContactsForSave } from "@/utils/clientContacts";
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -77,30 +90,110 @@ export default function ClientDetailPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { t, lang } = useDashboardLang();
   const { openEditClient, notifyClientsChanged } = useAddClient();
+  const { clients: allClients } = useClients();
   const { openAddNote, openEditNote, notifyNotesChanged } = useAddNote();
-  const { openAddQuote, openEditQuote, notifyQuotesChanged } = useAddQuote();
-  const { openAddInvoice, openEditInvoice, notifyInvoicesChanged } = useAddInvoice();
+  const { openAddQuote, openEditQuote, notifyQuotesChanged, pendingOpenQuote, clearPendingOpenQuote, refreshKey: quotesRefreshKey } = useAddQuote();
+  const { openAddInvoice, openEditInvoice, notifyInvoicesChanged, pendingOpenInvoice, clearPendingOpenInvoice, refreshKey: invoicesRefreshKey } = useAddInvoice();
   const { notifyDocumentsChanged } = useDocumentsContext();
 
-  const { client, loading, error } = useClient(id);
+  const { client, loading, error, refetch } = useClient(id);
   const [noteTypeFilter, setNoteTypeFilter] = useState("");
   const [quoteStatusFilter, setQuoteStatusFilter] = useState("");
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState("");
+  const [contactsSaving, setContactsSaving] = useState(false);
+  const [favoriteSaving, setFavoriteSaving] = useState(false);
+  const [client360, setClient360] = useState(null);
+  const [emailsTotal, setEmailsTotal] = useState(0);
+  const activeSection = searchParams.get("section") || "overview";
+  const needsOverview = activeSection === "overview";
+  const needsQuotesSection = activeSection === "quotes";
+  const needsInvoicesSection = activeSection === "invoices";
+  const needsNotesSection = activeSection === "notes";
+  const needsTimelineSection = activeSection === "timeline";
 
   const { notes: clientNotes, total: clientNotesTotal, loading: notesLoading, error: notesError } =
-    useClientNotes(id, noteTypeFilter);
-  const { quotes: allQuotes, total: clientQuotesTotal, loading: quotesLoading, error: quotesError } =
-    useClientQuotes(id, "");
-  const { invoices: allInvoices, total: clientInvoicesTotal, loading: invoicesLoading, error: invoicesError } =
-    useClientInvoices(id, "");
+    useClientNotes(id, noteTypeFilter, { enabled: needsOverview || needsNotesSection });
+  const { quotes: overviewQuotes, total: overviewQuotesTotal } =
+    useClientQuotes(id, "", { enabled: needsOverview });
+  const {
+    quotes: loadedSectionQuotes,
+    total: sectionQuotesTotal,
+    loading: quotesLoading,
+    error: quotesError,
+  } = useClientQuotes(id, quoteStatusFilter, { enabled: needsQuotesSection });
+  const { invoices: overviewInvoices, total: overviewInvoicesTotal } =
+    useClientInvoices(id, "", { enabled: needsOverview });
+  const {
+    invoices: loadedSectionInvoices,
+    total: sectionInvoicesTotal,
+    loading: invoicesLoading,
+    error: invoicesError,
+  } = useClientInvoices(id, invoiceStatusFilter, { enabled: needsInvoicesSection });
   const { documents: clientDocs, total: clientDocsTotal, loading: docsLoading, error: docsError } =
-    useClientDocuments(id);
-  const { events: timelineEvents, loading: timelineLoading, error: timelineError } =
-    useClientTimeline(id);
+    useClientDocuments(id, { enabled: activeSection === "documents" });
+  const {
+    events: timelineEvents,
+    total: timelineTotal,
+    loading: timelineLoading,
+    loadingMore: timelineLoadingMore,
+    error: timelineError,
+    hasMore: timelineHasMore,
+    loadMore: loadMoreTimeline,
+  } = useClientTimeline(id, 40, { enabled: needsOverview || needsTimelineSection });
   const { items: followUps, total: followUpsTotal, loading: followUpsLoading, error: followUpsError } =
-    useClientFollowUps(id, 10);
-  const { getLast: getQuoteFollowUp } = useFollowUpLastMap("quote", allQuotes);
-  const { getLast: getInvoiceFollowUp } = useFollowUpLastMap("invoice", allInvoices);
+    useClientFollowUps(id, 50, { enabled: needsOverview });
+
+  const quotesForSection = needsQuotesSection ? loadedSectionQuotes : overviewQuotes;
+  const invoicesForSection = needsInvoicesSection ? loadedSectionInvoices : overviewInvoices;
+  const clientQuotesTotal = needsQuotesSection ? sectionQuotesTotal : overviewQuotesTotal;
+  const clientInvoicesTotal = needsInvoicesSection ? sectionInvoicesTotal : overviewInvoicesTotal;
+
+  const {
+    pageItems: pagedQuotes,
+    page: quotesPage,
+    setPage: setQuotesPage,
+    totalPages: quotesTotalPages,
+    rangeStart: quotesRangeStart,
+    rangeEnd: quotesRangeEnd,
+    totalItems: quotesLoadedCount,
+  } = useListPagination(quotesForSection, { pageSize: 20, resetKey: `${quoteStatusFilter}:${id}` });
+
+  const {
+    pageItems: pagedInvoices,
+    page: invoicesPage,
+    setPage: setInvoicesPage,
+    totalPages: invoicesTotalPages,
+    rangeStart: invoicesRangeStart,
+    rangeEnd: invoicesRangeEnd,
+    totalItems: invoicesLoadedCount,
+  } = useListPagination(invoicesForSection, { pageSize: 20, resetKey: `${invoiceStatusFilter}:${id}` });
+
+  const {
+    pageItems: pagedNotes,
+    page: notesPage,
+    setPage: setNotesPage,
+    totalPages: notesTotalPages,
+    rangeStart: notesRangeStart,
+    rangeEnd: notesRangeEnd,
+    totalItems: notesLoadedCount,
+  } = useListPagination(clientNotes, { pageSize: 20, resetKey: `${noteTypeFilter}:${id}` });
+
+  const {
+    pageItems: pagedClientDocs,
+    page: docsPage,
+    setPage: setDocsPage,
+    totalPages: docsTotalPages,
+    rangeStart: docsRangeStart,
+    rangeEnd: docsRangeEnd,
+    totalItems: docsLoadedCount,
+  } = useListPagination(clientDocs, { pageSize: 20, resetKey: id });
+
+  const { getLast: getQuoteFollowUp } = useFollowUpLastMap("quote", pagedQuotes, {
+    enabled: needsQuotesSection,
+  });
+  const { getLast: getInvoiceFollowUp } = useFollowUpLastMap("invoice", pagedInvoices, {
+    enabled: needsInvoicesSection,
+  });
 
   const [deletingNote, setDeletingNote] = useState(null);
   const [deleteNoteSubmitting, setDeleteNoteSubmitting] = useState(false);
@@ -115,8 +208,6 @@ export default function ClientDetailPage() {
   const [viewingInvoice, setViewingInvoice] = useState(null);
   const [docActionId, setDocActionId] = useState(null);
 
-  const activeSection = searchParams.get("section") || "overview";
-
   const setSection = (section) => {
     if (section === "overview") {
       searchParams.delete("section");
@@ -127,19 +218,25 @@ export default function ClientDetailPage() {
   };
 
   const stats = useMemo(
-    () => computeClientCommercialStats(allQuotes, allInvoices),
-    [allQuotes, allInvoices],
+    () => computeClientCommercialStats(overviewQuotes, overviewInvoices),
+    [overviewQuotes, overviewInvoices],
   );
 
-  const filteredQuotes = useMemo(
-    () => (quoteStatusFilter ? allQuotes.filter((q) => q.status === quoteStatusFilter) : allQuotes),
-    [allQuotes, quoteStatusFilter],
+  const sortedClients = useMemo(
+    () => [...allClients].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)),
+    [allClients]
   );
+  const clientIndex = sortedClients.findIndex((entry) => entry.id === id);
+  const prevClient = clientIndex > 0 ? sortedClients[clientIndex - 1] : null;
+  const nextClient =
+    clientIndex >= 0 && clientIndex < sortedClients.length - 1
+      ? sortedClients[clientIndex + 1]
+      : null;
 
-  const filteredInvoices = useMemo(
-    () => allInvoices.filter((inv) => invoiceMatchesStatus(inv, invoiceStatusFilter)),
-    [allInvoices, invoiceStatusFilter],
-  );
+  const navigateToClient = (targetId) => {
+    const suffix = activeSection && activeSection !== "overview" ? `?section=${activeSection}` : "";
+    navigate(`/dashboard/clients/${targetId}${suffix}`);
+  };
 
   const recentNotes = useMemo(() => clientNotes.slice(0, 3), [clientNotes]);
 
@@ -148,6 +245,71 @@ export default function ClientDetailPage() {
     [timelineEvents],
   );
 
+  useEffect(() => {
+    if (!pendingOpenQuote) return;
+    setViewingQuote(pendingOpenQuote);
+    clearPendingOpenQuote();
+  }, [pendingOpenQuote, clearPendingOpenQuote]);
+
+  useEffect(() => {
+    if (!pendingOpenInvoice) return;
+    setViewingInvoice(pendingOpenInvoice);
+    clearPendingOpenInvoice();
+  }, [pendingOpenInvoice, clearPendingOpenInvoice]);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    getClient360(id)
+      .then((payload) => {
+        if (cancelled) return;
+        setClient360(payload);
+        setEmailsTotal(payload?.stats?.exchangesTotal ?? 0);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setClient360(null);
+          setEmailsTotal(0);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, quotesRefreshKey, invoicesRefreshKey]);
+
+  useEffect(() => {
+    if (!id) return;
+    import("@/lib/onboardingApi")
+      .then(({ markClient360Viewed }) => markClient360Viewed())
+      .catch(() => {});
+  }, [id]);
+
+  useEffect(() => {
+    if (!viewingQuote?.id) return;
+    let cancelled = false;
+    getQuote(viewingQuote.id)
+      .then((quote) => {
+        if (!cancelled) setViewingQuote(quote);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [quotesRefreshKey, viewingQuote?.id]);
+
+  useEffect(() => {
+    if (!viewingInvoice?.id) return;
+    let cancelled = false;
+    getInvoice(viewingInvoice.id)
+      .then((invoice) => {
+        if (!cancelled) setViewingInvoice(invoice);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [invoicesRefreshKey, viewingInvoice?.id]);
+
   const handleDelete = async () => {
     try {
       await deleteClient(id);
@@ -155,14 +317,64 @@ export default function ClientDetailPage() {
       toast.success(t("toast.clientDeleted"));
       navigate("/dashboard/clients");
     } catch (err) {
-      const message = err.message || t("toast.clientError");
-      if (message.includes("notes ou des documents") || message.includes("linked notes or documents")) {
-        toast.error(t("toast.clientDeleteBlockedLinked"));
-      } else if (message.includes("linked notes") || message.includes("notes y sont")) {
-        toast.error(t("toast.clientDeleteBlockedNotes"));
-      } else {
-        toast.error(message);
-      }
+      toastApiError(err, t, "toast.clientError");
+    }
+  };
+
+  const handleSaveContacts = async (partial) => {
+    if (!client?.id) return;
+    setContactsSaving(true);
+    try {
+      const normalized = normalizeClient(client);
+      const payload = {
+        emails: prepareContactsForSave(partial.emails ?? normalized.emails),
+        phones: prepareContactsForSave(partial.phones ?? normalized.phones),
+        addresses: prepareContactsForSave(partial.addresses ?? normalized.addresses),
+      };
+      // Only send the changed collection(s)
+      const body = {};
+      if (partial.emails) body.emails = payload.emails;
+      if (partial.phones) body.phones = payload.phones;
+      if (partial.addresses) body.addresses = payload.addresses;
+      await updateClient(client.id, body);
+      notifyClientsChanged();
+      await refetch();
+      toast.success(t("toast.clientUpdated"));
+    } catch (err) {
+      toastApiError(err, t, "toast.clientError");
+    } finally {
+      setContactsSaving(false);
+    }
+  };
+
+  const handleSaveTags = async (tags) => {
+    if (!client?.id) return;
+    setContactsSaving(true);
+    try {
+      await updateClient(client.id, { tags });
+      notifyClientsChanged();
+      await refetch();
+      toast.success(t("toast.clientUpdated"));
+    } catch (err) {
+      toastApiError(err, t, "toast.clientError");
+    } finally {
+      setContactsSaving(false);
+    }
+  };
+
+  const handleToggleFavorite = async () => {
+    if (!client?.id || favoriteSaving) return;
+    setFavoriteSaving(true);
+    try {
+      const next = !isClientFavorite(client);
+      await updateClient(client.id, { isFavorite: next });
+      notifyClientsChanged();
+      await refetch();
+      toast.success(next ? t("clientDetail.favoriteOn") : t("clientDetail.favoriteOff"));
+    } catch (err) {
+      toastApiError(err, t, "toast.clientError");
+    } finally {
+      setFavoriteSaving(false);
     }
   };
 
@@ -172,7 +384,7 @@ export default function ClientDetailPage() {
       notifyDocumentsChanged();
       toast.success(t("toast.documentUploaded"));
     } catch (err) {
-      toast.error(err.message || t("toast.documentError"));
+      toastApiError(err, t, "toast.documentError");
     }
   };
 
@@ -182,7 +394,7 @@ export default function ClientDetailPage() {
       const blob = await fetchDocumentBlob(doc.id, "download");
       triggerBlobDownload(blob, doc.name);
     } catch (err) {
-      toast.error(err.message || t("documents.errors.downloadFailed"));
+      toastApiError(err, t, "documents.errors.downloadFailed");
     } finally {
       setDocActionId(null);
     }
@@ -197,7 +409,7 @@ export default function ClientDetailPage() {
       notifyNotesChanged();
       setDeletingNote(null);
     } catch (err) {
-      toast.error(err.message || t("toast.noteError"));
+      toastApiError(err, t, "toast.noteError");
     } finally {
       setDeleteNoteSubmitting(false);
     }
@@ -212,7 +424,7 @@ export default function ClientDetailPage() {
       notifyQuotesChanged();
       setDeletingQuote(null);
     } catch (err) {
-      toast.error(err.message || t("toast.quoteError"));
+      toastApiError(err, t, "toast.quoteError");
     } finally {
       setDeleteQuoteSubmitting(false);
     }
@@ -228,7 +440,7 @@ export default function ClientDetailPage() {
       notifyQuotesChanged();
       setDeletingInvoice(null);
     } catch (err) {
-      toast.error(err.message || t("toast.invoiceError"));
+      toastApiError(err, t, "toast.invoiceError");
     } finally {
       setDeleteInvoiceSubmitting(false);
     }
@@ -243,7 +455,7 @@ export default function ClientDetailPage() {
       toast.success(t("toast.documentDeleted"));
       setDeletingDoc(null);
     } catch (err) {
-      toast.error(err.message || t("toast.documentError"));
+      toastApiError(err, t, "toast.documentError");
     } finally {
       setDeleteDocSubmitting(false);
     }
@@ -255,23 +467,22 @@ export default function ClientDetailPage() {
 
   if (error || !client) {
     return (
-      <div className="space-y-4" data-testid="client-detail-page">
+      <div className="space-y-6" data-testid="client-detail-page">
         <button
           type="button"
           onClick={() => navigate("/dashboard/clients")}
           data-testid="client-detail-back"
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#4B5563] hover:text-[#111827]"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#4B5563] hover:text-[#111827] transition-colors"
         >
           {t("clientDetail.back")}
         </button>
-        <div className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-5 text-sm text-[#991B1B]">
-          {error || t("clientDetail.notFound")}
-        </div>
+        <PageError message={error || t("clientDetail.notFound")} testId="client-detail-error" />
       </div>
     );
   }
 
   const sectionCounts = {
+    emails: emailsTotal,
     quotes: clientQuotesTotal,
     invoices: clientInvoicesTotal,
     notes: clientNotesTotal,
@@ -285,19 +496,42 @@ export default function ClientDetailPage() {
         lang={lang}
         t={t}
         onBack={() => navigate("/dashboard/clients")}
+        onPrevClient={prevClient ? () => navigateToClient(prevClient.id) : undefined}
+        onNextClient={nextClient ? () => navigateToClient(nextClient.id) : undefined}
+        prevClientLabel={prevClient ? getDisplayCompany(prevClient) : ""}
+        nextClientLabel={nextClient ? getDisplayCompany(nextClient) : ""}
         onEdit={() => openEditClient(client)}
         onDelete={handleDelete}
         onCreateQuote={() => openAddQuote(client)}
         onCreateInvoice={() => openAddInvoice(client)}
+        onCreateNote={() => openAddNote(client)}
+        onToggleFavorite={handleToggleFavorite}
+        favoriteSaving={favoriteSaving}
       />
 
       <ClientSectionNav active={activeSection} counts={sectionCounts} t={t} onChange={setSection} />
 
       {activeSection === "overview" && (
         <div className="space-y-6">
-          <ClientCommercialSummary stats={stats} lang={lang} t={t} />
+          <Client360Dashboard
+            clientId={client.id}
+            client={client}
+            commercialStats={stats}
+            lang={lang}
+            t={t}
+            onOpenSection={setSection}
+            initialData={client360}
+          />
 
-          <ClientPortalAccess clientId={client.id} t={t} />
+          <ClientInsightsCard clientId={client.id} t={t} />
+
+          <SectionPanel
+            title={t("clientPortal.title")}
+            subtitle={t("clientPortal.description")}
+            testId="client-portal-section"
+          >
+            <ClientPortalAccess clientId={client.id} t={t} embedded />
+          </SectionPanel>
 
           <SectionPanel id="client-overview-follow-ups" title={t("followUpHistory.title")} testId="client-overview-follow-ups">
             <ClientFollowUpList
@@ -308,13 +542,11 @@ export default function ClientDetailPage() {
               limit={5}
             />
             {followUpsTotal > 5 ? (
-              <button
-                type="button"
+              <ClientSectionLink
                 onClick={() => navigate("/dashboard/communications?category=follow_up&clientId=" + client.id)}
-                className="mt-3 text-xs font-medium text-[#0A2540] hover:underline"
               >
                 {t("followUpHistory.seeAll")} ({followUpsTotal})
-              </button>
+              </ClientSectionLink>
             ) : null}
           </SectionPanel>
 
@@ -323,6 +555,8 @@ export default function ClientDetailPage() {
               type="quote"
               document={stats.lastQuote}
               emptyLabel={t("clientDetail.noQuotes")}
+              emptyActionLabel={t("actions.createQuote")}
+              onEmptyAction={() => openAddQuote(client)}
               lang={lang}
               t={t}
               onClick={setViewingQuote}
@@ -331,19 +565,27 @@ export default function ClientDetailPage() {
               type="invoice"
               document={stats.lastInvoice}
               emptyLabel={t("clientDetail.noInvoices")}
+              emptyActionLabel={t("actions.createInvoice")}
+              onEmptyAction={() => openAddInvoice(client)}
               lang={lang}
               t={t}
               onClick={setViewingInvoice}
             />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <SectionPanel id="client-overview-notes" title={t("nav.notes")} testId="client-overview-notes">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <SectionPanel
+              id="client-overview-notes"
+              title={t("nav.notes")}
+              testId="client-overview-notes"
+              action={
+                <ClientSectionAction icon={StickyNote} onClick={() => openAddNote(client)}>
+                  {t("actions.createNote")}
+                </ClientSectionAction>
+              }
+            >
               {notesLoading ? (
-                <div className="flex items-center text-sm text-[#6B7280]">
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  {t("noteForm.loading")}
-                </div>
+                <InlineLoader label={t("noteForm.loading")} className="py-6 justify-start" />
               ) : recentNotes.length ? (
                 <ul className="space-y-2">
                   {recentNotes.map((n) => {
@@ -354,7 +596,7 @@ export default function ClientDetailPage() {
                         <button
                           type="button"
                           onClick={() => openEditNote(n)}
-                          className="w-full text-left rounded-lg border border-[#F3F4F6] bg-[#FAFAFA] px-3 py-2.5 hover:border-[#0A2540]/20 transition-colors"
+                          className={CLIENT_NOTE_CARD_CLASS}
                           data-testid={`client-overview-note-${n.id}`}
                         >
                           <div className="flex items-center gap-2 mb-0.5">
@@ -370,16 +612,18 @@ export default function ClientDetailPage() {
                   })}
                 </ul>
               ) : (
-                <p className="text-sm text-[#6B7280]">{t("clientDetail.noNotes")}</p>
+                <ClientTabEmpty
+                  icon={StickyNote}
+                  title={t("clientDetail.noNotes")}
+                  cta={t("actions.createNote")}
+                  onCta={() => openAddNote(client)}
+                  testId="client-overview-notes-empty"
+                />
               )}
               {clientNotesTotal > 3 ? (
-                <button
-                  type="button"
-                  onClick={() => setSection("notes")}
-                  className="mt-3 text-xs font-medium text-[#0A2540] hover:underline"
-                >
+                <ClientSectionLink onClick={() => setSection("notes")}>
                   {t("clientDetail.seeAllNotes")} ({clientNotesTotal})
-                </button>
+                </ClientSectionLink>
               ) : null}
             </SectionPanel>
 
@@ -392,18 +636,35 @@ export default function ClientDetailPage() {
                 limit={6}
                 compact
               />
-              {overviewTimelineEvents.length > 6 ? (
-                <button
-                  type="button"
-                  onClick={() => setSection("timeline")}
-                  className="mt-3 text-xs font-medium text-[#0A2540] hover:underline"
-                >
+              {overviewTimelineEvents.length > 6 || timelineTotal > 6 ? (
+                <ClientSectionLink onClick={() => setSection("timeline")}>
                   {t("clientDetail.seeAllTimeline")}
-                </button>
+                </ClientSectionLink>
               ) : null}
             </SectionPanel>
           </div>
         </div>
+      )}
+
+      {activeSection === "contacts" && (
+        <ClientContactsSection
+          client={client}
+          t={t}
+          saving={contactsSaving}
+          onSaveContacts={handleSaveContacts}
+          onSaveTags={handleSaveTags}
+        />
+      )}
+
+      {activeSection === "emails" && (
+        <SectionPanel
+          id="client-section-emails"
+          title={t("clientEmails.title")}
+          subtitle={t("clientEmails.subtitle")}
+          testId="client-section-emails"
+        >
+          <ClientEmailsSection clientId={client.id} t={t} lang={lang} />
+        </SectionPanel>
       )}
 
       {activeSection === "quotes" && (
@@ -412,49 +673,72 @@ export default function ClientDetailPage() {
           title={t("nav.quotes")}
           testId="client-section-quotes"
           action={
-            <ActionButton variant="secondary" onClick={() => openAddQuote(client)} className="gap-1.5 h-8 text-xs">
-              <Plus className="w-3.5 h-3.5" />
+            <ClientSectionAction icon={FileText} onClick={() => openAddQuote(client)}>
               {t("actions.createQuote")}
-            </ActionButton>
+            </ClientSectionAction>
           }
         >
-          <div className="mb-4">
+          <div className={CLIENT_FILTER_WRAP_CLASS}>
             <QuoteStatusFilter value={quoteStatusFilter} onChange={setQuoteStatusFilter} testId="client-quotes-status-filter" />
           </div>
           {quotesLoading ? (
-            <div className="flex items-center text-sm text-[#6B7280]"><Loader2 className="w-4 h-4 animate-spin mr-2" />{t("quoteForm.loading")}</div>
+            <InlineLoader label={t("quoteForm.loading")} className="py-6 justify-start" />
           ) : quotesError ? (
-            <p className="text-sm text-[#991B1B]">{quotesError}</p>
-          ) : filteredQuotes.length ? (
-            <ul className="divide-y divide-[#F3F4F6]">
-              {filteredQuotes.map((q) => (
+            <PageError message={quotesError} testId="client-quotes-error" />
+          ) : quotesForSection.length ? (
+            <>
+            <ul className={CLIENT_DIVIDER_LIST_CLASS}>
+              {pagedQuotes.map((q) => (
                 <li
                   key={q.id}
-                  className="py-3 flex items-center justify-between gap-3 text-sm cursor-pointer hover:bg-[#FAFAFA] -mx-2 px-2 rounded-lg"
+                  className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm cursor-pointer hover:bg-[#FAFAFA] -mx-2 px-2 rounded-lg transition-colors"
                   onClick={() => setViewingQuote(q)}
                   data-testid={`client-quote-${q.id}`}
                 >
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="font-medium text-[#111827]">{q.number} · {q.title}</div>
                     <div className="text-[#6B7280] text-xs mt-0.5">{formatQuoteDate(getQuoteDate(q), lang)}</div>
                     <FollowUpLastHint last={getQuoteFollowUp(q.id)} className="mt-0.5" />
                   </div>
-                  <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <span className="font-medium text-[#111827] tabular-nums">{formatQuoteAmount(q.amountTTC, lang)}</span>
-                    <StatusBadge kind="quote" status={q.status} size="sm" />
-                    <CommercialPdfDownload type="quote" item={q} compact />
-                    <QuoteInvoiceAction quote={q} compact />
-                    <DocumentSendAction entityType="quote" entity={q} compact />
-                    <FollowUpAction entityType="quote" entity={q} compact />
-                    <ActionButton variant="dangerIcon" onClick={() => setDeletingQuote(q)} aria-label={t("actions.delete")}>
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </ActionButton>
+                  <div className="flex items-center justify-between gap-2 sm:justify-end shrink-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-[#111827] tabular-nums">
+                        {formatQuoteAmount(q.amountTTC, lang)}
+                      </span>
+                      <StatusBadge kind="quote" status={q.status} size="sm" />
+                    </div>
+                    <CommercialDocumentRowActions
+                      kind="quote"
+                      document={q}
+                      onDelete={() => setDeletingQuote(q)}
+                    />
                   </div>
                 </li>
               ))}
             </ul>
+            <ListCollectionFooter
+              t={t}
+              loadedCount={quotesLoadedCount}
+              total={clientQuotesTotal}
+              rangeStart={quotesRangeStart}
+              rangeEnd={quotesRangeEnd}
+              page={quotesPage}
+              totalPages={quotesTotalPages}
+              onPageChange={setQuotesPage}
+              testId="client-quotes-footer"
+            />
+            </>
           ) : (
-            <p className="text-sm text-[#6B7280]">{quoteStatusFilter ? t("quotes.empty.filteredDesc") : t("clientDetail.noQuotes")}</p>
+            <ClientTabEmpty
+              icon={FileText}
+              filtered={Boolean(quoteStatusFilter)}
+              filteredTitle={t("quotes.empty.filteredTitle")}
+              filteredDesc={t("quotes.empty.filteredDesc")}
+              title={t("clientDetail.noQuotes")}
+              cta={t("actions.createQuote")}
+              onCta={() => openAddQuote(client)}
+              testId="client-quotes-empty"
+            />
           )}
         </SectionPanel>
       )}
@@ -465,49 +749,72 @@ export default function ClientDetailPage() {
           title={t("nav.invoices")}
           testId="client-section-invoices"
           action={
-            <ActionButton variant="secondary" onClick={() => openAddInvoice(client)} className="gap-1.5 h-8 text-xs">
-              <Plus className="w-3.5 h-3.5" />
+            <ClientSectionAction icon={Receipt} onClick={() => openAddInvoice(client)}>
               {t("actions.createInvoice")}
-            </ActionButton>
+            </ClientSectionAction>
           }
         >
-          <div className="mb-4">
+          <div className={CLIENT_FILTER_WRAP_CLASS}>
             <InvoiceStatusFilter value={invoiceStatusFilter} onChange={setInvoiceStatusFilter} testId="client-invoices-status-filter" />
           </div>
           {invoicesLoading ? (
-            <div className="flex items-center text-sm text-[#6B7280]"><Loader2 className="w-4 h-4 animate-spin mr-2" />{t("invoiceForm.loading")}</div>
+            <InlineLoader label={t("invoiceForm.loading")} className="py-6 justify-start" />
           ) : invoicesError ? (
-            <p className="text-sm text-[#991B1B]">{invoicesError}</p>
-          ) : filteredInvoices.length ? (
-            <ul className="divide-y divide-[#F3F4F6]">
-              {filteredInvoices.map((inv) => (
+            <PageError message={invoicesError} testId="client-invoices-error" />
+          ) : invoicesForSection.length ? (
+            <>
+            <ul className={CLIENT_DIVIDER_LIST_CLASS}>
+              {pagedInvoices.map((inv) => (
                 <li
                   key={inv.id}
-                  className="py-3 flex items-center justify-between gap-3 text-sm cursor-pointer hover:bg-[#FAFAFA] -mx-2 px-2 rounded-lg"
+                  className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm cursor-pointer hover:bg-[#FAFAFA] -mx-2 px-2 rounded-lg transition-colors"
                   onClick={() => setViewingInvoice(inv)}
                   data-testid={`client-invoice-${inv.id}`}
                 >
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="font-medium text-[#111827]">{inv.number} · {inv.title}</div>
                     <div className="text-[#6B7280] text-xs mt-0.5">{formatInvoiceDate(getInvoiceDate(inv), lang)}</div>
                     <FollowUpLastHint last={getInvoiceFollowUp(inv.id)} className="mt-0.5" />
                   </div>
-                  <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <span className="font-medium text-[#111827] tabular-nums">{formatInvoiceAmount(inv.amountTTC, lang)}</span>
-                    <InvoiceStatusBadge invoice={inv} size="sm" />
-                    <CommercialPdfDownload type="invoice" item={inv} compact />
-                    <InvoicePaymentAction invoice={inv} compact />
-                    <DocumentSendAction entityType="invoice" entity={inv} compact />
-                    <FollowUpAction entityType="invoice" entity={inv} compact />
-                    <ActionButton variant="dangerIcon" onClick={() => setDeletingInvoice(inv)} aria-label={t("actions.delete")}>
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </ActionButton>
+                  <div className="flex items-center justify-between gap-2 sm:justify-end shrink-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-[#111827] tabular-nums">
+                        {formatInvoiceAmount(inv.amountTTC, lang)}
+                      </span>
+                      <InvoiceStatusBadge invoice={inv} size="sm" />
+                    </div>
+                    <CommercialDocumentRowActions
+                      kind="invoice"
+                      document={inv}
+                      onDelete={() => setDeletingInvoice(inv)}
+                    />
                   </div>
                 </li>
               ))}
             </ul>
+            <ListCollectionFooter
+              t={t}
+              loadedCount={invoicesLoadedCount}
+              total={clientInvoicesTotal}
+              rangeStart={invoicesRangeStart}
+              rangeEnd={invoicesRangeEnd}
+              page={invoicesPage}
+              totalPages={invoicesTotalPages}
+              onPageChange={setInvoicesPage}
+              testId="client-invoices-footer"
+            />
+            </>
           ) : (
-            <p className="text-sm text-[#6B7280]">{invoiceStatusFilter ? t("invoices.empty.filteredDesc") : t("clientDetail.noInvoices")}</p>
+            <ClientTabEmpty
+              icon={Receipt}
+              filtered={Boolean(invoiceStatusFilter)}
+              filteredTitle={t("invoices.empty.filteredTitle")}
+              filteredDesc={t("invoices.empty.filteredDesc")}
+              title={t("clientDetail.noInvoices")}
+              cta={t("actions.createInvoice")}
+              onCta={() => openAddInvoice(client)}
+              testId="client-invoices-empty"
+            />
           )}
         </SectionPanel>
       )}
@@ -518,28 +825,28 @@ export default function ClientDetailPage() {
           title={t("nav.notes")}
           testId="client-section-notes"
           action={
-            <ActionButton variant="secondary" onClick={() => openAddNote(client)} className="gap-1.5 h-8 text-xs" data-testid="client-notes-add">
-              <Plus className="w-3.5 h-3.5" />
+            <ClientSectionAction icon={StickyNote} onClick={() => openAddNote(client)} testId="client-notes-add">
               {t("actions.createNote")}
-            </ActionButton>
+            </ClientSectionAction>
           }
         >
-          <div className="mb-4">
+          <div className={CLIENT_FILTER_WRAP_CLASS}>
             <NoteTypeFilter value={noteTypeFilter} onChange={setNoteTypeFilter} testId="client-notes-type-filter" />
           </div>
           {notesLoading ? (
-            <div className="flex items-center text-sm text-[#6B7280]"><Loader2 className="w-4 h-4 animate-spin mr-2" />{t("noteForm.loading")}</div>
+            <InlineLoader label={t("noteForm.loading")} className="py-6 justify-start" />
           ) : notesError ? (
-            <p className="text-sm text-[#991B1B]">{notesError}</p>
+            <PageError message={notesError} testId="client-notes-error" />
           ) : clientNotes.length ? (
+            <>
             <ul className="space-y-2">
-              {clientNotes.map((n) => {
+              {pagedNotes.map((n) => {
                 const typeKey = normalizeNoteType(n.type);
                 const typeStyle = getNoteTypeStyle(typeKey);
                 return (
                   <li
                     key={n.id}
-                    className="p-3 rounded-lg bg-[#FAFAFA] border border-[#F3F4F6] cursor-pointer hover:border-[#0A2540]/20"
+                    className="rounded-lg border border-[#E5E7EB] bg-[#FAFAFA] p-3 cursor-pointer hover:border-[#0A2540]/20 transition-colors"
                     onClick={() => openEditNote(n)}
                     data-testid={`client-note-${n.id}`}
                   >
@@ -566,30 +873,52 @@ export default function ClientDetailPage() {
                 );
               })}
             </ul>
+            <ListCollectionFooter
+              t={t}
+              loadedCount={notesLoadedCount}
+              total={clientNotesTotal}
+              rangeStart={notesRangeStart}
+              rangeEnd={notesRangeEnd}
+              page={notesPage}
+              totalPages={notesTotalPages}
+              onPageChange={setNotesPage}
+              testId="client-notes-footer"
+            />
+            </>
           ) : (
-            <p className="text-sm text-[#6B7280]">{noteTypeFilter ? t("notes.empty.filteredDesc") : t("clientDetail.noNotes")}</p>
+            <ClientTabEmpty
+              icon={StickyNote}
+              filtered={Boolean(noteTypeFilter)}
+              filteredTitle={t("notes.empty.filteredTitle")}
+              filteredDesc={t("notes.empty.filteredDesc")}
+              title={t("clientDetail.noNotes")}
+              cta={t("actions.createNote")}
+              onCta={() => openAddNote(client)}
+              testId="client-notes-empty"
+            />
           )}
         </SectionPanel>
       )}
 
       {activeSection === "documents" && (
-        <SectionPanel id="client-section-documents" title={t("nav.documents")} testId="client-section-documents">
+        <SectionPanel id="client-section-documents" title={t("nav.files")} testId="client-section-documents">
           <div className="space-y-4">
             <DocumentDropzone onUpload={handleUploadDocument} compact testId="client-documents-dropzone" />
             {docsLoading ? (
-              <div className="flex items-center text-sm text-[#6B7280]"><Loader2 className="w-4 h-4 animate-spin mr-2" />{t("documents.loading")}</div>
+              <InlineLoader label={t("documents.loading")} className="py-6 justify-start" />
             ) : docsError ? (
-              <p className="text-sm text-[#991B1B]">{docsError}</p>
+              <PageError message={docsError} testId="client-documents-error" />
             ) : clientDocs.length ? (
-              <ul className="divide-y divide-[#F3F4F6]">
-                {clientDocs.map((doc) => {
+              <>
+              <ul className={CLIENT_DIVIDER_LIST_CLASS}>
+                {pagedClientDocs.map((doc) => {
                   const typeStyle = getDocumentTypeStyle(doc);
                   return (
-                    <li key={doc.id} className="py-3 flex items-center justify-between gap-3 text-sm" data-testid={`client-document-${doc.id}`}>
+                    <li key={doc.id} className={CLIENT_LIST_ROW_STATIC_CLASS} data-testid={`client-document-${doc.id}`}>
                       <div className="min-w-0 flex-1">
                         <div className="font-medium text-[#111827] truncate">{doc.name}</div>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className={`inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold ${typeStyle.bg} ${typeStyle.text}`}>
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${typeStyle.bg} ${typeStyle.text}`}>
                             {typeStyle.label}
                           </span>
                           <span className="text-[11px] text-[#9CA3AF]">{formatFileSize(doc.sizeBytes, lang)}</span>
@@ -617,8 +946,24 @@ export default function ClientDetailPage() {
                   );
                 })}
               </ul>
+              <ListCollectionFooter
+                t={t}
+                loadedCount={docsLoadedCount}
+                total={clientDocsTotal}
+                rangeStart={docsRangeStart}
+                rangeEnd={docsRangeEnd}
+                page={docsPage}
+                totalPages={docsTotalPages}
+                onPageChange={setDocsPage}
+                testId="client-documents-list-footer"
+              />
+              </>
             ) : (
-              <p className="text-sm text-[#6B7280]">{t("clientDetail.noItems")}</p>
+              <ClientTabEmpty
+                icon={FolderClosed}
+                title={t("clientDetail.noDocuments")}
+                testId="client-documents-empty"
+              />
             )}
           </div>
         </SectionPanel>
@@ -631,6 +976,9 @@ export default function ClientDetailPage() {
             loading={timelineLoading}
             error={timelineError}
             emptyLabel={t("clientDetail.noTimeline")}
+            hasMore={timelineHasMore}
+            loadingMore={timelineLoadingMore}
+            onLoadMore={loadMoreTimeline}
           />
         </SectionPanel>
       )}
@@ -685,14 +1033,17 @@ export default function ClientDetailPage() {
         document={viewingQuote}
         open={Boolean(viewingQuote)}
         onOpenChange={(open) => !open && setViewingQuote(null)}
-        onEdit={(quote) => { setViewingQuote(null); openEditQuote(quote); }}
+        onEdit={(quote) => openEditQuote(quote)}
+        onDelete={(quote) => setDeletingQuote(quote)}
       />
       <CommercialDocumentDetailModal
         type="invoice"
         document={viewingInvoice}
         open={Boolean(viewingInvoice)}
         onOpenChange={(open) => !open && setViewingInvoice(null)}
-        onEdit={(invoice) => { setViewingInvoice(null); openEditInvoice(invoice); }}
+        onEdit={(invoice) => openEditInvoice(invoice)}
+        onDelete={(invoice) => setDeletingInvoice(invoice)}
+        onDocumentUpdated={(updated) => setViewingInvoice(updated)}
       />
     </div>
   );

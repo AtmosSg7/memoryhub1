@@ -29,19 +29,21 @@ export function usePortal(token) {
     load();
   }, [load]);
 
+  const patchQuote = useCallback((updatedQuote) => {
+    setData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        quotes: prev.quotes.map((q) => (q.id === updatedQuote.id ? updatedQuote : q)),
+      };
+    });
+  }, []);
+
   return {
     data,
     loading,
     error,
     reload: load,
-    patchQuote: (updatedQuote) => {
-      setData((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          quotes: prev.quotes.map((q) => (q.id === updatedQuote.id ? updatedQuote : q)),
-        };
-      });
-    },
+    patchQuote,
   };
 }

@@ -43,3 +43,11 @@ export const VERIFY_EMAIL = {
 	success: 'verify-email-success',
 	error: 'verify-email-error',
 };
+
+export const RESET_PASSWORD = {
+	passwordInput: 'reset-password-password-input',
+	confirmPasswordInput: 'reset-password-confirm-input',
+	submitButton: 'reset-password-submit-button',
+	success: 'reset-password-success',
+	error: 'reset-password-error',
+};

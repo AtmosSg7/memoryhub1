@@ -13,7 +13,7 @@ const navLinks = [
 
 export const Navbar = ({ onJoin, standalone = false }) => {
   const { t, lang, setLang } = useLang();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -106,7 +106,14 @@ export const Navbar = ({ onJoin, standalone = false }) => {
               EN
             </button>
           </div>
-          {isAuthenticated ? (
+          {isLoading ? (
+            <span
+              className="btn-primary text-[13px] py-2.5 px-4 opacity-60 pointer-events-none inline-flex items-center justify-center min-w-[7.5rem]"
+              aria-hidden="true"
+            >
+              …
+            </span>
+          ) : isAuthenticated ? (
             <Link
               to="/dashboard"
               data-testid="nav-cta-dashboard"

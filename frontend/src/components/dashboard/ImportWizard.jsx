@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { commercialDocumentsPath } from "@/utils/commercialDocumentsPath";
 import {
   ArrowLeft,
   ArrowRight,
@@ -8,71 +9,59 @@ import {
   Loader2,
   Sparkles,
   Upload,
-  UserCheck,
-  UserPlus,
   Wand2,
 } from "lucide-react";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
+import { useClients } from "@/hooks/useClients";
+import ClientFilterSelect from "@/components/dashboard/ClientFilterSelect";
+import { PageError } from "@/components/dashboard/PageFeedback";
+import { analyzeImport, confirmImport, getImport, CreditsApiError } from "@/lib/importApi";
+import { fetchImportEstimate } from "@/lib/creditsApi";
+import { fetchCompanyProfile } from "@/lib/companyProfileApi";
+import { invalidateCreditsCache } from "@/hooks/useCredits";
+import AiCreditsEstimate from "@/components/dashboard/AiCreditsEstimate";
 import ImportSuccessPanel from "@/components/dashboard/ImportSuccessPanel";
-import { analyzeImport, confirmImport } from "@/lib/importApi";
+import {
+  AdjustFieldsPanel,
+  AssistantSummaryPanel,
+  ClientAttachmentBanner,
+  LineItemsCards,
+  PremiumReadyPanel,
+  VerificationWarningsPanel,
+} from "@/components/dashboard/ImportAssistantPanels";
 import {
   ANALYSIS_STAGE_KEYS,
   buildConfirmPayload,
   computeAmountTtc,
-  CONFIDENCE_LEVELS,
   CONFIRMABLE_KINDS,
-  DOCUMENT_KINDS,
-  getClientMatchLevel,
-  getConfidenceLevel,
-  getDetectedLineItems,
-  getDetectedSummaryFields,
-  getFieldConfidenceScore,
-  getFieldDisplayValue,
-  formatLineItemAmount,
-  formatLineItemQuantity,
-  hasFieldValue,
+  getResolvedClientLabel,
   IMPORT_ACCEPT,
+  IMPORT_MAX_FILES,
   sessionToFormState,
 } from "@/utils/importDisplay";
 import {
-  centsToEurosInput,
   datetimeLocalToIso,
-  eurosToCents,
-  formatQuoteAmount,
   toDatetimeLocalValue,
 } from "@/utils/quoteDisplay";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { ActionButton } from "@/components/dashboard/ActionButton";
+import {
+  DETAIL_MODAL_CONTENT_CLASS_2XL,
+  DETAIL_MODAL_HEADER_CLASS,
+  DETAIL_MODAL_OVERLAY_CLASS,
+  DETAIL_MODAL_TITLE_CLASS,
+  WorkflowModalFooter,
+} from "@/components/dashboard/detailModalLayout";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 
-const MODAL_OVERLAY_CLASS = "z-[100] bg-[#0A0A0B]/50 backdrop-blur-md";
-const MODAL_CONTENT_CLASS =
-  "z-[100] w-[calc(100%-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto bg-white border border-[#E7E9EE] rounded-[22px] p-6 sm:p-8 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_20px_60px_-15px_rgba(10,10,11,0.35)] sm:rounded-[22px] [&>button]:rounded-lg";
-const FIELD_CLASS =
-  "h-10 rounded-xl border border-[#E7E9EE] bg-white px-4 text-[15px] text-[#111827] shadow-none placeholder:text-[#8A8F98] focus-visible:border-[#0A2540] focus-visible:ring-2 focus-visible:ring-[#0A2540]/15";
-const TEXTAREA_CLASS = `${FIELD_CLASS} min-h-[80px] py-3 h-auto`;
-const LABEL_CLASS = "text-sm font-medium text-[#374151]";
-const SELECT_CONTENT_CLASS = "z-[110] rounded-xl border border-[#E7E9EE] bg-white text-[#111827] shadow-lg";
-
-const STEPS = [1, 2, 3, 4];
-const SUCCESS_STEP = 5;
-const SUMMARY_FIELDS = getDetectedSummaryFields();
+const STEPS = [1, 2, 3];
+const SUCCESS_STEP = 4;
 
 function StepBadge({ active, done, label }) {
   return (
@@ -83,28 +72,6 @@ function StepBadge({ active, done, label }) {
       ].join(" ")}
     >
       {done ? <CheckCircle2 className="w-4 h-4" /> : label}
-    </div>
-  );
-}
-
-function ConfidenceBadge({ level, t }) {
-  const config = CONFIDENCE_LEVELS[level] || CONFIDENCE_LEVELS.missing;
-  return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${config.badgeClass}`}
-    >
-      {t(`importWizard.confidence.${config.key}`)}
-    </span>
-  );
-}
-
-function FieldLabel({ label, session, form, fieldKey, t }) {
-  const score = getFieldConfidenceScore(session, fieldKey);
-  const level = getConfidenceLevel(score, hasFieldValue(form, fieldKey));
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <Label className={LABEL_CLASS}>{label}</Label>
-      <ConfidenceBadge level={level} t={t} />
     </div>
   );
 }
@@ -166,229 +133,16 @@ function AnalyzingPanel({ progress, stageIndex, t }) {
   );
 }
 
-function DetectedSummaryGrid({ session, form, t }) {
-  const labels = {
-    kind: t("importWizard.fields.kind"),
-    client: t("importWizard.summary.client"),
-    externalNumber: t("importWizard.fields.externalNumber"),
-    documentDate: t("importWizard.fields.documentDate"),
-    amountHT: t("importWizard.fields.amountHT"),
-    vatRate: t("importWizard.fields.vatRate"),
-    amountTTC: t("importWizard.fields.amountTTC"),
-  };
-
-  return (
-    <div className="rounded-2xl border border-[#E7E9EE] bg-[#FAFAFA] p-4 sm:p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <Wand2 className="w-4 h-4 text-[#0066FF]" />
-        <h3 className="font-cabinet text-sm font-bold text-[#111827]">
-          {t("importWizard.detectedResults")}
-        </h3>
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {SUMMARY_FIELDS.map((fieldKey) => {
-          const score = getFieldConfidenceScore(session, fieldKey);
-          const level = getConfidenceLevel(score, hasFieldValue(form, fieldKey));
-          return (
-            <div
-              key={fieldKey}
-              className="rounded-xl border border-[#E7E9EE] bg-white px-3 py-2.5"
-            >
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <span className="text-[10px] uppercase tracking-wide text-[#9CA3AF] font-semibold">
-                  {labels[fieldKey]}
-                </span>
-                <ConfidenceBadge level={level} t={t} />
-              </div>
-              <div className="text-sm font-medium text-[#111827] truncate">
-                {getFieldDisplayValue(form, fieldKey, t)}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function DetectedLineItemsPanel({ session, t }) {
-  const lineItems = getDetectedLineItems(session);
-  if (lineItems.length === 0) return null;
-
-  const columns = [
-    { key: "label", label: t("importWizard.lineItems.label") },
-    { key: "quantity", label: t("importWizard.lineItems.quantity") },
-    { key: "unitPriceHT", label: t("importWizard.lineItems.unitPriceHT") },
-    { key: "amountHT", label: t("importWizard.lineItems.amountHT") },
-    { key: "vatRate", label: t("importWizard.lineItems.vatRate") },
-    { key: "discount", label: t("importWizard.lineItems.discount") },
-  ];
-
-  return (
-    <div className="rounded-2xl border border-[#E7E9EE] bg-[#FAFAFA] p-4 sm:p-5">
-      <div className="flex items-center gap-2 mb-4">
-        <FileText className="w-4 h-4 text-[#0066FF]" />
-        <h3 className="font-cabinet text-sm font-bold text-[#111827]">
-          {t("importWizard.lineItems.title")}
-        </h3>
-        <span className="ml-auto text-xs text-[#6B7280]">
-          {lineItems.length} {t("importWizard.lineItems.countLabel")}
-        </span>
-      </div>
-      <div className="hidden sm:block overflow-x-auto rounded-xl border border-[#E7E9EE] bg-white">
-        <table className="min-w-full text-sm">
-          <thead className="bg-[#F9FAFB] text-[#6B7280]">
-            <tr>
-              {columns.map((column) => (
-                <th key={column.key} className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide">
-                  {column.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {lineItems.map((item, index) => (
-              <tr key={`${item.label}-${index}`} className="border-t border-[#F3F4F6]">
-                <td className="px-3 py-2.5 font-medium text-[#111827]">{item.label || item.description || "—"}</td>
-                <td className="px-3 py-2.5 text-[#374151]">{formatLineItemQuantity(item.quantity)}</td>
-                <td className="px-3 py-2.5 text-[#374151]">{formatLineItemAmount(item.unitPriceHT)}</td>
-                <td className="px-3 py-2.5 text-[#374151]">{formatLineItemAmount(item.amountHT)}</td>
-                <td className="px-3 py-2.5 text-[#374151]">
-                  {item.vatRate != null ? `${item.vatRate} %` : "—"}
-                </td>
-                <td className="px-3 py-2.5 text-[#374151]">{item.discount || "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="sm:hidden space-y-3">
-        {lineItems.map((item, index) => (
-          <div key={`${item.label}-${index}`} className="rounded-xl border border-[#E7E9EE] bg-white p-3">
-            <div className="text-sm font-medium text-[#111827]">{item.label || item.description || "—"}</div>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-[#6B7280]">
-              <div>
-                <span className="font-semibold">{t("importWizard.lineItems.quantity")}: </span>
-                {formatLineItemQuantity(item.quantity)}
-              </div>
-              <div>
-                <span className="font-semibold">{t("importWizard.lineItems.unitPriceHT")}: </span>
-                {formatLineItemAmount(item.unitPriceHT)}
-              </div>
-              <div>
-                <span className="font-semibold">{t("importWizard.lineItems.amountHT")}: </span>
-                {formatLineItemAmount(item.amountHT)}
-              </div>
-              <div>
-                <span className="font-semibold">{t("importWizard.lineItems.vatRate")}: </span>
-                {item.vatRate != null ? `${item.vatRate} %` : "—"}
-              </div>
-              {item.discount ? (
-                <div className="col-span-2">
-                  <span className="font-semibold">{t("importWizard.lineItems.discount")}: </span>
-                  {item.discount}
-                </div>
-              ) : null}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ClientMatchCard({ match, selected, onSelect, onUse, t }) {
-  const level = getClientMatchLevel(match.score);
-  return (
-    <div
-      className={[
-        "rounded-2xl border p-4 transition-all",
-        selected ? "border-[#0A2540] bg-[#EFF6FF] shadow-sm" : "border-[#E7E9EE] bg-white",
-      ].join(" ")}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <UserCheck className="w-4 h-4 text-[#0A2540] shrink-0" />
-            <span className="font-medium text-[#111827]">{match.clientName}</span>
-            <ConfidenceBadge level={level} t={t} />
-          </div>
-        </div>
-      </div>
-      <Button
-        type="button"
-        size="sm"
-        className="mt-3 rounded-xl bg-[#0A2540] hover:bg-[#173A5E] w-full sm:w-auto"
-        onClick={() => {
-          onSelect(match.clientId);
-          onUse();
-        }}
-      >
-        {t("importWizard.useThisClient")}
-      </Button>
-    </div>
-  );
-}
-
-function FinalSummaryPanel({ session, form, clientAction, selectedClientId, t, lang }) {
-  const clientLabel =
-    clientAction === "use_existing"
-      ? session?.clientMatches?.find((m) => m.clientId === selectedClientId)?.clientName
-      : form.clientName;
-
-  const actionLabel =
-    form.targetKind === "invoice"
-      ? t("importWizard.finalActionInvoice")
-      : t("importWizard.finalActionQuote");
-
-  return (
-    <div className="rounded-2xl border border-[#E7E9EE] overflow-hidden">
-      <div className="bg-gradient-to-r from-[#0A2540] to-[#173A5E] px-5 py-4 text-white">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4" />
-          <span className="font-cabinet font-bold">{t("importWizard.readyTitle")}</span>
-        </div>
-        <p className="text-sm text-white/80 mt-1">{t("importWizard.readySubtitle")}</p>
-      </div>
-
-      <div className="p-5 space-y-4 bg-white">
-        <div className="flex items-start gap-3 pb-4 border-b border-[#F3F4F6]">
-          <div className="w-10 h-10 rounded-xl bg-[#F3F4F6] flex items-center justify-center shrink-0">
-            <FileText className="w-5 h-5 text-[#4B5563]" />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-wide text-[#9CA3AF] font-semibold">
-              {t("importWizard.originalDocument")}
-            </div>
-            <div className="text-sm font-medium text-[#111827] truncate">{session?.file?.name}</div>
-          </div>
-        </div>
-
-        {[
-          [t("importWizard.fields.kind"), t(`importWizard.kind.${form.targetKind}`)],
-          [t("importWizard.summary.client"), clientLabel || "—"],
-          [t("importWizard.fields.amountTTC"), formatQuoteAmount(form.amountTTC, lang)],
-          [t("importWizard.finalAction"), actionLabel],
-        ].map(([label, value]) => (
-          <div key={label} className="flex items-start justify-between gap-4 text-sm">
-            <span className="text-[#6B7280] shrink-0">{label}</span>
-            <span className="font-medium text-[#111827] text-right">{value}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export default function ImportWizard({
   open,
   onOpenChange,
   defaultKind = null,
+  resumeSessionId = null,
   onSuccess,
 }) {
   const { t, lang } = useDashboardLang();
   const navigate = useNavigate();
+  const { clients, loading: clientsLoading } = useClients();
   const inputRef = useRef(null);
 
   const [step, setStep] = useState(1);
@@ -403,6 +157,26 @@ export default function ImportWizard({
   const [error, setError] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [createdSummary, setCreatedSummary] = useState(null);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [pendingFiles, setPendingFiles] = useState([]);
+  const [estimate, setEstimate] = useState(null);
+  const [estimateLoading, setEstimateLoading] = useState(false);
+  const [defaultVatRate, setDefaultVatRate] = useState(20);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    let cancelled = false;
+    fetchCompanyProfile()
+      .then((data) => {
+        if (!cancelled) setDefaultVatRate(data?.profile?.defaultVatRate ?? 20);
+      })
+      .catch(() => {
+        if (!cancelled) setDefaultVatRate(20);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   const reset = useCallback(() => {
     setStep(1);
@@ -417,11 +191,47 @@ export default function ImportWizard({
     setError(null);
     setDragging(false);
     setCreatedSummary(null);
+    setPendingFile(null);
+    setPendingFiles([]);
+    setEstimate(null);
+    setEstimateLoading(false);
   }, []);
 
   useEffect(() => {
     if (!open) reset();
   }, [open, reset]);
+
+  useEffect(() => {
+    if (!open || !resumeSessionId) return undefined;
+
+    let cancelled = false;
+    setError(null);
+
+    (async () => {
+      try {
+        const data = await getImport(resumeSessionId);
+        if (cancelled) return;
+        if (data.status !== "pending") {
+          setError(t("importWizard.errors.sessionNotPending"));
+          return;
+        }
+        const nextForm = sessionToFormState(data, defaultKind, defaultVatRate);
+        setSession(data);
+        setForm(nextForm);
+        setClientAction(data.clientMatches?.length ? "use_existing" : "create_new");
+        setSelectedClientId(data.clientMatches?.[0]?.clientId || "");
+        setStep(2);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message || t("importWizard.errors.analyze"));
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, resumeSessionId, defaultKind, defaultVatRate, t]);
 
   useEffect(() => {
     if (!analyzing) return undefined;
@@ -454,7 +264,7 @@ export default function ImportWizard({
 
   const applySession = useCallback(
     (nextSession) => {
-      const nextForm = sessionToFormState(nextSession, defaultKind);
+      const nextForm = sessionToFormState(nextSession, defaultKind, defaultVatRate);
       setSession(nextSession);
       setForm(nextForm);
       setClientAction(nextSession.clientMatches?.length ? "use_existing" : "create_new");
@@ -466,23 +276,77 @@ export default function ImportWizard({
         setStep(2);
       }, 450);
     },
-    [defaultKind]
+    [defaultKind, defaultVatRate]
   );
 
-  const handleAnalyze = async (file) => {
-    if (!file || analyzing) return;
+  const loadEstimate = useCallback(async (files) => {
+    const selected = Array.isArray(files) ? files : [files];
+    if (!selected.length) return;
+    setEstimateLoading(true);
+    setEstimate(null);
+    setError(null);
+    try {
+      const totalSize = selected.reduce((sum, file) => sum + file.size, 0);
+      const primary = selected[0];
+      const ext = primary.name.split(".").pop()?.toLowerCase() || "";
+      const payload = {
+        extension: ext,
+        sizeBytes: totalSize,
+        mimeType: primary.type || undefined,
+      };
+      if (selected.length > 1) {
+        payload.files = selected.map((file) => ({
+          extension: file.name.split(".").pop()?.toLowerCase() || ext,
+          sizeBytes: file.size,
+          mimeType: file.type || undefined,
+        }));
+      }
+      const data = await fetchImportEstimate(payload);
+      setEstimate(data);
+    } catch (err) {
+      setError(err.message || t("importWizard.errors.analyze"));
+      setPendingFile(null);
+      setPendingFiles([]);
+    } finally {
+      setEstimateLoading(false);
+    }
+  }, [t]);
+
+  const handleFilePick = useCallback(
+    (fileList) => {
+      if (!fileList?.length || analyzing) return;
+      const files = Array.from(fileList).slice(0, IMPORT_MAX_FILES);
+      setPendingFiles(files);
+      setPendingFile(files.length === 1 ? files[0] : null);
+      loadEstimate(files);
+      if (inputRef.current) inputRef.current.value = "";
+    },
+    [analyzing, loadEstimate]
+  );
+
+  const handleAnalyze = async (files = pendingFiles.length ? pendingFiles : pendingFile ? [pendingFile] : []) => {
+    if (!files.length || analyzing) return;
     setAnalyzing(true);
     setAnalysisProgress(8);
     setAnalysisStageIndex(0);
     setError(null);
     try {
-      const result = await analyzeImport(file);
+      const result = await analyzeImport(files);
+      invalidateCreditsCache();
       applySession(result);
     } catch (err) {
       setAnalyzing(false);
       setAnalysisProgress(0);
       setAnalysisStageIndex(0);
-      setError(err.message || t("importWizard.errors.analyze"));
+      if (err instanceof CreditsApiError && err.status === 402) {
+        setError(
+          t("credits.insufficient")
+            .replace("{available}", String(err.analysesAvailable ?? "—"))
+            .replace("{required}", String(err.analysesRequired ?? "—"))
+        );
+      } else {
+        setError(err.message || t("importWizard.errors.analyze"));
+      }
     } finally {
       if (inputRef.current) inputRef.current.value = "";
     }
@@ -525,17 +389,16 @@ export default function ImportWizard({
       );
       const result = await confirmImport(session.id, payload);
       onSuccess?.(result);
-      const clientLabel =
-        clientAction === "use_existing"
-          ? session.clientMatches?.find((m) => m.clientId === selectedClientId)?.clientName
-          : form.clientName || form.company;
+      const entityId =
+        result.created?.entityId || result.created?.quoteId || result.created?.invoiceId;
+      const entityNumber = result.created?.entityNumber || result.created?.number || form.externalNumber;
       setCreatedSummary({
-        entityType: result.created?.entityType || form.targetKind,
-        entityId: result.created?.entityId || result.created?.quoteId || result.created?.invoiceId,
-        number: result.created?.entityNumber || form.externalNumber,
-        clientName: clientLabel,
+        entityId,
+        entityType: form.targetKind,
+        clientName: getResolvedClientLabel(session, form, clientAction, selectedClientId),
         amountTTC: form.amountTTC,
         documentDate: form.documentDate,
+        number: entityNumber,
       });
       setStep(SUCCESS_STEP);
     } catch (err) {
@@ -548,20 +411,25 @@ export default function ImportWizard({
   const stepLabels = [
     t("importWizard.steps.upload"),
     t("importWizard.steps.review"),
-    t("importWizard.steps.client"),
     t("importWizard.steps.confirm"),
   ];
 
   const handleViewDocument = () => {
     if (!createdSummary?.entityId) return;
     onOpenChange(false);
-    const base =
-      createdSummary.entityType === "invoice" ? "/dashboard/invoices" : "/dashboard/quotes";
-    navigate(`${base}?open=${createdSummary.entityId}`);
+    reset();
+    const kind = createdSummary.entityType === "invoice" ? "invoice" : "quote";
+    navigate(commercialDocumentsPath({ kind, open: createdSummary.entityId }));
   };
 
   const handleImportAnother = () => {
     reset();
+  };
+
+  const handleBackToDashboard = () => {
+    onOpenChange(false);
+    reset();
+    navigate("/dashboard");
   };
 
   const onSuccessStep = step === SUCCESS_STEP;
@@ -569,12 +437,12 @@ export default function ImportWizard({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        overlayClassName={MODAL_OVERLAY_CLASS}
-        className={MODAL_CONTENT_CLASS}
+        overlayClassName={DETAIL_MODAL_OVERLAY_CLASS}
+        className={DETAIL_MODAL_CONTENT_CLASS_2XL}
         data-testid="import-wizard"
       >
-        <DialogHeader>
-          <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-[#111827] flex items-center gap-2">
+        <DialogHeader className={DETAIL_MODAL_HEADER_CLASS}>
+          <DialogTitle className={`${DETAIL_MODAL_TITLE_CLASS} flex items-center gap-2`}>
             {!onSuccessStep ? <Sparkles className="w-5 h-5 text-[#0066FF]" /> : null}
             {onSuccessStep ? t("importWizard.successTitle") : t("importWizard.title")}
           </DialogTitle>
@@ -592,7 +460,7 @@ export default function ImportWizard({
                 <StepBadge key={n} label={n} active={step === n} done={step > n} />
               ))}
             </div>
-            <div className="grid grid-cols-4 gap-1 text-[10px] text-[#6B7280] uppercase tracking-wide mb-4">
+            <div className="grid grid-cols-3 gap-1 text-[10px] text-[#6B7280] uppercase tracking-wide mb-4">
               {stepLabels.map((label) => (
                 <span key={label} className="truncate">
                   {label}
@@ -602,17 +470,22 @@ export default function ImportWizard({
           </>
         ) : null}
 
-        {error && (
-          <div className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm text-[#991B1B]">
-            {error}
-          </div>
-        )}
+        {error ? <PageError message={error} testId="import-wizard-error" /> : null}
+
+        {onSuccessStep && createdSummary ? (
+          <ImportSuccessPanel
+            summary={createdSummary}
+            onView={handleViewDocument}
+            onImportAnother={handleImportAnother}
+            onBackToDashboard={handleBackToDashboard}
+          />
+        ) : null}
 
         {step === 1 && analyzing && (
           <AnalyzingPanel progress={analysisProgress} stageIndex={analysisStageIndex} t={t} />
         )}
 
-        {step === 1 && !analyzing && (
+        {step === 1 && !analyzing && !pendingFiles.length && (
           <div
             className={[
               "border-2 border-dashed rounded-2xl p-8 text-center transition-colors",
@@ -622,7 +495,7 @@ export default function ImportWizard({
             onDrop={(event) => {
               event.preventDefault();
               setDragging(false);
-              handleAnalyze(event.dataTransfer.files?.[0]);
+              handleFilePick(event.dataTransfer.files);
             }}
             onDragOver={(event) => {
               event.preventDefault();
@@ -636,21 +509,79 @@ export default function ImportWizard({
               ref={inputRef}
               type="file"
               accept={IMPORT_ACCEPT}
+              multiple
               className="hidden"
-              onChange={(event) => handleAnalyze(event.target.files?.[0])}
+              onChange={(event) => handleFilePick(event.target.files)}
             />
             <div className="w-12 h-12 rounded-xl bg-[#EFF6FF] text-[#0A2540] flex items-center justify-center mx-auto mb-4">
               <Upload className="w-5 h-5" />
             </div>
             <p className="text-sm font-medium text-[#111827]">{t("importWizard.dropHint")}</p>
             <p className="text-xs text-[#6B7280] mt-1">{t("importWizard.fileTypes")}</p>
+            <p className="text-xs text-[#9CA3AF] mt-1">{t("importWizard.multiImageHint")}</p>
+          </div>
+        )}
+
+        {step === 1 && !analyzing && pendingFiles.length > 0 && (
+          <div className="space-y-4" data-testid="import-wizard-file-ready">
+            <div className="rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 space-y-2">
+              {pendingFiles.map((file) => (
+                <div key={`${file.name}-${file.size}`} className="flex items-center gap-3">
+                  <FileText className="w-5 h-5 text-[#4F46E5] shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-[#111827] truncate">{file.name}</p>
+                    <p className="text-xs text-[#6B7280]">
+                      {(file.size / 1024).toFixed(0)} Ko
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {pendingFiles.length > 1 ? (
+                <p className="text-xs text-[#6B7280] pt-1 border-t border-[#F3F4F6]">
+                  {t("importWizard.multiImageSelected").replace("{count}", String(pendingFiles.length))}
+                </p>
+              ) : null}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setPendingFile(null);
+                  setPendingFiles([]);
+                  setEstimate(null);
+                }}
+              >
+                {t("credits.changeFile")}
+              </Button>
+            </div>
+
+            <AiCreditsEstimate estimate={estimate} loading={estimateLoading} />
+
+            <ActionButton
+              variant="primary"
+              className="w-full justify-center"
+              disabled={estimateLoading || !estimate}
+              onClick={() => handleAnalyze()}
+              data-testid="import-wizard-analyze-btn"
+            >
+              <Wand2 className="w-4 h-4" />
+              {t("credits.analyzeAction")}
+            </ActionButton>
           </div>
         )}
 
         {step === 2 && session && (
-          <div className="space-y-5">
-            <DetectedSummaryGrid session={session} form={form} t={t} />
-            <DetectedLineItemsPanel session={session} t={t} />
+          <div className="space-y-4">
+            <AssistantSummaryPanel session={session} form={form} t={t} lang={lang} />
+            <VerificationWarningsPanel session={session} form={form} t={t} />
+            <ClientAttachmentBanner
+              session={session}
+              form={form}
+              clientAction={clientAction}
+              selectedClientId={selectedClientId}
+              t={t}
+            />
+            <LineItemsCards session={session} t={t} />
 
             {session.duplicateWarning && (
               <div className="rounded-xl border border-[#FDE68A] bg-[#FFFBEB] px-4 py-3 text-sm text-[#92400E]">
@@ -658,268 +589,81 @@ export default function ImportWizard({
               </div>
             )}
 
-            <div>
-              <h3 className="font-cabinet text-sm font-bold text-[#111827] mb-3">
-                {t("importWizard.editDetected")}
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2 sm:col-span-2">
-                  <FieldLabel
-                    label={t("importWizard.fields.kind")}
-                    session={session}
-                    form={form}
-                    fieldKey="kind"
-                    t={t}
-                  />
-                  <Select value={form.targetKind} onValueChange={(value) => updateForm({ targetKind: value })}>
-                    <SelectTrigger className={FIELD_CLASS}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className={SELECT_CONTENT_CLASS}>
-                      {DOCUMENT_KINDS.map((kind) => (
-                        <SelectItem key={kind} value={kind} disabled={!CONFIRMABLE_KINDS.has(kind)}>
-                          {t(`importWizard.kind.${kind}`)}
-                          {!CONFIRMABLE_KINDS.has(kind) ? ` (${t("importWizard.comingSoon")})` : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2 sm:col-span-2">
-                  <Label className={LABEL_CLASS}>{t("importWizard.fields.title")}</Label>
-                  <Input className={FIELD_CLASS} value={form.title} onChange={(e) => updateForm({ title: e.target.value })} />
-                </div>
-
-                <div className="space-y-2">
-                  <FieldLabel
-                    label={t("importWizard.fields.externalNumber")}
-                    session={session}
-                    form={form}
-                    fieldKey="externalNumber"
-                    t={t}
-                  />
-                  <Input
-                    className={FIELD_CLASS}
-                    value={form.externalNumber}
-                    onChange={(e) => updateForm({ externalNumber: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <FieldLabel
-                    label={t("importWizard.fields.documentDate")}
-                    session={session}
-                    form={form}
-                    fieldKey="documentDate"
-                    t={t}
-                  />
-                  <Input
-                    type="datetime-local"
-                    className={FIELD_CLASS}
-                    value={toDatetimeLocalValue(form.documentDate)}
-                    onChange={(e) =>
-                      updateForm({ documentDate: datetimeLocalToIso(e.target.value) || e.target.value })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <FieldLabel
-                    label={t("importWizard.fields.amountHT")}
-                    session={session}
-                    form={form}
-                    fieldKey="amountHT"
-                    t={t}
-                  />
-                  <Input
-                    className={FIELD_CLASS}
-                    value={centsToEurosInput(form.amountHT)}
-                    onChange={(e) => updateForm({ amountHT: eurosToCents(e.target.value) })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <FieldLabel
-                    label={t("importWizard.fields.vatRate")}
-                    session={session}
-                    form={form}
-                    fieldKey="vatRate"
-                    t={t}
-                  />
-                  <Input
-                    className={FIELD_CLASS}
-                    value={String(form.vatRate ?? 20)}
-                    onChange={(e) => updateForm({ vatRate: Number(e.target.value) || 0 })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <FieldLabel
-                    label={t("importWizard.fields.amountTTC")}
-                    session={session}
-                    form={form}
-                    fieldKey="amountTTC"
-                    t={t}
-                  />
-                  <Input className={FIELD_CLASS} readOnly value={centsToEurosInput(form.amountTTC)} />
-                </div>
-
-                <div className="space-y-2 sm:col-span-2">
-                  <Label className={LABEL_CLASS}>{t("importWizard.fields.notes")}</Label>
-                  <Textarea
-                    className={TEXTAREA_CLASS}
-                    value={form.internalNotes}
-                    onChange={(e) => updateForm({ internalNotes: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
+            <AdjustFieldsPanel session={session} form={form} updateForm={updateForm} t={t} defaultVatRate={defaultVatRate} />
           </div>
         )}
 
-        {step === 3 && (
-          <div className="space-y-4">
-            {session?.clientMatches?.length > 0 ? (
-              <div className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] px-4 py-3 text-sm text-[#0A2540]">
-                {t("importWizard.clientFound")}
-              </div>
-            ) : (
-              <div className="rounded-xl border border-[#E7E9EE] bg-[#FAFAFA] px-4 py-3 text-sm text-[#4B5563]">
-                {t("importWizard.noClientFound")}
-              </div>
-            )}
-
-            {session?.clientMatches?.length > 0 && (
-              <div className="space-y-3">
-                {session.clientMatches.map((match) => (
-                  <ClientMatchCard
-                    key={match.clientId}
-                    match={match}
-                    selected={selectedClientId === match.clientId && clientAction === "use_existing"}
-                    onSelect={setSelectedClientId}
-                    onUse={() => setClientAction("use_existing")}
-                    t={t}
-                  />
-                ))}
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setClientAction("create_new")}
-              className={[
-                "w-full rounded-2xl border p-4 text-left transition-all",
-                clientAction === "create_new"
-                  ? "border-[#0A2540] bg-[#EFF6FF]"
-                  : "border-[#E7E9EE] bg-white hover:bg-[#FAFAFA]",
-              ].join(" ")}
-            >
-              <div className="flex items-center gap-2">
-                <UserPlus className="w-4 h-4 text-[#0A2540]" />
-                <span className="font-medium text-[#111827]">{t("importWizard.createClient")}</span>
-              </div>
-              <p className="text-xs text-[#6B7280] mt-1">{t("importWizard.createClientHint")}</p>
-            </button>
-
-            {clientAction === "create_new" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                <div className="space-y-2 sm:col-span-2">
-                  <FieldLabel
-                    label={t("importWizard.fields.clientName")}
-                    session={session}
-                    form={form}
-                    fieldKey="client"
-                    t={t}
-                  />
-                  <Input
-                    className={FIELD_CLASS}
-                    value={form.clientName}
-                    onChange={(e) => updateForm({ clientName: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className={LABEL_CLASS}>{t("importWizard.fields.company")}</Label>
-                  <Input className={FIELD_CLASS} value={form.company} onChange={(e) => updateForm({ company: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label className={LABEL_CLASS}>{t("importWizard.fields.email")}</Label>
-                  <Input className={FIELD_CLASS} value={form.email} onChange={(e) => updateForm({ email: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label className={LABEL_CLASS}>{t("importWizard.fields.phone")}</Label>
-                  <Input className={FIELD_CLASS} value={form.phone} onChange={(e) => updateForm({ phone: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label className={LABEL_CLASS}>{t("importWizard.fields.city")}</Label>
-                  <Input className={FIELD_CLASS} value={form.city} onChange={(e) => updateForm({ city: e.target.value })} />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label className={LABEL_CLASS}>{t("importWizard.fields.address")}</Label>
-                  <Input className={FIELD_CLASS} value={form.address} onChange={(e) => updateForm({ address: e.target.value })} />
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {step === 4 && (
-          <FinalSummaryPanel
+        {step === 3 && session && (
+          <PremiumReadyPanel
             session={session}
             form={form}
             clientAction={clientAction}
             selectedClientId={selectedClientId}
+            clients={clients}
+            clientsLoading={clientsLoading}
+            onClientActionChange={setClientAction}
+            onSelectClient={setSelectedClientId}
+            updateForm={updateForm}
             t={t}
             lang={lang}
           />
         )}
 
-        {onSuccessStep && createdSummary ? (
-          <ImportSuccessPanel
-            summary={createdSummary}
-            onView={handleViewDocument}
-            onImportAnother={handleImportAnother}
-          />
-        ) : null}
-
         {!onSuccessStep ? (
-        <DialogFooter className="gap-2 sm:gap-0 pt-2">
-          {step > 1 && step < 4 && (
-            <Button type="button" variant="outline" className="rounded-xl" onClick={() => setStep((s) => s - 1)}>
-              <ArrowLeft className="w-4 h-4 mr-1" />
-              {t("importWizard.back")}
-            </Button>
-          )}
-          {step > 1 && step < 4 && (
-            <Button
-              type="button"
-              className="rounded-xl bg-[#0A2540] hover:bg-[#173A5E]"
-              disabled={!canGoNext}
-              onClick={() => setStep((s) => s + 1)}
-            >
-              {t("importWizard.next")}
-              <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
-          )}
-          {step === 4 && (
-            <Button
-              type="button"
-              className="rounded-xl bg-[#0A2540] hover:bg-[#173A5E] min-w-[180px]"
-              disabled={confirming}
-              onClick={handleConfirm}
-              data-testid="import-wizard-confirm"
-            >
-              {confirming ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {t("importWizard.confirming")}
-                </>
-              ) : (
-                t("importWizard.confirm")
+          <div className="flex flex-col gap-2 pt-2">
+            {step > 1 && step < 3 && !canGoNext ? (
+              <p className="text-[11px] text-[#9CA3AF] text-right" data-testid="import-wizard-next-hint">
+                {t("importWizard.nextBlockedStep2")}
+              </p>
+            ) : null}
+            <WorkflowModalFooter>
+              {step > 1 && step < SUCCESS_STEP && (
+                <ActionButton
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setStep((s) => s - 1)}
+                  className="gap-1.5"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  {t("importWizard.back")}
+                </ActionButton>
               )}
-            </Button>
-          )}
-        </DialogFooter>
+              {step === 2 && (
+                <ActionButton
+                  type="button"
+                  variant="primary"
+                  disabled={!canGoNext}
+                  onClick={() => setStep(3)}
+                  className="gap-1.5"
+                >
+                  {t("importWizard.next")}
+                  <ArrowRight className="w-4 h-4" />
+                </ActionButton>
+              )}
+              {step === 3 && (
+                <ActionButton
+                  type="button"
+                  variant="primary"
+                  disabled={!canGoNext || confirming}
+                  onClick={handleConfirm}
+                  className="gap-1.5 min-w-[200px]"
+                  data-testid="import-wizard-confirm"
+                >
+                  {confirming ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {t("importWizard.confirming")}
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      {t("importWizard.confirmAuto")}
+                    </>
+                  )}
+                </ActionButton>
+              )}
+            </WorkflowModalFooter>
+          </div>
         ) : null}
       </DialogContent>
     </Dialog>

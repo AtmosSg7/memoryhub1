@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { listNotes } from "@/lib/notesApi";
 import { useAddNote } from "@/context/AddNoteContext";
 
-export function useClientNotes(clientId, typeFilter = "") {
+export function useClientNotes(clientId, typeFilter = "", { enabled = true } = {}) {
   const { refreshKey } = useAddNote();
   const [notes, setNotes] = useState([]);
   const [total, setTotal] = useState(0);
@@ -10,7 +10,7 @@ export function useClientNotes(clientId, typeFilter = "") {
   const [error, setError] = useState(null);
 
   const refetch = useCallback(async () => {
-    if (!clientId) {
+    if (!clientId || !enabled) {
       setNotes([]);
       setTotal(0);
       setLoading(false);
@@ -33,11 +33,15 @@ export function useClientNotes(clientId, typeFilter = "") {
     } finally {
       setLoading(false);
     }
-  }, [clientId, typeFilter]);
+  }, [clientId, typeFilter, enabled]);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     refetch();
-  }, [refetch, refreshKey]);
+  }, [enabled, refetch, refreshKey]);
 
   return { notes, total, loading, error, refetch };
 }

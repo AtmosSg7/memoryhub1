@@ -1,31 +1,32 @@
-import { Pencil } from "lucide-react";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import CommercialLineItemsDetail from "@/components/dashboard/CommercialLineItemsDetail";
-import CommercialPdfDownload from "@/components/dashboard/CommercialPdfDownload";
 import { formatQuoteAmount, formatQuoteDate, getQuoteDate } from "@/utils/quoteDisplay";
 import { formatInvoiceAmount, formatInvoiceDate, getInvoiceDate, normalizeInvoiceStatus } from "@/utils/invoiceDisplay";
 import StatusBadge from "@/components/dashboard/StatusBadge";
 import InvoiceStatusBadge from "@/components/dashboard/InvoiceStatusBadge";
 import InvoicePaymentSummary from "@/components/dashboard/InvoicePaymentSummary";
-import InvoicePaymentAction from "@/components/dashboard/InvoicePaymentAction";
-import FollowUpAction from "@/components/dashboard/FollowUpAction";
-import DocumentSendAction from "@/components/dashboard/DocumentSendAction";
 import FollowUpLastHint from "@/components/dashboard/FollowUpLastHint";
 import { useFollowUpLastMap } from "@/hooks/useFollowUpLastMap";
-import QuoteInvoiceAction from "@/components/dashboard/QuoteInvoiceAction";
 import QuoteAcceptedBanner from "@/components/dashboard/QuoteAcceptedBanner";
-import { ActionButton } from "@/components/dashboard/ActionButton";
+import CommercialDocumentDetailFooter from "@/components/dashboard/CommercialDocumentDetailFooter";
 import {
   DETAIL_MODAL_CONTENT_CLASS,
   DETAIL_MODAL_OVERLAY_CLASS,
-  DetailModalFooter,
   DetailModalSection,
   DetailModalSummary,
   DetailModalSummaryItem,
 } from "@/components/dashboard/detailModalLayout";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-export default function CommercialDocumentDetailModal({ type, document, open, onOpenChange, onEdit }) {
+export default function CommercialDocumentDetailModal({
+  type,
+  document,
+  open,
+  onOpenChange,
+  onEdit,
+  onDelete,
+  onDocumentUpdated,
+}) {
   const { t, lang } = useDashboardLang();
   const { getLast } = useFollowUpLastMap(type, document ? [document] : []);
   const lastFollowUp = document ? getLast(document.id) : null;
@@ -42,10 +43,15 @@ export default function CommercialDocumentDetailModal({ type, document, open, on
     ? formatQuoteAmount(document.amountTTC, lang)
     : formatInvoiceAmount(document.amountTTC, lang);
   const notes = (document.internalNotes || "").trim();
-  const canCreateInvoice = isQuote && document.status === "accepted" && !document.invoiceId;
 
   const handleEdit = () => {
-    if (onEdit) onEdit(document);
+    onOpenChange(false);
+    onEdit?.(document);
+  };
+
+  const handleDelete = () => {
+    onOpenChange(false);
+    onDelete?.(document);
   };
 
   return (
@@ -104,35 +110,13 @@ export default function CommercialDocumentDetailModal({ type, document, open, on
           ) : null}
         </div>
 
-        <DetailModalFooter
-          secondary={
-            <>
-              <CommercialPdfDownload type={type} item={document} />
-              <DocumentSendAction entityType={type} entity={document} />
-              {!isQuote ? (
-                <InvoicePaymentAction invoice={document} onUpdated={() => onOpenChange(false)} />
-              ) : null}
-              <FollowUpAction entityType={type} entity={document} />
-            </>
-          }
-          primary={
-            <>
-              {canCreateInvoice ? (
-                <QuoteInvoiceAction quote={document} prominent />
-              ) : isQuote ? (
-                <QuoteInvoiceAction quote={document} />
-              ) : null}
-              <ActionButton variant="secondary" onClick={() => onOpenChange(false)}>
-                {t("actions.close")}
-              </ActionButton>
-              {onEdit && (
-                <ActionButton variant={canCreateInvoice ? "secondary" : "primary"} onClick={handleEdit} className="gap-1.5">
-                  <Pencil className="w-3.5 h-3.5" />
-                  {t("actions.edit")}
-                </ActionButton>
-              )}
-            </>
-          }
+        <CommercialDocumentDetailFooter
+          type={type}
+          document={document}
+          onClose={() => onOpenChange(false)}
+          onEdit={onEdit ? handleEdit : undefined}
+          onDelete={onDelete ? handleDelete : undefined}
+          onDocumentUpdated={onDocumentUpdated}
         />
       </DialogContent>
     </Dialog>

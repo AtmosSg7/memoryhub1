@@ -5,8 +5,14 @@ from typing import List, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from security_config import MAX_LIST_ITEMS
 from auth import get_current_user, get_db
 from events import record_event
+from personal_reminder_service import (
+    clear_personal_reminder_for_note,
+    delete_personal_reminders_for_note,
+    upsert_personal_reminder,
+)
 
 notes_router = APIRouter(prefix="/notes", tags=["notes"])
 
@@ -24,6 +30,7 @@ class NoteCreate(BaseModel):
     clientId: Optional[str] = None
     type: NoteType = "general"
     noteDate: Optional[str] = None
+    remindAt: Optional[str] = None
 
     @field_validator("content")
     @classmethod
@@ -49,6 +56,8 @@ class NoteUpdate(BaseModel):
     clientId: Optional[str] = None
     type: Optional[NoteType] = None
     noteDate: Optional[str] = None
+    remindAt: Optional[str] = None
+    clearReminder: Optional[bool] = None
 
     @field_validator("content")
     @classmethod
@@ -78,6 +87,7 @@ class NotePublic(BaseModel):
     clientName: Optional[str] = None
     type: NoteType = "general"
     noteDate: str
+    remindAt: Optional[str] = None
     createdAt: str
     updatedAt: str
 
@@ -123,6 +133,7 @@ def note_public(doc: dict) -> NotePublic:
         clientName=doc.get("clientName"),
         type=_normalize_type(doc.get("type")),
         noteDate=_resolve_note_date(doc),
+        remindAt=doc.get("remindAt"),
         createdAt=doc["createdAt"],
         updatedAt=doc["updatedAt"],
     )
@@ -210,6 +221,13 @@ async def create_note(
         client_id=client_id,
         metadata=_note_event_metadata(doc),
     )
+    if body.remindAt:
+        await upsert_personal_reminder(db, current_user["id"], doc, body.remindAt)
+        refreshed = await db.notes.find_one(
+            {**_user_filter(current_user["id"]), "id": doc["id"]},
+            NOTE_PROJECTION,
+        )
+        return note_public(refreshed or doc)
     return note_public(doc)
 
 
@@ -240,6 +258,7 @@ async def list_notes(
         {"$match": query},
         {"$addFields": {"_sortDate": {"$ifNull": ["$noteDate", "$createdAt"]}}},
         {"$sort": {"_sortDate": -1}},
+        {"$limit": MAX_LIST_ITEMS},
         {"$project": {"_id": 0, "userId": 0, "_sortDate": 0}},
     ])
     items = [note_public(doc) async for doc in cursor]
@@ -279,6 +298,9 @@ async def update_note(
     if not updates:
         return note_public(existing)
 
+    clear_reminder = updates.pop("clearReminder", None)
+    remind_at = updates.pop("remindAt", None)
+
     if "clientId" in updates:
         client_id, client_name = await _resolve_client(
             db, current_user["id"], updates["clientId"]
@@ -303,7 +325,7 @@ async def update_note(
 
     await db.notes.update_one(
         {"userId": current_user["id"], "id": note_id},
-        {"$set": {k: merged[k] for k in merged if k not in ("id", "userId", "createdAt")}},
+        {"$set": {k: merged[k] for k in merged if k not in ("id", "userId", "createdAt", "clearReminder")}},
     )
 
     await record_event(
@@ -315,6 +337,31 @@ async def update_note(
         client_id=merged.get("clientId"),
         metadata=_note_event_metadata(merged),
     )
+
+    public_doc = {k: v for k, v in merged.items() if k not in ("userId", "_id")}
+
+    if clear_reminder:
+        await clear_personal_reminder_for_note(db, current_user["id"], note_id)
+        public_doc = await db.notes.find_one(
+            {**_user_filter(current_user["id"]), "id": note_id},
+            NOTE_PROJECTION,
+        )
+        return note_public(public_doc or merged)
+    if remind_at:
+        await upsert_personal_reminder(db, current_user["id"], merged, remind_at)
+        refreshed = await db.notes.find_one(
+            {**_user_filter(current_user["id"]), "id": note_id},
+            NOTE_PROJECTION,
+        )
+        if refreshed:
+            return note_public(refreshed)
+    elif remind_at is not None and remind_at == "":
+        await clear_personal_reminder_for_note(db, current_user["id"], note_id)
+        public_doc = await db.notes.find_one(
+            {**_user_filter(current_user["id"]), "id": note_id},
+            NOTE_PROJECTION,
+        )
+        return note_public(public_doc or merged)
 
     public_doc = {k: v for k, v in merged.items() if k not in ("userId", "_id")}
     return note_public(public_doc)
@@ -338,6 +385,8 @@ async def delete_note(
     )
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail={"message": "Note not found."})
+
+    await delete_personal_reminders_for_note(db, current_user["id"], note_id)
 
     await record_event(
         db,

@@ -1,5 +1,5 @@
-import os
 import re
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from fastapi import HTTPException, UploadFile
 
-from analysis import AnalysisContext, get_analyzer
+from file_validation import validate_file_magic
 from client_matching import match_clients
 from events import record_event
 from import_handlers import get_import_handler, is_confirm_kind_supported
@@ -25,15 +25,22 @@ from import_models import (
     ImportSessionStatus,
     utc_now_iso,
 )
+from analysis import AnalysisContext, AnalysisPage, get_analyzer
+from ai_import_estimator import ImportEstimateInput, estimate_import
+from import_limits import ImportUploadInput, validate_prepared_limits, validate_upload_inputs
+from import_preprocessor import ImportPage, RawUpload, prepare_import_document
+from analysis_presentation_service import (
+    import_analysis_cost_credits,
+    import_estimate_public,
+    insufficient_analyses_detail,
+)
+from ai_usage_service import consume_for_import, require_credits_for_import
+from ai_usage_event_service import record_import_ai_usage
+from credit_exceptions import InsufficientCreditsError
+from observability import get_logger
 from storage import get_storage
 
-IMPORT_MIME_TYPES = {
-    "pdf": "application/pdf",
-    "jpg": "image/jpeg",
-    "jpeg": "image/jpeg",
-    "png": "image/png",
-    "webp": "image/webp",
-}
+logger = get_logger(__name__)
 
 SESSION_PROJECTION = {"_id": 0, "userId": 0}
 
@@ -66,15 +73,6 @@ def _validate_import_extension(ext: str) -> str:
             },
         )
     return ext
-
-
-def _validate_import_mime(ext: str, content_type: Optional[str]) -> str:
-    expected = IMPORT_MIME_TYPES[ext]
-    if content_type:
-        normalized = content_type.split(";")[0].strip().lower()
-        if normalized in ("application/octet-stream", "binary/octet-stream"):
-            return expected
-    return expected
 
 
 def _import_storage_key(user_id: str, session_id: str, filename: str) -> str:
@@ -112,6 +110,17 @@ def _session_public(doc: dict) -> ImportSessionPublic:
     )
 
 
+def _check_session_not_expired(doc: dict) -> None:
+    expires_at = doc.get("expiresAt")
+    if not expires_at:
+        return
+    exp_dt = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+    if exp_dt.tzinfo is None:
+        exp_dt = exp_dt.replace(tzinfo=timezone.utc)
+    if datetime.now(timezone.utc) > exp_dt:
+        raise HTTPException(status_code=410, detail={"message": "Import session has expired."})
+
+
 async def _load_owned_session(db, user_id: str, session_id: str) -> dict:
     doc = await db.import_sessions.find_one(
         {**_user_filter(user_id), "id": session_id},
@@ -119,6 +128,7 @@ async def _load_owned_session(db, user_id: str, session_id: str) -> dict:
     )
     if not doc:
         raise HTTPException(status_code=404, detail={"message": "Import session not found."})
+    _check_session_not_expired(doc)
     return doc
 
 
@@ -154,30 +164,157 @@ async def _find_duplicate_warning(
     return None
 
 
-async def analyze_import_file(
+async def estimate_import_file(
+    db,
+    *,
+    extension: str,
+    size_bytes: int,
+    mime_type: Optional[str] = None,
+    content: Optional[bytes] = None,
+    file_count: int = 1,
+    page_count: Optional[int] = None,
+) -> dict:
+    """Preview credit cost before running OpenAI analysis."""
+    if size_bytes <= 0:
+        raise HTTPException(status_code=400, detail={"message": "File size must be positive."})
+    ext = _validate_import_extension(_normalize_extension(extension))
+    pages = page_count
+    if pages is None and content is not None and ext == "pdf":
+        from ai_import_estimator import estimate_page_count
+
+        pages = estimate_page_count(extension=ext, size_bytes=size_bytes, content=content)
+    result = await estimate_import(
+        db,
+        ImportEstimateInput(extension=ext, size_bytes=size_bytes, mime_type=mime_type),
+        content=content,
+    )
+    public = import_estimate_public(
+        tier_key=result.tier_key,
+        page_count_estimate=pages or result.page_count_estimate,
+        requires_ocr=result.requires_ocr,
+        factors=result.factors,
+    ).model_dump()
+    public["fileCount"] = max(1, file_count)
+    return public
+
+
+async def estimate_import_files(
+    db,
+    *,
+    files: List[dict],
+) -> dict:
+    if not files:
+        raise HTTPException(status_code=400, detail={"message": "At least one file is required."})
+
+    total_size = sum(int(item.get("sizeBytes") or 0) for item in files)
+    primary = files[0]
+    extension = _normalize_extension(primary.get("extension") or "")
+    if not extension:
+        raise HTTPException(status_code=400, detail={"message": "File extension is required."})
+
+    return await estimate_import_file(
+        db,
+        extension=extension,
+        size_bytes=total_size,
+        mime_type=primary.get("mimeType"),
+        file_count=len(files),
+    )
+
+
+def _normalize_extension(extension: str) -> str:
+    return (extension or "").strip().lower().lstrip(".")
+
+
+async def _read_uploads(files: List[UploadFile]) -> List[RawUpload]:
+    uploads: List[RawUpload] = []
+    for file in files:
+        if not file.filename:
+            continue
+        content = await file.read()
+        uploads.append(
+            RawUpload(
+                filename=file.filename,
+                content=content,
+                content_type=file.content_type,
+            )
+        )
+    return uploads
+
+
+def _analysis_pages(pages: List[ImportPage]) -> List[AnalysisPage]:
+    return [
+        AnalysisPage(
+            index=page.index,
+            content=page.content,
+            mime_type=page.mime_type,
+            extension=page.extension,
+        )
+        for page in pages
+    ]
+
+
+async def analyze_import_files(
     db,
     user_id: str,
-    file: UploadFile,
+    files: List[UploadFile],
 ) -> ImportSessionPublic:
-    if not file.filename:
+    if not files:
+        raise HTTPException(status_code=400, detail={"message": "At least one file is required."})
+
+    raw_uploads = await _read_uploads(files)
+    if not raw_uploads:
         raise HTTPException(status_code=400, detail={"message": "Filename is required."})
 
-    ext = _validate_import_extension(_extension_from_filename(file.filename))
-    mime_type = _validate_import_mime(ext, file.content_type)
+    validate_upload_inputs(
+        [
+            ImportUploadInput(
+                filename=upload.filename,
+                extension=_extension_from_filename(upload.filename),
+                size_bytes=len(upload.content),
+            )
+            for upload in raw_uploads
+        ]
+    )
 
-    content = await file.read()
+    for upload in raw_uploads:
+        ext = _validate_import_extension(_extension_from_filename(upload.filename))
+        validate_file_magic(ext, upload.content)
+
+    prepared = prepare_import_document(raw_uploads)
+    validate_prepared_limits(
+        page_count=prepared.page_count,
+        image_count=prepared.image_count or len(raw_uploads),
+        total_size_bytes=prepared.total_size_bytes,
+    )
+
+    ext = prepared.extension
+    mime_type = prepared.mime_type
+    content = prepared.content
     size = len(content)
-    max_bytes = int(os.environ.get("MAX_UPLOAD_BYTES", "26214400"))
-    if size == 0:
-        raise HTTPException(status_code=400, detail={"message": "File is empty."})
-    if size > max_bytes:
-        raise HTTPException(
-            status_code=400,
-            detail={"message": f"File exceeds maximum size of {max_bytes} bytes."},
-        )
+
+    import_estimate = await estimate_import(
+        db,
+        ImportEstimateInput(extension=ext, size_bytes=size, mime_type=mime_type),
+        content=content,
+    )
+    tier_key = import_estimate.tier_key
+    estimated_cost = import_analysis_cost_credits()
 
     session_id = str(uuid.uuid4())
-    safe_name = _safe_filename(file.filename)
+
+    try:
+        await require_credits_for_import(
+            db,
+            user_id,
+            cost=estimated_cost,
+            tier_key=tier_key,
+        )
+    except InsufficientCreditsError as exc:
+        detail = insufficient_analyses_detail(exc)
+        detail["tierKey"] = tier_key
+        raise HTTPException(status_code=402, detail=detail) from exc
+
+    safe_name = _safe_filename(prepared.filename)
     storage = get_storage()
     storage_key = _import_storage_key(user_id, session_id, safe_name)
     now = utc_now_iso()
@@ -188,22 +325,97 @@ async def analyze_import_file(
         raise HTTPException(status_code=500, detail={"message": "Failed to store import file."})
 
     analyzer = get_analyzer()
+    analyze_started = time.monotonic()
+    analysis_context = AnalysisContext(
+        filename=safe_name,
+        mime_type=mime_type,
+        extension=ext,
+        user_id=user_id,
+        pages=_analysis_pages(prepared.pages),
+        source_type=prepared.source_type,
+        page_count=prepared.page_count,
+        image_count=prepared.image_count or len(raw_uploads),
+        preprocessing_warnings=prepared.preprocessing_warnings,
+    )
     try:
-        analysis = await analyzer.analyze(
-            content,
-            AnalysisContext(
-                filename=safe_name,
-                mime_type=mime_type,
-                extension=ext,
-                user_id=user_id,
-            ),
-        )
-    except Exception:
+        analysis = await analyzer.analyze(content, analysis_context)
+    except Exception as exc:
         try:
             await storage.delete(storage_key)
         except Exception:
             pass
-        raise HTTPException(status_code=500, detail={"message": "Document analysis failed."})
+        await record_import_ai_usage(
+            db,
+            user_id=user_id,
+            session_id=session_id,
+            model=None,
+            token_usage=None,
+            duration_ms=int((time.monotonic() - analyze_started) * 1000),
+            success=False,
+            tier_key=tier_key,
+            document_type=ext,
+            error_message="Document analysis failed.",
+            metadata={
+                "extension": ext,
+                "sizeBytes": size,
+                "pageCountEstimate": prepared.page_count,
+                "requiresOcr": import_estimate.requires_ocr,
+                "sourceType": prepared.source_type,
+                "imageCount": prepared.image_count,
+            },
+        )
+        logger.warning(
+            "import.analyze.failed user=%s session=%s duration_ms=%s",
+            user_id,
+            session_id,
+            int((time.monotonic() - analyze_started) * 1000),
+        )
+        raise HTTPException(
+            status_code=500,
+            detail={"message": "L'analyse n'a pas abouti. Réessayez avec un document plus lisible."},
+        ) from exc
+    analyze_duration_ms = int((time.monotonic() - analyze_started) * 1000)
+
+    if analysis.errors:
+        try:
+            await storage.delete(storage_key)
+        except Exception:
+            pass
+        error_summary = "; ".join(str(e) for e in analysis.errors[:3])
+        await record_import_ai_usage(
+            db,
+            user_id=user_id,
+            session_id=session_id,
+            model=(analysis.rawExtracted or {}).get("model"),
+            token_usage=(analysis.rawExtracted or {}).get("tokenUsage"),
+            duration_ms=analyze_duration_ms,
+            success=False,
+            tier_key=tier_key,
+            document_type=ext,
+            credits_consumed=0,
+            error_message=error_summary or "Analysis returned errors.",
+            metadata={
+                "extension": ext,
+                "sizeBytes": size,
+                "pageCountEstimate": prepared.page_count,
+                "requiresOcr": import_estimate.requires_ocr,
+                "detectedKind": analysis.detectedKind,
+                "sourceType": prepared.source_type,
+            },
+        )
+        logger.info(
+            "import.analyze.errors user=%s session=%s errors=%s",
+            user_id,
+            session_id,
+            len(analysis.errors),
+        )
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "message": "Nous n'avons pas pu extraire assez d'informations. Vérifiez la qualité du document.",
+                "errors": analysis.errors,
+            },
+        )
 
     clients_cursor = db.clients.find(
         _user_filter(user_id),
@@ -233,6 +445,10 @@ async def analyze_import_file(
             "sizeBytes": size,
             "storageProvider": storage.provider_name(),
             "storageKey": storage_key,
+            "sourceType": prepared.source_type,
+            "pageCount": prepared.page_count,
+            "imageCount": prepared.image_count,
+            "originalFileCount": len(raw_uploads),
         },
         "analysis": analysis.model_dump(),
         "detectedKind": analysis.detectedKind,
@@ -247,7 +463,89 @@ async def analyze_import_file(
     }
 
     await db.import_sessions.insert_one(session_doc)
+
+    raw_extracted = analysis.rawExtracted or {}
+    usage_meta = {
+        "extension": ext,
+        "sizeBytes": size,
+        "pageCountEstimate": prepared.page_count,
+        "requiresOcr": import_estimate.requires_ocr,
+        "detectedKind": analysis.detectedKind,
+        "filename": safe_name,
+        "sourceType": prepared.source_type,
+        "imageCount": prepared.image_count,
+        "originalFileCount": len(raw_uploads),
+    }
+
+    consume_result = None
+    try:
+        consume_result = await consume_for_import(
+            db,
+            user_id,
+            session_id=session_id,
+            cost=estimated_cost,
+            tier_key=tier_key,
+            metadata=usage_meta,
+        )
+    except InsufficientCreditsError as exc:
+        await db.import_sessions.delete_one({"userId": user_id, "id": session_id})
+        try:
+            await storage.delete(storage_key)
+        except Exception:
+            pass
+        await record_import_ai_usage(
+            db,
+            user_id=user_id,
+            session_id=session_id,
+            model=raw_extracted.get("model"),
+            token_usage=raw_extracted.get("tokenUsage"),
+            duration_ms=analyze_duration_ms,
+            success=False,
+            tier_key=tier_key,
+            document_type=ext,
+            credits_consumed=0,
+            error_message="Insufficient credits after analysis.",
+            metadata=usage_meta,
+        )
+        detail = insufficient_analyses_detail(exc)
+        detail["tierKey"] = tier_key
+        raise HTTPException(status_code=402, detail=detail) from exc
+
+    await record_import_ai_usage(
+        db,
+        user_id=user_id,
+        session_id=session_id,
+        model=raw_extracted.get("model"),
+        token_usage=raw_extracted.get("tokenUsage"),
+        duration_ms=analyze_duration_ms,
+        success=True,
+        tier_key=tier_key,
+        document_type=ext,
+        credits_consumed=consume_result.costApplied,
+        credit_transaction_id=consume_result.transactionId,
+        metadata=usage_meta,
+    )
+
+    logger.info(
+        "import.analyze.completed user=%s session=%s tier=%s credits=%s duration_ms=%s model=%s pages=%s",
+        user_id,
+        session_id,
+        tier_key,
+        consume_result.costApplied,
+        analyze_duration_ms,
+        raw_extracted.get("model"),
+        prepared.page_count,
+    )
+
     return _session_public(session_doc)
+
+
+async def analyze_import_file(
+    db,
+    user_id: str,
+    file: UploadFile,
+) -> ImportSessionPublic:
+    return await analyze_import_files(db, user_id, [file])
 
 
 async def get_import_session(db, user_id: str, session_id: str) -> ImportSessionPublic:

@@ -1,17 +1,17 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useLang } from "@/context/LanguageContext";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { JoinModal } from "@/components/JoinModal";
+import { applyLegalPlaceholders, legalPlaceholdersPending } from "@/constants/legalConfig";
 
 const DEFAULT_TITLE = "MemoryHub";
-const DEFAULT_DESCRIPTION = "MemoryHub — client search for artisans and freelancers.";
+const DEFAULT_DESCRIPTION =
+  "MemoryHub centralise clients, devis, factures, notes et documents pour les artisans et indépendants.";
 
 export const LegalPageLayout = ({ pageKey }) => {
   const { t, lang } = useLang();
-  const [modalOpen, setModalOpen] = useState(false);
 
   const title = t(`legal.${pageKey}.title`);
   const metaDescription = t(`legal.${pageKey}.metaDescription`);
@@ -38,7 +38,7 @@ export const LegalPageLayout = ({ pageKey }) => {
 
   return (
     <div className="App min-h-screen flex flex-col bg-white">
-      <Navbar onJoin={() => setModalOpen(true)} standalone />
+      <Navbar standalone />
       <main className="flex-1 relative hero-mesh pt-28 md:pt-36 pb-28 md:pb-36">
         <div className="absolute inset-0 grid-lines pointer-events-none opacity-60" />
         <div className="relative max-w-4xl mx-auto px-6 md:px-10">
@@ -60,12 +60,21 @@ export const LegalPageLayout = ({ pageKey }) => {
             </p>
           </header>
 
+          {legalPlaceholdersPending() && (
+            <div
+              className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+              data-testid="legal-placeholders-notice"
+            >
+              {t("legal.layout.placeholdersNotice")}
+            </div>
+          )}
+
           <article className="card-soft p-6 md:p-10 space-y-10">
             {Array.isArray(sections) &&
               sections.map((section, idx) => (
                 <section key={idx} className="space-y-4">
                   <h2 className="font-display text-[20px] md:text-[22px] font-bold text-[#0A0A0B] tracking-[-0.02em]">
-                    {section.heading}
+                    {applyLegalPlaceholders(section.heading)}
                   </h2>
                   {Array.isArray(section.paragraphs) &&
                     section.paragraphs.map((para, pIdx) => {
@@ -76,11 +85,11 @@ export const LegalPageLayout = ({ pageKey }) => {
                             key={pIdx}
                             className="text-[15px] md:text-[15.5px] leading-[1.7] text-[#52535E]"
                           >
-                            {before}
+                            {applyLegalPlaceholders(before)}
                             <Link to={href} className="text-[#4F46E5] hover:underline">
-                              {text}
+                              {applyLegalPlaceholders(text)}
                             </Link>
-                            {after}
+                            {applyLegalPlaceholders(after)}
                           </p>
                         );
                       }
@@ -89,14 +98,14 @@ export const LegalPageLayout = ({ pageKey }) => {
                           key={pIdx}
                           className="text-[15px] md:text-[15.5px] leading-[1.7] text-[#52535E]"
                         >
-                          {para}
+                          {applyLegalPlaceholders(para)}
                         </p>
                       );
                     })}
                   {Array.isArray(section.list) && section.list.length > 0 && (
                     <ul className="list-disc pl-5 space-y-2 text-[15px] md:text-[15.5px] leading-[1.7] text-[#52535E]">
                       {section.list.map((item, lIdx) => (
-                        <li key={lIdx}>{item}</li>
+                        <li key={lIdx}>{applyLegalPlaceholders(item)}</li>
                       ))}
                     </ul>
                   )}
@@ -106,7 +115,6 @@ export const LegalPageLayout = ({ pageKey }) => {
         </div>
       </main>
       <Footer />
-      <JoinModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>
   );
 };
