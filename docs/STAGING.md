@@ -1,4 +1,4 @@
-# MemoryHub — Staging
+# Basera — Staging
 
 Environnement de pré-production isolé de la production.
 

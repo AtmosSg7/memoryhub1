@@ -17,7 +17,7 @@ openssl req -x509 -nodes -newkey rsa:4096 \
   -keyout "${CERT_DIR}/privkey.pem" \
   -out "${CERT_DIR}/fullchain.pem" \
   -days "${DAYS}" \
-  -subj "/CN=${DOMAIN}/O=MemoryHub/C=FR"
+  -subj "/CN=${DOMAIN}/O=Basera/C=FR"
 
 chmod 600 "${CERT_DIR}/privkey.pem"
 chmod 644 "${CERT_DIR}/fullchain.pem"

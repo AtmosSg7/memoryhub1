@@ -11,11 +11,11 @@ def test_credits_api_balance_and_costs(client):
 
     assign = client.post("/api/credits/dev/assign-plan", params={"planId": "solo"})
     assert assign.status_code == 200
-    assert assign.json()["monthlyRemaining"] == 20
+    assert assign.json()["monthlyRemaining"] == 10
 
     balance = client.get("/api/credits/balance")
     assert balance.status_code == 200
-    assert balance.json()["monthlyRemaining"] == 20
+    assert balance.json()["monthlyRemaining"] == 10
 
     costs = client.get("/api/credits/costs")
     assert costs.status_code == 200

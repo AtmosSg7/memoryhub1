@@ -172,7 +172,8 @@ export default function CompanySettingsPage() {
 }
 
 function Field({ label, value, onChange, type = "text", required = false, className = "", multiline = false }) {
-  const shared = "mt-1.5 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm text-[#111827] focus:outline-none focus:ring-2 focus:ring-[#0A2540]/15";
+  const shared =
+    "mt-1.5 w-full rounded-xl border border-dash-border bg-[var(--dash-input-bg)] px-3.5 py-2.5 text-sm text-dash-text placeholder:text-dash-text-subtle hover:bg-[var(--dash-input-bg-hover)] focus:outline-none focus:border-dash-accent focus:ring-2 focus:ring-dash-accent/25 transition-colors";
   return (
     <label className={`block ${className}`}>
       <span className={FORM_LABEL_CLASS}>
@@ -199,11 +200,11 @@ function LogoUpload({ label, previewUrl, onUpload }) {
       <span className={FORM_LABEL_CLASS}>{label}</span>
       <div className="mt-1.5 flex items-center gap-3">
         {previewUrl ? (
-          <img src={previewUrl} alt="" className="w-14 h-14 rounded-lg border border-[#E5E7EB] object-contain bg-white" />
+          <img src={previewUrl} alt="" className="w-14 h-14 rounded-lg border border-dash-border object-contain bg-dash-surface" />
         ) : (
-          <div className="w-14 h-14 rounded-lg border border-dashed border-[#D1D5DB] bg-[#F9FAFB]" />
+          <div className="w-14 h-14 rounded-lg border border-dashed border-[#D1D5DB] bg-dash-bg" />
         )}
-        <input type="file" accept="image/png,image/jpeg,image/webp" onChange={onUpload} className="text-sm text-[#6B7280]" />
+        <input type="file" accept="image/png,image/jpeg,image/webp" onChange={onUpload} className="text-sm text-dash-text-muted" />
       </div>
     </label>
   );

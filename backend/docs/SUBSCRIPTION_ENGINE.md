@@ -1,4 +1,4 @@
-# MemoryHub — Subscription Engine V1
+# Basera — Subscription Engine V1
 
 > **Indépendant de Stripe.** Le moteur gère la logique métier des abonnements ; les webhooks Stripe appelleront `BillingService` plus tard.
 

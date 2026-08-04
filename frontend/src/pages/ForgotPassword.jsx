@@ -18,12 +18,15 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { HoneypotField, useFormAbuseGuard } from "@/components/auth/FormAbuseFields";
 
 const ForgotPassword = () => {
   const { t } = useLang();
   const [sent, setSent] = useState(false);
   const [serverError, setServerError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [honeypot, setHoneypot] = useState("");
+  const { formStartedAt } = useFormAbuseGuard();
 
   const schema = z.object({
     email: z.string().email(t("auth.errors.invalidEmail")),
@@ -35,12 +38,17 @@ const ForgotPassword = () => {
   });
 
   const onSubmit = async (values) => {
+    if (loading) return;
     setServerError("");
     setLoading(true);
     try {
       const { res, data } = await apiFetch("/api/auth/forgot-password", {
         method: "POST",
-        body: JSON.stringify({ email: values.email.trim() }),
+        body: JSON.stringify({
+          email: values.email.trim(),
+          website: honeypot,
+          formStartedAt,
+        }),
       });
       if (!res.ok) {
         setServerError(
@@ -75,7 +83,8 @@ const ForgotPassword = () => {
   return (
     <AuthLayout title={t("auth.forgotPassword.title")} subtitle={t("auth.forgotPassword.subtitle")}>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="relative space-y-4">
+          <HoneypotField value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
           <FormField
             control={form.control}
             name="email"

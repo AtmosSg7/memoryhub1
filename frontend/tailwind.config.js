@@ -13,6 +13,25 @@ module.exports = {
         sm: 'calc(var(--radius) - 4px)'
       },
       colors: {
+        dash: {
+          bg: 'var(--dash-bg)',
+          surface: 'var(--dash-surface)',
+          'surface-muted': 'var(--dash-surface-muted)',
+          'surface-elevated': 'var(--dash-surface-elevated)',
+          sidebar: 'var(--dash-sidebar-bg)',
+          text: 'var(--dash-text)',
+          'text-muted': 'var(--dash-text-muted)',
+          'text-subtle': 'var(--dash-text-subtle)',
+          border: 'var(--dash-border)',
+          'border-soft': 'var(--dash-border-soft)',
+          primary: 'var(--dash-primary)',
+          'primary-hover': 'var(--dash-primary-hover)',
+          accent: 'var(--dash-accent)',
+          'accent-soft': 'var(--dash-accent-soft)',
+          cta: 'var(--dash-cta)',
+          'cta-hover': 'var(--dash-cta-hover)',
+          'cta-text': 'var(--dash-cta-text)',
+        },
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         card: {

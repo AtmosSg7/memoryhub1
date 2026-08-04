@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { FileStack } from "lucide-react";
 import { toast } from "sonner";
 import { toastApiError } from "@/utils/apiErrors";
@@ -25,6 +25,7 @@ import InvoiceStatusFilter from "@/components/dashboard/InvoiceStatusFilter";
 import ClientFilterSelect from "@/components/dashboard/ClientFilterSelect";
 import CommercialDocumentRowActions from "@/components/dashboard/CommercialDocumentRowActions";
 import CommercialDocumentsHeaderActions from "@/components/dashboard/CommercialDocumentsHeaderActions";
+import CommercialDocumentsInfoBanner from "@/components/dashboard/CommercialDocumentsInfoBanner";
 import CommercialDocumentDetailModal from "@/components/dashboard/CommercialDocumentDetailModal";
 import ImportWizard from "@/components/dashboard/ImportWizard";
 import ListCollectionFooter from "@/components/dashboard/ListCollectionFooter";
@@ -50,19 +51,18 @@ import { formatDateFilterFr, parseDateFilterParam } from "@/utils/parseDateFilte
 
 const TYPE_STYLES = {
   quote: {
-    badge: "bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]",
-    row: "border-l-2 border-l-[#93C5FD]",
+    badge: "dash-badge dash-badge-info",
+    row: "border-l-2 border-l-dash-accent",
   },
   invoice: {
-    badge: "bg-[#ECFDF5] text-[#047857] border-[#A7F3D0]",
-    row: "border-l-2 border-l-[#6EE7B7]",
+    badge: "dash-badge dash-badge-success",
+    row: "border-l-2 border-l-[color:var(--dash-success-text)]",
   },
 };
 
 export default function CommercialDocumentsPage() {
   const { t, lang } = useDashboardLang();
   usePageTitle("page.commercialDocuments.title");
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { openAddQuote, openEditQuote, notifyQuotesChanged, pendingOpenQuote, clearPendingOpenQuote, refreshKey: quotesRefreshKey } =
@@ -128,9 +128,13 @@ export default function CommercialDocumentsPage() {
 
   useEffect(() => {
     if (searchParams.get("import") === "1") {
-      navigate("/dashboard/files?import=1", { replace: true });
+      setImportKind("quote");
+      setImportOpen(true);
+      const params = new URLSearchParams(searchParams);
+      params.delete("import");
+      setSearchParams(params, { replace: true });
     }
-  }, [searchParams, navigate]);
+  }, [searchParams, setSearchParams]);
   const [viewingQuote, setViewingQuote] = useState(null);
   const [viewingInvoice, setViewingInvoice] = useState(null);
   const [deletingQuote, setDeletingQuote] = useState(null);
@@ -271,7 +275,7 @@ export default function CommercialDocumentsPage() {
     }
   };
 
-  const openImport = (kind) => {
+  const openImport = (kind = "quote") => {
     setImportKind(kind);
     setImportOpen(true);
   };
@@ -302,14 +306,16 @@ export default function CommercialDocumentsPage() {
         trailing={
           <CommercialDocumentsHeaderActions
             hasClients={hasClients}
+            onImportDocument={() => openImport("quote")}
             onCreateQuote={() => openAddQuote()}
             onCreateInvoice={() => openAddInvoice()}
-            onImportQuote={() => openImport("quote")}
-            onImportInvoice={() => openImport("invoice")}
+            onCreateBlank={() => openAddQuote()}
             onNeedClient={() => openAddClient("quote")}
           />
         }
       />
+
+      <CommercialDocumentsInfoBanner t={t} />
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-col lg:flex-row lg:items-end gap-3">
@@ -331,23 +337,23 @@ export default function CommercialDocumentsPage() {
             testId="commercial-documents-client-filter"
           />
           <div className="flex flex-wrap items-end gap-2" data-testid="commercial-documents-period">
-            <label className="text-xs text-[#6B7280]">
+            <label className="text-xs text-dash-text-muted">
               <span className="block mb-1 font-medium">{t("commercialDocuments.filters.from")}</span>
               <input
                 type="date"
                 value={fromFilter}
                 onChange={(e) => patchSearchParams({ from: e.target.value || "" })}
-                className="rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm text-[#111827] bg-white"
+                className="rounded-lg border border-dash-border px-3 py-2 text-sm text-dash-text bg-dash-surface"
                 data-testid="commercial-documents-from"
               />
             </label>
-            <label className="text-xs text-[#6B7280]">
+            <label className="text-xs text-dash-text-muted">
               <span className="block mb-1 font-medium">{t("commercialDocuments.filters.to")}</span>
               <input
                 type="date"
                 value={toFilter}
                 onChange={(e) => patchSearchParams({ to: e.target.value || "" })}
-                className="rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm text-[#111827] bg-white"
+                className="rounded-lg border border-dash-border px-3 py-2 text-sm text-dash-text bg-dash-surface"
                 data-testid="commercial-documents-to"
               />
             </label>
@@ -355,7 +361,7 @@ export default function CommercialDocumentsPage() {
               <button
                 type="button"
                 onClick={clearFilters}
-                className="text-sm font-semibold text-[#0A2540] hover:underline px-1 py-2"
+                className="text-sm font-semibold text-dash-primary hover:underline px-1 py-2"
                 data-testid="commercial-documents-reset"
               >
                 {t("commercialDocuments.filters.reset")}
@@ -364,7 +370,7 @@ export default function CommercialDocumentsPage() {
           </div>
         </div>
         {fromFilter && toFilter ? (
-          <p className="text-xs text-[#6B7280]" data-testid="commercial-documents-period-label">
+          <p className="text-xs text-dash-text-muted" data-testid="commercial-documents-period-label">
             {t("commercialDocuments.filters.periodLabel")
               .replace("{from}", formatDateFilterFr(fromFilter, lang))
               .replace("{to}", formatDateFilterFr(toFilter, lang))}
@@ -426,24 +432,16 @@ export default function CommercialDocumentsPage() {
           cta={
             isFilteredEmpty
               ? t("common.clearFilter")
-              : kindFilter === "invoice"
-                ? hasClients
-                  ? t("actions.createInvoice")
-                  : t("empty.noClients.cta")
-                : hasClients
-                  ? t("actions.createQuote")
-                  : t("empty.noClients.cta")
+              : hasClients
+                ? t("documentActions.importDocument")
+                : t("empty.noClients.cta")
           }
           onCta={
             isFilteredEmpty
               ? clearFilters
-              : kindFilter === "invoice"
-                ? hasClients
-                  ? () => openAddInvoice()
-                : openAddClient("invoice")
               : hasClients
-                ? () => openAddQuote()
-                : openAddClient("quote")
+                ? () => openImport("quote")
+                : openAddClient(kindFilter === "invoice" ? "invoice" : "quote")
           }
           testId="commercial-documents-empty"
         />
@@ -470,7 +468,7 @@ export default function CommercialDocumentsPage() {
                       key={`${row.kind}-${row.id}`}
                       onClick={() => openRow(row)}
                       className={[
-                        "border-b border-[#F3F4F6] last:border-0 hover:bg-[#FAFAFA] cursor-pointer",
+                        "border-b border-dash-border-soft last:border-0 hover:bg-dash-surface-muted cursor-pointer",
                         typeStyle.row,
                       ].join(" ")}
                       data-testid={rowTestId}
@@ -485,8 +483,8 @@ export default function CommercialDocumentsPage() {
                           {t(`commercialDocuments.kind.${row.kind}`)}
                         </span>
                       </td>
-                      <td className="px-6 py-3.5 font-medium text-[#111827]">{row.number}</td>
-                      <td className="px-6 py-3.5 text-[#4B5563]">
+                      <td className="px-6 py-3.5 font-medium text-dash-text">{row.number}</td>
+                      <td className="px-6 py-3.5 text-dash-text-muted">
                         <div>{row.clientName}</div>
                         <FollowUpLastHint
                           last={
@@ -496,7 +494,7 @@ export default function CommercialDocumentsPage() {
                           }
                         />
                       </td>
-                      <td className="px-6 py-3.5 font-medium text-[#111827] whitespace-nowrap">
+                      <td className="px-6 py-3.5 font-medium text-dash-text whitespace-nowrap">
                         <div>{formatCommercialDocumentAmount(row, lang)}</div>
                         {row.kind === "invoice" &&
                         getInvoiceAmountPaid(row.raw) > 0 &&
@@ -513,7 +511,7 @@ export default function CommercialDocumentsPage() {
                           <InvoiceStatusBadge invoice={row.raw} />
                         )}
                       </td>
-                      <td className="px-6 py-3.5 text-[#6B7280] whitespace-nowrap">
+                      <td className="px-6 py-3.5 text-dash-text-muted whitespace-nowrap">
                         {row.kind === "quote"
                           ? formatQuoteDate(row.sortAt, lang)
                           : formatInvoiceDate(row.sortAt, lang)}
@@ -522,6 +520,11 @@ export default function CommercialDocumentsPage() {
                         <CommercialDocumentRowActions
                           kind={row.kind}
                           document={row.raw}
+                          onView={() => openRow(row)}
+                          onEdit={(doc) =>
+                            row.kind === "quote" ? openEditQuote(doc) : openEditInvoice(doc)
+                          }
+                          onImportFinalInvoice={() => openImport("invoice")}
                           onDelete={() =>
                             row.kind === "quote" ? setDeletingQuote(row.raw) : setDeletingInvoice(row.raw)
                           }
@@ -589,6 +592,7 @@ export default function CommercialDocumentsPage() {
         onOpenChange={(open) => !open && setViewingQuote(null)}
         onEdit={(quote) => openEditQuote(quote)}
         onDelete={(quote) => setDeletingQuote(quote)}
+        onImportFinalInvoice={() => openImport("invoice")}
       />
 
       <CommercialDocumentDetailModal
@@ -599,6 +603,7 @@ export default function CommercialDocumentsPage() {
         onEdit={(invoice) => openEditInvoice(invoice)}
         onDelete={(invoice) => setDeletingInvoice(invoice)}
         onDocumentUpdated={(updated) => setViewingInvoice(updated)}
+        onImportFinalInvoice={() => openImport("invoice")}
       />
     </div>
   );

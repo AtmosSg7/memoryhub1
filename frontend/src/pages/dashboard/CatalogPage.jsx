@@ -75,7 +75,7 @@ export default function CatalogPage() {
         />
       ) : (
         <div className={LIST_TABLE_CONTAINER_CLASS}>
-          <div className="px-4 py-3 border-b border-[#F3F4F6] text-xs text-[#6B7280]">
+          <div className="px-4 py-3 border-b border-dash-border-soft text-xs text-dash-text-muted">
             {items.length} / {total} {t("catalog.resultsLabel")}
           </div>
           <div className="overflow-x-auto">
@@ -104,19 +104,19 @@ export default function CatalogPage() {
                     className={TABLE_BODY_ROW_CLASS}
                     data-testid={`catalog-row-${item.id}`}
                   >
-                    <td className={`${TABLE_BODY_CELL_CLASS} font-medium text-[#111827]`}>{item.description}</td>
-                    <td className={`${TABLE_BODY_CELL_CLASS} text-[#4B5563] tabular-nums`}>{item.usageCount}</td>
-                    <td className={`${TABLE_BODY_CELL_CLASS} font-medium text-[#111827] tabular-nums`}>
+                    <td className={`${TABLE_BODY_CELL_CLASS} font-medium text-dash-text`}>{item.description}</td>
+                    <td className={`${TABLE_BODY_CELL_CLASS} text-dash-text-muted tabular-nums`}>{item.usageCount}</td>
+                    <td className={`${TABLE_BODY_CELL_CLASS} font-medium text-dash-text tabular-nums`}>
                       {formatQuoteAmount(item.unitPriceHTAvg, lang)}
                     </td>
-                    <td className={`${TABLE_BODY_CELL_CLASS} text-[#4B5563] tabular-nums`}>
+                    <td className={`${TABLE_BODY_CELL_CLASS} text-dash-text-muted tabular-nums`}>
                       {formatQuoteAmount(item.unitPriceHTMin, lang)}
                     </td>
-                    <td className={`${TABLE_BODY_CELL_CLASS} text-[#4B5563] tabular-nums`}>
+                    <td className={`${TABLE_BODY_CELL_CLASS} text-dash-text-muted tabular-nums`}>
                       {formatQuoteAmount(item.unitPriceHTMax, lang)}
                     </td>
-                    <td className={`${TABLE_BODY_CELL_CLASS} text-[#4B5563] tabular-nums`}>{item.defaultVatRate} %</td>
-                    <td className={`${TABLE_BODY_CELL_CLASS} text-[#6B7280]`}>{formatQuoteDate(item.lastUsedAt, lang)}</td>
+                    <td className={`${TABLE_BODY_CELL_CLASS} text-dash-text-muted tabular-nums`}>{item.defaultVatRate} %</td>
+                    <td className={`${TABLE_BODY_CELL_CLASS} text-dash-text-muted`}>{formatQuoteDate(item.lastUsedAt, lang)}</td>
                   </tr>
                 ))}
               </tbody>

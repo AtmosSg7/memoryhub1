@@ -1,4 +1,4 @@
-# Browser QA — MemoryHub V1
+# Browser QA — Basera V1
 
 ## Matrice exécutée (local E2E)
 

@@ -18,7 +18,10 @@ export const AuthProvider = ({ children }) => {
   const refreshUser = useCallback(async () => {
     const epochAtStart = authEpochRef.current;
     try {
-      const { res, data } = await apiFetch("/api/auth/me", { timeoutMs: 15_000 });
+      const { res, data } = await apiFetch("/api/auth/me", {
+        timeoutMs: 15_000,
+        bypassShowcase: true,
+      });
       if (epochAtStart !== authEpochRef.current) {
         return null;
       }
@@ -57,15 +60,21 @@ export const AuthProvider = ({ children }) => {
     setSentryUser(user);
   }, [user]);
 
-  const login = useCallback(async (email, password) => {
+  const login = useCallback(async (email, password, abuse = {}) => {
     bumpAuthEpoch();
     const { res, data } = await apiFetch("/api/auth/login", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        email,
+        password,
+        website: abuse.website ?? "",
+        formStartedAt: abuse.formStartedAt,
+      }),
       timeoutMs: 15_000,
+      bypassShowcase: true,
     });
     if (!res.ok) {
-      const message = extractAuthApiMessage(data, "Login failed");
+      const message = extractAuthApiMessage(data, "Invalid email or password.");
       throw new Error(message);
     }
     setUser(data.user);
@@ -78,9 +87,10 @@ export const AuthProvider = ({ children }) => {
       method: "POST",
       body: JSON.stringify(payload),
       timeoutMs: 15_000,
+      bypassShowcase: true,
     });
     if (!res.ok) {
-      const message = extractAuthApiMessage(data, "Registration failed");
+      const message = extractAuthApiMessage(data, "Unable to create account.");
       throw new Error(message);
     }
     setUser(data.user);
@@ -89,7 +99,11 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(async () => {
     bumpAuthEpoch();
-    await apiFetch("/api/auth/logout", { method: "POST", timeoutMs: 15_000 });
+    await apiFetch("/api/auth/logout", {
+      method: "POST",
+      timeoutMs: 15_000,
+      bypassShowcase: true,
+    });
     setUser(null);
   }, [bumpAuthEpoch]);
 
@@ -114,3 +128,21 @@ export const useAuth = () => {
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 };
+
+/** Fixed session for the homepage product demo (no /api/auth calls). */
+export function ShowcaseAuthProvider({ user, children }) {
+  const value = useMemo(
+    () => ({
+      user,
+      isAuthenticated: !!user,
+      isLoading: false,
+      login: async () => user,
+      logout: async () => {},
+      register: async () => user,
+      refreshUser: async () => user,
+    }),
+    [user]
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}

@@ -12,8 +12,8 @@ const DashboardAnalyticsCharts = lazy(() => import("./DashboardAnalyticsCharts")
 function ChartsSkeleton() {
   return (
     <div className="space-y-3" data-testid="dashboard-analytics-skeleton">
-      <Skeleton className="h-4 w-40 bg-[#E5E7EB]" />
-      <Skeleton className="h-56 w-full rounded-xl bg-[#F3F4F6]" />
+      <Skeleton className="h-4 w-40 bg-dash-border" />
+      <Skeleton className="h-56 w-full rounded-xl bg-dash-surface-muted" />
     </div>
   );
 }
@@ -44,16 +44,16 @@ function DashboardAnalyticsSection({ series, loading, period, onPeriodChange, em
     <section className="space-y-3" data-testid="dashboard-analytics-section">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9CA3AF]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-dash-text-subtle">
             {t("dashboardV2.analytics.eyebrow")}
           </p>
-          <h2 className="font-cabinet text-lg md:text-xl font-bold text-[#111827] tracking-tight mt-1">
+          <h2 className="font-cabinet text-lg md:text-xl font-bold text-dash-text tracking-tight mt-1">
             {t("dashboardV2.analytics.title")}
           </h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div
-            className="inline-flex flex-wrap items-center gap-1 rounded-lg border border-[#E5E7EB] bg-white p-1"
+            className="inline-flex flex-wrap items-center gap-1 rounded-lg border border-dash-border bg-dash-surface p-1"
             role="tablist"
             aria-label={t("dashboardV2.analytics.periodLabel")}
           >
@@ -69,8 +69,8 @@ function DashboardAnalyticsSection({ series, loading, period, onPeriodChange, em
                   className={[
                     "px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors",
                     active
-                      ? "bg-[#0A2540] text-white"
-                      : "text-[#6B7280] hover:text-[#111827] hover:bg-[#F9FAFB]",
+                      ? "bg-[var(--dash-nav-active-bg)] text-white"
+                      : "text-dash-text-muted hover:text-dash-text hover:bg-dash-bg",
                   ].join(" ")}
                   data-testid={`dashboard-period-${key}`}
                 >
@@ -81,7 +81,7 @@ function DashboardAnalyticsSection({ series, loading, period, onPeriodChange, em
           </div>
           <Link
             to="/dashboard/analytics"
-            className="text-xs font-semibold text-[#0A2540] hover:underline px-1"
+            className="text-xs font-semibold text-dash-primary hover:underline px-1"
             data-testid="dashboard-analytics-all-link"
           >
             {t("dashboardV2.analytics.viewAll")}

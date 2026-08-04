@@ -1,12 +1,17 @@
-# MemoryHub — Déploiement production (VPS Ubuntu)
+# Basera — Déploiement production (VPS Ubuntu)
 
-Guide pour déployer MemoryHub sur un VPS Ubuntu avec Docker Compose, HTTPS, sauvegardes MongoDB et observabilité.
+Guide pour déployer Basera sur un VPS Ubuntu avec Docker Compose, HTTPS, sauvegardes MongoDB et observabilité.
+
+> Domaine officiel : **basera.fr**.  
+> Guide OVH étape par étape : **`deploy/OVH_VPS_DEPLOY.md`**.  
+> Architecture : `docs/DEPLOYMENT_ARCHITECTURE.md`.  
+> Ne pointez le DNS vers le VPS qu’après validation de la stack.
 
 ## Prérequis VPS
 
 - Ubuntu 22.04+ (ou 24.04)
 - Docker Engine 24+ et Docker Compose v2
-- Nom de domaine pointant vers le VPS (production)
+- Nom de domaine pointant vers le VPS (production) — ex. `basera.fr`
 - Ports 80 et 443 ouverts
 
 ```bash
@@ -32,7 +37,7 @@ Variables **obligatoires** en production (`ENV=production`) :
 
 | Variable | Description |
 |---|---|
-| `PUBLIC_APP_URL` | URL publique (ex. `https://app.example.com`) |
+| `PUBLIC_APP_URL` | URL publique (ex. `https://basera.fr`) |
 | `FRONTEND_URL` | Même URL que `PUBLIC_APP_URL` |
 | `CORS_ORIGINS` | Doit inclure l'origine de `FRONTEND_URL` |
 | `JWT_SECRET` | Secret aléatoire ≥ 32 caractères |
@@ -51,16 +56,16 @@ Le backend **refuse de démarrer** si une variable obligatoire est manquante ou 
 
 ```bash
 chmod +x deploy/scripts/generate-self-signed-certs.sh
-./deploy/scripts/generate-self-signed-certs.sh app.example.com
+./deploy/scripts/generate-self-signed-certs.sh basera.fr
 ```
 
 ### Production (Let's Encrypt)
 
 ```bash
 sudo apt install -y certbot
-sudo certbot certonly --standalone -d app.example.com
-sudo cp /etc/letsencrypt/live/app.example.com/fullchain.pem deploy/certs/
-sudo cp /etc/letsencrypt/live/app.example.com/privkey.pem deploy/certs/
+sudo certbot certonly --standalone -d basera.fr -d www.basera.fr
+sudo cp /etc/letsencrypt/live/basera.fr/fullchain.pem deploy/certs/
+sudo cp /etc/letsencrypt/live/basera.fr/privkey.pem deploy/certs/
 sudo chown "$USER:$USER" deploy/certs/*.pem
 ```
 
@@ -69,14 +74,16 @@ Renouvelez puis recopiez les certificats avant expiration (cron certbot).
 ## Lancement
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file deploy/.env up -d --build
-docker compose ps
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env up -d --build
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env ps
 ```
+
+Guide OVH détaillé : `deploy/OVH_VPS_DEPLOY.md`.
 
 Accès :
 
-- **HTTPS** : `https://app.example.com` (port 80 → redirection HTTPS)
-- **HTTP direct** (staging uniquement) : `http://<ip>:8080` — non exposé en production (`docker-compose.prod.yml`)
+- **HTTPS** : `https://basera.fr` (port 80 → redirection HTTPS)
+- **HTTP direct** (staging uniquement) : `http://<ip>:8080` — non exposé en production (`docker-compose.production.yml`)
 
 ## Healthchecks
 

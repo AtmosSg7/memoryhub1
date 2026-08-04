@@ -8,12 +8,12 @@ export default function PortalLayout({ children, title, subtitle, brandName, foo
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
           <div className="min-w-0">
             <p className="font-cabinet text-lg font-bold text-[#0A2540] tracking-tight truncate">
-              {brandName || "MemoryHub"}
+              {brandName || "Basera"}
             </p>
             {subtitle ? <p className="text-xs text-[#6B7280] mt-0.5">{subtitle}</p> : null}
             {brandName ? (
               <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-[#9CA3AF] mt-1">
-                MemoryHub
+                Basera
               </p>
             ) : null}
           </div>
@@ -34,7 +34,7 @@ export default function PortalLayout({ children, title, subtitle, brandName, foo
               {footerLabel}
             </>
           ) : (
-            "MemoryHub"
+            "Basera"
           )}
         </p>
       </footer>

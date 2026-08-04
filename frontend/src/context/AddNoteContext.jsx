@@ -1,24 +1,34 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { useIsShowcaseDemo } from "@/context/ShowcaseThemeIsolation";
 
 const AddNoteContext = createContext(null);
 
 export function AddNoteProvider({ children }) {
+  const isShowcase = useIsShowcaseDemo();
   const [isOpen, setIsOpen] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
   const [prefillClient, setPrefillClient] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const openAddNote = useCallback((client = null) => {
-    setEditingNote(null);
-    setPrefillClient(client);
-    setIsOpen(true);
-  }, []);
+  const openAddNote = useCallback(
+    (client = null) => {
+      if (isShowcase) return;
+      setEditingNote(null);
+      setPrefillClient(client);
+      setIsOpen(true);
+    },
+    [isShowcase]
+  );
 
-  const openEditNote = useCallback((note) => {
-    setEditingNote(note);
-    setPrefillClient(null);
-    setIsOpen(true);
-  }, []);
+  const openEditNote = useCallback(
+    (note) => {
+      if (isShowcase) return;
+      setEditingNote(note);
+      setPrefillClient(null);
+      setIsOpen(true);
+    },
+    [isShowcase]
+  );
 
   const closeAddNote = useCallback(() => {
     setIsOpen(false);
@@ -32,8 +42,8 @@ export function AddNoteProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      isOpen,
-      editingNote,
+      isOpen: isShowcase ? false : isOpen,
+      editingNote: isShowcase ? null : editingNote,
       prefillClient,
       refreshKey,
       openAddNote,
@@ -42,6 +52,7 @@ export function AddNoteProvider({ children }) {
       notifyNotesChanged,
     }),
     [
+      isShowcase,
       isOpen,
       editingNote,
       prefillClient,
@@ -53,15 +64,11 @@ export function AddNoteProvider({ children }) {
     ]
   );
 
-  return (
-    <AddNoteContext.Provider value={value}>{children}</AddNoteContext.Provider>
-  );
+  return <AddNoteContext.Provider value={value}>{children}</AddNoteContext.Provider>;
 }
 
 export function useAddNote() {
   const ctx = useContext(AddNoteContext);
-  if (!ctx) {
-    throw new Error("useAddNote must be used within AddNoteProvider");
-  }
+  if (!ctx) throw new Error("useAddNote must be used within AddNoteProvider");
   return ctx;
 }

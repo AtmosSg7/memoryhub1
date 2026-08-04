@@ -56,7 +56,7 @@ export default function AiUsageHistoryPage() {
 
       <Link
         to="/dashboard/billing"
-        className="inline-flex items-center gap-1.5 text-sm text-[#0A2540] hover:underline"
+        className="inline-flex items-center gap-1.5 text-sm text-dash-primary hover:underline"
       >
         <ArrowLeft className="w-4 h-4" aria-hidden="true" />
         {t("billingPage.manageAccount")}
@@ -76,7 +76,7 @@ export default function AiUsageHistoryPage() {
         <div className={LIST_TABLE_CONTAINER_CLASS}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[640px]">
-              <thead className="bg-[#F9FAFB] text-[#6B7280] text-xs uppercase tracking-wide">
+              <thead className="bg-dash-bg text-dash-text-muted text-xs uppercase tracking-wide">
                 <tr>
                   <th className="text-left px-4 py-3 font-semibold">{t("credits.historyDate")}</th>
                   <th className="text-left px-4 py-3 font-semibold">{t("credits.historyType")}</th>
@@ -84,16 +84,16 @@ export default function AiUsageHistoryPage() {
                   <th className="text-left px-4 py-3 font-semibold">{t("credits.historyStatus")}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#F3F4F6]">
+              <tbody className="divide-y divide-dash-border-soft">
                 {items.map((row) => (
                   <tr key={row.id} data-testid="ai-history-row">
-                    <td className="px-4 py-3 text-[#111827] whitespace-nowrap">
+                    <td className="px-4 py-3 text-dash-text whitespace-nowrap">
                       {formatDate(row.createdAt, lang)}
                     </td>
-                    <td className="px-4 py-3 text-[#4B5563]">
+                    <td className="px-4 py-3 text-dash-text-muted">
                       {row.detectedKind || row.documentType || "—"}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums font-medium text-[#111827]">
+                    <td className="px-4 py-3 text-right tabular-nums font-medium text-dash-text">
                       {row.analysesConsumed ?? "—"}
                     </td>
                     <td className="px-4 py-3">

@@ -1,5 +1,5 @@
 {
-  "project_name": "MemoryHub",
+  "project_name": "Basera",
   "theme": "light",
   "archetype": "4 (Swiss & High-Contrast / Premium Tech)",
   "visual_style": "Mix of Stripe (premium, colored, modern blue) and Linear (minimal, tech, precise)",
@@ -92,7 +92,7 @@
     }
   },
   "instructions_to_main_agent": [
-    "Follow the theme and archetype strictly. MemoryHub must feel like a premium tool, mimicking Stripe's typography and Linear's minimal container borders.",
+    "Follow the theme and archetype strictly. Basera must feel like a premium tool, mimicking Stripe's typography and Linear's minimal container borders.",
     "Create a bilingual context or simple state to toggle FR/EN strings on the landing page.",
     "Implement the interactive search demo carefully using Framer Motion. The text 'Didier Martin' should type out, and then trigger the display of the Dashboard mockup.",
     "Dashboard Mockup: Do not build a separate page. It should be a visually stunning component built right into the landing page, showing realistic data for Didier Martin, including his avatar and work photos from the media section.",

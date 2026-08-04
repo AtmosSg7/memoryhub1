@@ -60,7 +60,7 @@ export default function CreateClientFromEmailModal({
         data-testid="create-client-from-email-modal"
       >
         <DialogHeader className="space-y-1 pb-1">
-          <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-[#111827]">
+          <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-dash-text">
             {t("unlinkedEmails.createTitle")}
           </DialogTitle>
           <DialogDescription className="text-[#4B5563]">

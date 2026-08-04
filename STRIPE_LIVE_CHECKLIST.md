@@ -1,4 +1,4 @@
-# MemoryHub — Checklist passage Stripe Live
+# Basera — Checklist passage Stripe Live
 
 > **Objectif :** activer les paiements réels sans modifier le code. Toutes les valeurs Stripe passent par des variables d'environnement (`stripe_config.py`, `credit_pack_service.py`). **Ne jamais coller de clés Live dans le code, Git ou ce document.**
 
@@ -23,26 +23,27 @@ Basculer le Dashboard Stripe en **mode Live** (interrupteur en haut à droite).
 
 ### 1.1 Abonnements récurrents (mensuels, EUR)
 
-Créer **3 produits** récurrents, alignés sur le catalogue MemoryHub (`commercial_constants.py`) :
+Créer **3 produits** récurrents, alignés sur le catalogue Basera (`commercial_constants.py`) :
 
-| Plan MemoryHub | Nom produit suggéré | Prix catalogue (référence UI) | Type Stripe |
-|----------------|---------------------|-------------------------------|-------------|
-| `solo` | MemoryHub Solo | 19 € / mois | Recurring monthly |
-| `pro` | MemoryHub Pro | 49 € / mois | Recurring monthly |
-| `team` | MemoryHub Team | 99 € / mois | Recurring monthly |
+| Plan Basera (API id) | Nom produit | Prix catalogue (UI) | Type Stripe | Price ID | Product ID |
+|----------------------|-------------|---------------------|-------------|----------|------------|
+| `solo` (Starter) | Basera Starter | 4,90 € / mois | Recurring monthly | `price_1U0ogXH44aox1nDPS97Gx7Vg` | `prod_V0qNNdD2ykwbQk` |
+| `pro` (Pro) | Basera Pro | 9,90 € / mois | Recurring monthly | `price_1U0ogjH44aox1nDPsQvh4rgY` | `prod_V0qNzCQW7w0AJc` |
+| `team` (Business) | Basera Business | 19,90 € / mois | Recurring monthly | `price_1U0ogwH44aox1nDPIqCVldxr` | `prod_V0qNPuHEeAnv9s` |
 
-Pour chaque produit :
-- [ ] Créer le **Price** mensuel en EUR
-- [ ] Copier le **Price ID** (`price_…`) — un par plan
-- [ ] Vérifier que le montant facturé correspond au prix affiché dans l'app
+Variables d'environnement (dans `backend/.env` en local, `deploy/.env` en prod) :
+- [ ] `STRIPE_PRICE_SOLO=price_1U0ogXH44aox1nDPS97Gx7Vg`
+- [ ] `STRIPE_PRICE_PRO=price_1U0ogjH44aox1nDPsQvh4rgY`
+- [ ] `STRIPE_PRICE_TEAM=price_1U0ogwH44aox1nDPIqCVldxr`
+- [ ] Vérifier dans le Dashboard Stripe que chaque Price facture bien 4,90 / 9,90 / 19,90 €
 
-> Les montants catalogue (`monthlyPriceEur`) sont informatifs côté UI. **Stripe facture le montant du Price ID**, pas Mongo.
+> Les montants catalogue (`monthlyPriceEur` dans `commercial_constants.py` / `planConfig.js`) sont informatifs côté UI. **Stripe facture le montant du Price ID**, pas Mongo.
 
 ### 1.2 Packs Analyses IA (one-shot, EUR)
 
 Créer **3 produits** à paiement unique, alignés sur `credit_pack_service.DEFAULT_CREDIT_PACKS` :
 
-| Pack MemoryHub | Nom produit suggéré | Prix catalogue (référence UI) | Crédits internes |
+| Pack Basera | Nom produit suggéré | Prix catalogue (référence UI) | Crédits internes |
 |----------------|---------------------|-------------------------------|------------------|
 | `pack_10` | 10 analyses IA | 9,90 € | 500 |
 | `pack_25` | 25 analyses IA | 39,00 € | 1 250 |
@@ -69,11 +70,11 @@ Renseigner dans `deploy/.env` (jamais commité). Voir aussi `deploy/SECRETS_CHEC
 
 ### 2.2 Price IDs abonnements
 
-| Variable | Plan |
-|----------|------|
-| `STRIPE_PRICE_SOLO` | Price ID Live Solo |
-| `STRIPE_PRICE_PRO` | Price ID Live Pro |
-| `STRIPE_PRICE_TEAM` | Price ID Live Team |
+| Variable | Plan | Price ID actuel |
+|----------|------|-----------------|
+| `STRIPE_PRICE_SOLO` | Starter (`solo`) | `price_1U0ogXH44aox1nDPS97Gx7Vg` |
+| `STRIPE_PRICE_PRO` | Pro (`pro`) | `price_1U0ogjH44aox1nDPsQvh4rgY` |
+| `STRIPE_PRICE_TEAM` | Business (`team`) | `price_1U0ogwH44aox1nDPIqCVldxr` |
 
 ### 2.3 Price IDs packs crédits
 
@@ -178,7 +179,7 @@ python -c "from env_validation import validate_production_env; validate_producti
 | 7 | Préparer `deploy/.env` production avec toutes les variables §2 | Secrets |
 | 8 | **Maintenance fenêtre courte** (optionnel) ou bascule directe | Production |
 | 9 | Mettre à jour `deploy/.env` : `sk_live_…`, `whsec_…` Live, Price IDs Live | Production |
-| 10 | Redéployer backend (`docker-compose.prod.yml`) | Production |
+| 10 | Redéployer backend (`docker-compose.production.yml`) | Production |
 | 11 | Vérifier `GET /api/billing/me` → `stripeConfigured: true`, `stripeTestMode: false` | Production |
 | 12 | Checkout **réel** interne (carte test Live si disponible, sinon premier client pilote) | Production |
 | 13 | Confirmer webhook reçu + `user_subscriptions` + `subscription_history` + crédits | Production |

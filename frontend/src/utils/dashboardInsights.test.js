@@ -19,7 +19,7 @@ describe("dashboardInsights", () => {
   });
 
   it("builds prioritized insight cards", () => {
-    const result = computeDashboardInsights(reminders, { analysesRemaining: 2 });
+    const result = computeDashboardInsights(reminders, { importsRemaining: 2 });
 
     expect(result.cards[0].id).toBe("invoice_overdue");
     expect(result.cards.some((card) => card.id === "quotes_follow_up")).toBe(true);
@@ -29,7 +29,7 @@ describe("dashboardInsights", () => {
   });
 
   it("shows all clear when nothing needs attention", () => {
-    const result = computeDashboardInsights([], { analysesRemaining: 10 });
+    const result = computeDashboardInsights([], { importsRemaining: 10 });
 
     expect(result.cards).toHaveLength(1);
     expect(result.cards[0].id).toBe("all_clear");

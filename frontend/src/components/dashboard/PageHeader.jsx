@@ -16,19 +16,19 @@ export default function PageHeader({
   return (
     <div
       data-testid={testId}
-      className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-4 md:mb-6"
+      className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-6 md:mb-8"
     >
       <div>
         {eyebrow && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#EFF6FF] text-[#0A2540] text-[10px] font-semibold uppercase tracking-widest mb-3">
+          <span className="dash-badge dash-badge-info mb-3">
             {eyebrow}
           </span>
         )}
-        <h1 className="font-cabinet text-3xl md:text-[34px] font-bold text-[#111827] tracking-tight leading-[1.1]">
+        <h1 className="dash-display text-3xl md:text-[34px] leading-[1.1]">
           {title}
         </h1>
         {subtitle && (
-          <p className="text-[14px] text-[#4B5563] mt-2 max-w-2xl leading-relaxed">
+          <p className="text-[14px] text-dash-text-muted mt-2.5 max-w-2xl leading-relaxed">
             {subtitle}
           </p>
         )}

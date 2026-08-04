@@ -1,4 +1,4 @@
-# MemoryHub — Plan de tests Stripe (avant activation Live)
+# Basera — Plan de tests Stripe (avant activation Live)
 
 > **Objectif :** valider tous les parcours de paiement en **mode Test** (`sk_test_…`) avant de basculer les clés Live. Aucun test Live avec de l'argent réel tant que cette checklist n'est pas entièrement cochée.
 
@@ -13,9 +13,10 @@
 ```bash
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...        # Stripe CLI ou endpoint test Dashboard
-STRIPE_PRICE_SOLO=price_...
-STRIPE_PRICE_PRO=price_...
-STRIPE_PRICE_TEAM=price_...
+STRIPE_PRICE_SOLO=price_1U0ogXH44aox1nDPS97Gx7Vg
+STRIPE_PRICE_PRO=price_1U0ogjH44aox1nDPsQvh4rgY
+STRIPE_PRICE_TEAM=price_1U0ogwH44aox1nDPIqCVldxr
+# (Starter / Pro / Business — montants Stripe : 4,90 / 9,90 / 19,90 €)
 STRIPE_PRICE_CREDITS_10=price_...
 STRIPE_PRICE_CREDITS_25=price_...
 STRIPE_PRICE_CREDITS_50=price_...
@@ -100,7 +101,7 @@ CREDITS_ENFORCED=0 python3 -m pytest tests/test_stripe_integration.py tests/test
 | # | Scénario | Étapes | Résultat attendu |
 |---|----------|--------|------------------|
 | 5.1 | Annulation fin de période | Customer Portal → annuler | Webhook `subscription.updated`, `cancel_at_period_end: true` |
-| 5.2 | Statut MemoryHub | `GET /api/billing/me` | `cancelAtPeriodEnd: true` |
+| 5.2 | Statut Basera | `GET /api/billing/me` | `cancelAtPeriodEnd: true` |
 | 5.3 | Historique | — | `cancellation_scheduled` |
 | 5.4 | E-mail | — | `subscription_cancellation_scheduled` (idempotent) |
 | 5.5 | Fin de période | Après `currentPeriodEnd` | Statut `cancelled`, crédits plan retirés |

@@ -13,6 +13,7 @@ from pymongo.errors import DuplicateKeyError
 
 logger = logging.getLogger(__name__)
 
+from form_abuse import assert_human_submission
 from rate_limit import rate_limit
 from security_config import DEV_JWT_SECRET, IS_PRODUCTION
 from admin_constants import USER_ROLE_USER
@@ -32,6 +33,7 @@ register_rate_limit = rate_limit(max_requests=5, window_seconds=3600)
 forgot_password_rate_limit = rate_limit(max_requests=5, window_seconds=3600)
 reset_password_rate_limit = rate_limit(max_requests=10, window_seconds=3600)
 verify_email_rate_limit = rate_limit(max_requests=20, window_seconds=3600)
+resend_verification_rate_limit = rate_limit(max_requests=5, window_seconds=3600)
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -42,6 +44,8 @@ class RegisterRequest(BaseModel):
     companyName: str = Field(..., min_length=1, max_length=200)
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=128)
+    website: str = Field(default="", max_length=200)
+    formStartedAt: Optional[float] = None
 
     @field_validator("firstName", "lastName", "companyName")
     @classmethod
@@ -60,6 +64,8 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=1, max_length=128)
+    website: str = Field(default="", max_length=200)
+    formStartedAt: Optional[float] = None
 
     @field_validator("email")
     @classmethod
@@ -69,6 +75,8 @@ class LoginRequest(BaseModel):
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
+    website: str = Field(default="", max_length=200)
+    formStartedAt: Optional[float] = None
 
     @field_validator("email")
     @classmethod
@@ -77,12 +85,14 @@ class ForgotPasswordRequest(BaseModel):
 
 
 class VerifyEmailRequest(BaseModel):
-    token: str = Field(..., min_length=1)
+    token: str = Field(..., min_length=1, max_length=512)
 
 
 class ResetPasswordRequest(BaseModel):
-    token: str = Field(..., min_length=1)
+    token: str = Field(..., min_length=1, max_length=512)
     password: str = Field(..., min_length=8, max_length=128)
+    website: str = Field(default="", max_length=200)
+    formStartedAt: Optional[float] = None
 
 
 class MessageResponse(BaseModel):
@@ -245,6 +255,11 @@ async def register(
     db=Depends(get_db),
     _rate=Depends(register_rate_limit),
 ):
+    assert_human_submission(
+        website=body.website,
+        form_started_at=body.formStartedAt,
+        route="auth.register",
+    )
     user_doc = build_user_document(
         first_name=body.firstName,
         last_name=body.lastName,
@@ -289,7 +304,7 @@ async def register(
     token = create_access_token(user_doc["id"])
     set_auth_cookie(response, token)
     return AuthResponse(
-        message="Welcome to MemoryHub — your account is ready.",
+        message="Welcome to Basera — your account is ready.",
         user=user_public(user_doc),
     )
 
@@ -301,6 +316,11 @@ async def login(
     db=Depends(get_db),
     _rate=Depends(login_rate_limit),
 ):
+    assert_human_submission(
+        website=body.website,
+        form_started_at=body.formStartedAt,
+        route="auth.login",
+    )
     user = await db.users.find_one({"email": body.email})
     if not user or not verify_password(body.password, user["passwordHash"]):
         from observability import log_event
@@ -347,6 +367,19 @@ async def forgot_password(
     db=Depends(get_db),
     _rate=Depends(forgot_password_rate_limit),
 ):
+    # Honeypot: same neutral response (no tip to bots).
+    if body.website and str(body.website).strip():
+        from observability import log_event
+
+        log_event("abuse.honeypot", result="blocked", route="auth.forgot_password")
+        return MessageResponse(
+            message="If an account exists for this address, you will receive password reset instructions by email."
+        )
+    assert_human_submission(
+        website="",
+        form_started_at=body.formStartedAt,
+        route="auth.forgot_password",
+    )
     user = await db.users.find_one({"email": body.email})
     if user:
         reset_token = secrets.token_urlsafe(32)
@@ -383,6 +416,11 @@ async def reset_password(
     db=Depends(get_db),
     _rate=Depends(reset_password_rate_limit),
 ):
+    assert_human_submission(
+        website=body.website,
+        form_started_at=body.formStartedAt,
+        route="auth.reset_password",
+    )
     user = await db.users.find_one({"passwordResetToken": body.token})
     if not user:
         raise HTTPException(
@@ -477,3 +515,43 @@ async def verify_email(
     except Exception:
         pass
     return MessageResponse(message="Email verified successfully.")
+
+
+@auth_router.post("/resend-verification", response_model=MessageResponse)
+async def resend_verification(
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    _rate=Depends(resend_verification_rate_limit),
+):
+    """Authenticated user can request a fresh verification email."""
+    user = await db.users.find_one({"id": current_user["id"]})
+    if not user:
+        raise HTTPException(status_code=401, detail={"message": "User not found."})
+    if user.get("emailVerified"):
+        return MessageResponse(message="Your email is already verified.")
+
+    token = secrets.token_urlsafe(32)
+    expires = (
+        datetime.now(timezone.utc) + timedelta(hours=EMAIL_VERIFICATION_TTL_HOURS)
+    ).isoformat()
+    await db.users.update_one(
+        {"id": user["id"]},
+        {
+            "$set": {
+                "emailVerificationToken": token,
+                "emailVerificationExpires": expires,
+                "updatedAt": datetime.now(timezone.utc).isoformat(),
+            }
+        },
+    )
+    from transactional_email_service import send_verification_email
+
+    greeting = (user.get("firstName") or "").strip() or "there"
+    await send_verification_email(
+        db,
+        user_id=user["id"],
+        to=user["email"],
+        greeting=greeting,
+        verify_token=token,
+    )
+    return MessageResponse(message="Verification email sent.")

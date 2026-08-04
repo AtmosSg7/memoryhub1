@@ -27,13 +27,13 @@ function DashboardHeader({ firstName, subtitle }) {
   return (
     <header className="space-y-1.5" data-testid="dashboard-home-header">
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="font-cabinet text-2xl md:text-[32px] font-bold text-[#111827] tracking-tight leading-tight">
+        <h1 className="font-cabinet text-2xl md:text-[32px] font-bold text-dash-text tracking-tight leading-tight">
           {greeting}
         </h1>
         <DemoDataBadge />
       </div>
-      <p className="text-sm font-medium text-[#6B7280]">{dateLabel}</p>
-      <p className="text-sm text-[#6B7280] max-w-2xl leading-relaxed">
+      <p className="text-sm font-medium text-dash-text-muted">{dateLabel}</p>
+      <p className="text-sm text-dash-text-muted max-w-2xl leading-relaxed">
         {subtitle || t("dashboardV2.header.subtitle")}
       </p>
     </header>

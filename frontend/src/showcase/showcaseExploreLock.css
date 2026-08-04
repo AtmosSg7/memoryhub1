@@ -1,0 +1,187 @@
+/* Homepage showcase — consultation whitelist + single internal scroll */
+
+.showcase-explore-lock {
+  cursor: default;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.showcase-explore-lock,
+.showcase-explore-lock * {
+  cursor: default !important;
+}
+
+/* Discreet disabled style for known write / settings chrome */
+.showcase-explore-lock [data-testid="sidebar-nav-settings"],
+.showcase-explore-lock [data-testid="sidebar-upgrade-cta"],
+.showcase-explore-lock [data-testid="sidebar-upgrade-card"] > button,
+.showcase-explore-lock [data-testid="action-center"] button,
+.showcase-explore-lock [data-testid="dashboard-quick-actions"],
+.showcase-explore-lock [data-testid="dashboard-quick-actions"] *,
+.showcase-explore-lock [data-testid="topbar-notifications-btn"],
+.showcase-explore-lock [data-testid="topbar-profile-btn"],
+.showcase-explore-lock [data-testid="import-usage-badge-value"],
+.showcase-explore-lock [data-testid*="favorite"],
+.showcase-explore-lock [data-testid*="delete"],
+.showcase-explore-lock [data-testid*="edit"],
+.showcase-explore-lock [data-testid*="create"],
+.showcase-explore-lock [data-testid*="import"],
+.showcase-explore-lock [data-testid*="add-"],
+.showcase-explore-lock [data-testid$="-add"],
+.showcase-explore-lock [data-testid$="-primary"],
+.showcase-explore-lock [data-testid*="row-more"],
+.showcase-explore-lock [data-testid*="more-actions"],
+.showcase-explore-lock [data-testid*="associate"],
+.showcase-explore-lock [data-testid="client-add-menu"],
+.showcase-explore-lock [data-testid="client-create-note"],
+.showcase-explore-lock [data-testid="client-import-document"],
+.showcase-explore-lock [data-testid="client-detail-edit"],
+.showcase-explore-lock [data-testid="client-detail-delete"],
+.showcase-explore-lock [data-testid="commercial-documents-header-actions"],
+.showcase-explore-lock [data-testid="commercial-documents-header-actions"] *,
+.showcase-explore-lock [data-testid="quote-accepted-banner"] button,
+.showcase-explore-lock [data-testid="unlinked-emails-inbox"] button {
+  opacity: 0.45;
+  filter: grayscale(0.1);
+  pointer-events: none;
+}
+
+/* Portaled write chrome while showcase is mounted */
+body:has([data-testid="showcase-app"]) [data-testid="commercial-detail-more-actions"],
+body:has([data-testid="showcase-app"]) [data-testid="commercial-detail-more-menu"],
+body:has([data-testid="showcase-app"]) [data-testid="commercial-detail-edit"],
+body:has([data-testid="showcase-app"]) [data-testid*="row-more"] {
+  opacity: 0.45;
+  filter: grayscale(0.1);
+  cursor: default !important;
+}
+
+body:has([data-testid="showcase-app"]) [data-testid="commercial-detail-close"],
+body:has([data-testid="showcase-app"]) [data-radix-dialog-close],
+body:has([data-testid="showcase-app"]) [data-testid$="-detail-modal"] button.absolute.right-4.top-4 {
+  opacity: 1;
+  filter: none;
+  cursor: pointer !important;
+}
+
+/* Interactive exploration targets keep a normal pointer */
+.showcase-explore-lock [data-testid="sidebar-nav-dashboard"],
+.showcase-explore-lock [data-testid="sidebar-nav-clients"],
+.showcase-explore-lock [data-testid="sidebar-nav-documents"],
+.showcase-explore-lock [data-testid="sidebar-nav-analytics"],
+.showcase-explore-lock [data-testid="sidebar-nav-communications"],
+.showcase-explore-lock [data-testid="topbar-theme-toggle"],
+.showcase-explore-lock [data-testid="topbar-lang-toggle"],
+.showcase-explore-lock [data-testid="topbar-lang-toggle"] button,
+.showcase-explore-lock [data-testid="topbar-search-input"],
+.showcase-explore-lock [data-testid="topbar-mobile-menu"],
+.showcase-explore-lock [data-testid^="dashboard-period-"],
+.showcase-explore-lock [data-testid="dashboard-analytics-all-link"],
+.showcase-explore-lock [data-testid="top-clients-view-all"],
+.showcase-explore-lock [data-testid^="top-client-"],
+.showcase-explore-lock [data-testid="activity-feed-view-all"],
+.showcase-explore-lock [data-testid^="activity-feed-item-"],
+.showcase-explore-lock [data-testid="clients-search-input"],
+.showcase-explore-lock [data-testid="clients-sort"],
+.showcase-explore-lock [data-testid^="clients-filter-"],
+.showcase-explore-lock [data-testid^="client-card-"]:not([data-testid*="favorite"]),
+.showcase-explore-lock [data-testid="client-section-nav"] button,
+.showcase-explore-lock [data-testid="client-detail-back"],
+.showcase-explore-lock [data-testid="client-detail-prev"],
+.showcase-explore-lock [data-testid="client-detail-next"],
+.showcase-explore-lock [data-testid^="client-timeline-item-"],
+.showcase-explore-lock [data-testid^="commercial-documents-filter-"],
+.showcase-explore-lock [data-testid^="quote-row-"],
+.showcase-explore-lock [data-testid^="invoice-row-"],
+.showcase-explore-lock [data-testid^="row-primary-view-"],
+.showcase-explore-lock [data-testid^="analytics-period-"],
+.showcase-explore-lock [data-testid^="analytics-sort-"],
+.showcase-explore-lock [data-testid^="communication-filter-"],
+.showcase-explore-lock [data-testid="communication-link-scopes"] button,
+.showcase-explore-lock a[href="/dashboard"],
+.showcase-explore-lock a[href="/dashboard/"],
+.showcase-explore-lock a[href="/dashboard/clients"],
+.showcase-explore-lock a[href^="/dashboard/clients/"],
+.showcase-explore-lock a[href="/dashboard/documents"],
+.showcase-explore-lock a[href^="/dashboard/documents"],
+.showcase-explore-lock a[href="/dashboard/analytics"],
+.showcase-explore-lock a[href^="/dashboard/analytics"],
+.showcase-explore-lock a[href="/dashboard/communications"],
+.showcase-explore-lock a[href^="/dashboard/communications"],
+.showcase-explore-lock a[href="/dashboard/timeline"],
+.showcase-explore-lock a[href^="/dashboard/search"] {
+  cursor: pointer !important;
+  pointer-events: auto;
+}
+
+.showcase-explore-lock [data-testid="sidebar-nav-dashboard"]:hover,
+.showcase-explore-lock [data-testid="sidebar-nav-clients"]:hover,
+.showcase-explore-lock [data-testid="sidebar-nav-documents"]:hover,
+.showcase-explore-lock [data-testid="sidebar-nav-analytics"]:hover,
+.showcase-explore-lock [data-testid="sidebar-nav-communications"]:hover,
+.showcase-explore-lock [data-testid^="client-card-"]:hover,
+.showcase-explore-lock [data-testid^="top-client-"]:hover {
+  opacity: 1;
+}
+
+/* ——— Single scroll: main content only ——— */
+
+[data-testid="showcase-viewport"] {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+.showcase-app,
+.showcase-app .showcase-explore-lock {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden !important;
+  overflow-x: hidden !important;
+}
+
+.showcase-app .dashboard-app {
+  height: 100% !important;
+  min-height: 0 !important;
+  max-height: 100%;
+  overflow: hidden !important;
+  overflow-x: hidden !important;
+}
+
+.showcase-app [data-testid="dashboard-content-column"] {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  overflow-x: hidden;
+}
+
+.showcase-app [data-testid="sidebar-root"] {
+  overflow-x: hidden;
+}
+
+.showcase-app [data-testid="topbar-root"] {
+  flex-shrink: 0;
+}
+
+.showcase-app [data-testid="dashboard-main"] {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--dash-text-subtle) 55%, transparent) transparent;
+}
+
+.showcase-app [data-testid="dashboard-main"]::-webkit-scrollbar {
+  width: 8px;
+}
+
+.showcase-app [data-testid="dashboard-main"]::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.showcase-app [data-testid="dashboard-main"]::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--dash-text-subtle) 45%, transparent);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}

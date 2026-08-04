@@ -48,7 +48,7 @@ export default function ClientSectionNav({ active, counts, t, onChange }) {
             <Icon className="w-3.5 h-3.5" />
             {t(labelKey)}
             {count != null && count > 0 ? (
-              <span className={isActive ? "text-white/80" : "text-[#9CA3AF]"}>({count})</span>
+              <span className={isActive ? "text-white/80" : "text-dash-text-subtle"}>({count})</span>
             ) : null}
           </button>
         );

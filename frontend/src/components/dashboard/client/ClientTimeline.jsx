@@ -25,18 +25,18 @@ import {
 } from "lucide-react";
 
 const ICONS = {
-  quote: { Icon: FileText, bg: "bg-[#EFF6FF]", color: "text-[#0A2540]" },
+  quote: { Icon: FileText, bg: "bg-dash-accent-soft", color: "text-dash-primary" },
   invoice: { Icon: Receipt, bg: "bg-[#ECFDF5]", color: "text-[#065F46]" },
   note: { Icon: StickyNote, bg: "bg-[#FFFBEB]", color: "text-[#92400E]" },
-  client: { Icon: User, bg: "bg-[#F3F4F6]", color: "text-[#4B5563]" },
-  document: { Icon: FolderClosed, bg: "bg-[#EFF6FF]", color: "text-[#0A2540]" },
+  client: { Icon: User, bg: "bg-dash-surface-muted", color: "text-dash-text-muted" },
+  document: { Icon: FolderClosed, bg: "bg-dash-accent-soft", color: "text-dash-primary" },
   follow_up: { Icon: RefreshCw, bg: "bg-[#FFF7ED]", color: "text-[#C2410C]" },
-  send: { Icon: Send, bg: "bg-[#EFF6FF]", color: "text-[#0A2540]" },
-  call: { Icon: Phone, bg: "bg-[#F3F4F6]", color: "text-[#4B5563]" },
-  email: { Icon: Mail, bg: "bg-[#EFF6FF]", color: "text-[#0A2540]" },
+  send: { Icon: Send, bg: "bg-dash-accent-soft", color: "text-dash-primary" },
+  call: { Icon: Phone, bg: "bg-dash-surface-muted", color: "text-dash-text-muted" },
+  email: { Icon: Mail, bg: "bg-dash-accent-soft", color: "text-dash-primary" },
   whatsapp: { Icon: MessageCircle, bg: "bg-[#ECFDF5]", color: "text-[#065F46]" },
   calendar: { Icon: Calendar, bg: "bg-[#F5F3FF]", color: "text-[#5B21B6]" },
-  contacts: { Icon: Users, bg: "bg-[#F3F4F6]", color: "text-[#4B5563]" },
+  contacts: { Icon: Users, bg: "bg-dash-surface-muted", color: "text-dash-text-muted" },
 };
 
 export default function ClientTimeline({
@@ -82,7 +82,7 @@ export default function ClientTimeline({
     <div className="space-y-3" data-testid={testId}>
       <ul className={`relative ${compact ? "space-y-2" : "space-y-3"}`}>
         <div
-          className="absolute left-[15px] top-3 bottom-3 w-px bg-[#E5E7EB]"
+          className="absolute left-[15px] top-3 bottom-3 w-px bg-dash-border"
           aria-hidden="true"
         />
 
@@ -96,10 +96,10 @@ export default function ClientTimeline({
               >
                 <div className="w-8 shrink-0" aria-hidden="true" />
                 <div className="flex-1 flex items-center gap-2 min-w-0">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-dash-text-subtle">
                     {row.label}
                   </span>
-                  <div className="flex-1 h-px bg-[#F3F4F6]" />
+                  <div className="flex-1 h-px bg-dash-surface-muted" />
                 </div>
               </li>
             );
@@ -125,7 +125,7 @@ export default function ClientTimeline({
                   : `${testId}-item-${row.event.id}`
               }
             >
-              <div className="relative z-10 w-8 h-8 rounded-lg flex items-center justify-center border border-[#E5E7EB] bg-white shadow-sm shrink-0">
+              <div className="relative z-10 w-8 h-8 rounded-lg flex items-center justify-center border border-dash-border bg-dash-surface shadow-sm shrink-0">
                 <div
                   className={`w-6 h-6 rounded-md flex items-center justify-center ${meta.bg} ${meta.color}`}
                 >
@@ -137,8 +137,8 @@ export default function ClientTimeline({
                 type={route ? "button" : undefined}
                 onClick={route ? () => navigate(route) : undefined}
                 className={[
-                  "flex-1 min-w-0 rounded-xl border border-[#F3F4F6] bg-[#FAFAFA] px-3 py-2.5 text-left transition-colors",
-                  route ? "cursor-pointer hover:border-[#E5E7EB] hover:bg-white" : "",
+                  "flex-1 min-w-0 rounded-xl border border-dash-border-soft bg-dash-surface-muted px-3 py-2.5 text-left transition-colors",
+                  route ? "cursor-pointer hover:border-dash-border hover:bg-dash-surface" : "",
                   compact ? "py-2" : "",
                 ].join(" ")}
               >
@@ -146,7 +146,7 @@ export default function ClientTimeline({
                   <div className="min-w-0 flex-1">
                     <div
                       className={[
-                        "font-medium text-[#111827] truncate",
+                        "font-medium text-dash-text truncate",
                         compact ? "text-xs" : "text-[13px]",
                       ].join(" ")}
                     >
@@ -156,7 +156,7 @@ export default function ClientTimeline({
                       <p
                         className={[
                           "mt-0.5 leading-snug line-clamp-2",
-                          compact ? "text-[11px] text-[#9CA3AF]" : "text-[12px] text-[#6B7280]",
+                          compact ? "text-[11px] text-dash-text-subtle" : "text-[12px] text-dash-text-muted",
                         ].join(" ")}
                       >
                         {presentation.description}
@@ -164,8 +164,8 @@ export default function ClientTimeline({
                     ) : null}
                   </div>
                   <div className="shrink-0 text-right tabular-nums">
-                    <div className="text-[11px] text-[#6B7280]">{dt.date}</div>
-                    <div className="text-[10px] text-[#9CA3AF]">{dt.time}</div>
+                    <div className="text-[11px] text-dash-text-muted">{dt.date}</div>
+                    <div className="text-[10px] text-dash-text-subtle">{dt.time}</div>
                   </div>
                 </div>
               </ItemTag>
@@ -181,7 +181,7 @@ export default function ClientTimeline({
             onClick={onLoadMore}
             disabled={loadingMore}
             data-testid={`${testId}-load-more`}
-            className="text-xs font-medium text-[#0A2540] hover:underline disabled:opacity-50"
+            className="text-xs font-medium text-dash-primary hover:underline disabled:opacity-50"
           >
             {loadingMore ? t("activity.loading") : t("clientTimeline.loadMore")}
           </button>

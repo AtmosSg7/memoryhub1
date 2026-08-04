@@ -20,7 +20,7 @@ export function countRemindersByType(reminders, type) {
 
 export function computeDashboardInsights(reminders, options = {}) {
   const list = reminders || [];
-  const analysesRemaining = options.analysesRemaining;
+  const importsRemaining = options.importsRemaining;
 
   const counts = {
     invoiceOverdue: countRemindersByType(list, "invoice_overdue"),
@@ -120,14 +120,14 @@ export function computeDashboardInsights(reminders, options = {}) {
   }
 
   if (
-    typeof analysesRemaining === "number" &&
-    analysesRemaining >= 0 &&
-    analysesRemaining <= 3
+    typeof importsRemaining === "number" &&
+    importsRemaining >= 0 &&
+    importsRemaining <= 3
   ) {
     cards.push({
-      id: "analyses_low",
-      tone: analysesRemaining === 0 ? "urgent" : "neutral",
-      count: analysesRemaining,
+      id: "imports_low",
+      tone: importsRemaining === 0 ? "urgent" : "neutral",
+      count: importsRemaining,
       link: "/dashboard/billing",
     });
   }
@@ -194,12 +194,12 @@ export function getInsightMessageKey(card) {
       ? "dashboardV2.insights.importsPendingOne"
       : "dashboardV2.insights.importsPendingMany";
   }
-  if (card.id === "analyses_low") {
+  if (card.id === "imports_low") {
     return card.count === 0
-      ? "dashboardV2.insights.analysesEmpty"
+      ? "dashboardV2.insights.importsEmpty"
       : card.count === 1
-        ? "dashboardV2.insights.analysesLowOne"
-        : "dashboardV2.insights.analysesLowMany";
+        ? "dashboardV2.insights.importsLowOne"
+        : "dashboardV2.insights.importsLowMany";
   }
   return "dashboardV2.insights.allClear";
 }

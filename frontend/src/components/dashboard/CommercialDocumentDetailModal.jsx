@@ -26,6 +26,7 @@ export default function CommercialDocumentDetailModal({
   onEdit,
   onDelete,
   onDocumentUpdated,
+  onImportFinalInvoice,
 }) {
   const { t, lang } = useDashboardLang();
   const { getLast } = useFollowUpLastMap(type, document ? [document] : []);
@@ -62,10 +63,10 @@ export default function CommercialDocumentDetailModal({
         data-testid={`${type}-detail-modal`}
       >
         <DialogHeader className="space-y-1 pb-1">
-          <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-[#111827]">
+          <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-dash-text">
             {document.number}
           </DialogTitle>
-          <DialogDescription className="text-[#4B5563]">
+          <DialogDescription className="text-dash-text-muted">
             {document.title || t(isQuote ? "commercialDetail.quoteTitle" : "commercialDetail.invoiceTitle")}
           </DialogDescription>
         </DialogHeader>
@@ -90,7 +91,7 @@ export default function CommercialDocumentDetailModal({
           </DetailModalSummary>
 
           {lastFollowUp ? (
-            <div className="rounded-xl border border-[#FED7AA] bg-[#FFF7ED] px-4 py-3">
+            <div className="rounded-xl border border-[var(--dash-warning-border)] bg-[var(--dash-warning-bg)] px-4 py-3">
               <FollowUpLastHint last={lastFollowUp} />
             </div>
           ) : null}
@@ -103,8 +104,8 @@ export default function CommercialDocumentDetailModal({
 
           {notes ? (
             <DetailModalSection title={t(`${i18nPrefix}.internalNotes`)}>
-              <div className="rounded-xl border border-[#E7E9EE] bg-white px-4 py-3">
-                <p className="text-sm text-[#374151] whitespace-pre-wrap">{notes}</p>
+              <div className="rounded-xl border border-dash-border bg-dash-surface px-4 py-3">
+                <p className="text-sm text-dash-text-muted whitespace-pre-wrap">{notes}</p>
               </div>
             </DetailModalSection>
           ) : null}
@@ -117,6 +118,7 @@ export default function CommercialDocumentDetailModal({
           onEdit={onEdit ? handleEdit : undefined}
           onDelete={onDelete ? handleDelete : undefined}
           onDocumentUpdated={onDocumentUpdated}
+          onImportFinalInvoice={onImportFinalInvoice}
         />
       </DialogContent>
     </Dialog>

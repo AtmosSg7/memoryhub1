@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { HoneypotField, useFormAbuseGuard } from "@/components/auth/FormAbuseFields";
 
 const ResetPassword = () => {
   const { t } = useLang();
@@ -26,6 +27,8 @@ const ResetPassword = () => {
   const [done, setDone] = useState(false);
   const [serverError, setServerError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [honeypot, setHoneypot] = useState("");
+  const { formStartedAt } = useFormAbuseGuard();
 
   const schema = z
     .object({
@@ -43,13 +46,18 @@ const ResetPassword = () => {
   });
 
   const onSubmit = async (values) => {
-    if (!token) return;
+    if (!token || loading) return;
     setServerError("");
     setLoading(true);
     try {
       const { res, data } = await apiFetch("/api/auth/reset-password", {
         method: "POST",
-        body: JSON.stringify({ token, password: values.password }),
+        body: JSON.stringify({
+          token,
+          password: values.password,
+          website: honeypot,
+          formStartedAt,
+        }),
       });
       if (!res.ok) {
         setServerError(
@@ -99,7 +107,8 @@ const ResetPassword = () => {
   return (
     <AuthLayout title={t("auth.resetPassword.title")} subtitle={t("auth.resetPassword.subtitle")}>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="relative space-y-4">
+          <HoneypotField value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
           <FormField
             control={form.control}
             name="password"

@@ -8,9 +8,9 @@ export const AuthLayout = ({ title, subtitle, children, backTo = "/", backLabelK
   const { t } = useLang();
 
   useEffect(() => {
-    document.title = `${title} | MemoryHub`;
+    document.title = `${title} | Basera`;
     return () => {
-      document.title = "MemoryHub";
+      document.title = "Basera";
     };
   }, [title]);
 

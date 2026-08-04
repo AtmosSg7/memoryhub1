@@ -156,3 +156,83 @@ def test_staging_accepts_valid_config():
     env.pop("BACKEND_PUBLIC_URL", None)
     result = _run_validation(env)
     assert result.returncode == 0, result.stderr
+
+
+def test_staging_rejects_partial_google_credentials():
+    env = _base_production_env()
+    env["ENV"] = "staging"
+    env["STRIPE_SECRET_KEY"] = "sk_test_stagingkey1234567890"
+    env["FRONTEND_URL"] = "https://staging.memoryhub.example"
+    env["CORS_ORIGINS"] = "https://staging.memoryhub.example"
+    env.pop("BACKEND_PUBLIC_URL", None)
+    env["GOOGLE_CLIENT_ID"] = "google-client-id"
+    result = _run_validation(env)
+    assert result.returncode != 0
+    assert "GOOGLE_CLIENT_SECRET" in result.stderr
+
+
+def test_staging_requires_integrations_token_key_when_google_configured():
+    env = _base_production_env()
+    env["ENV"] = "staging"
+    env["STRIPE_SECRET_KEY"] = "sk_test_stagingkey1234567890"
+    env["FRONTEND_URL"] = "https://staging.memoryhub.example"
+    env["CORS_ORIGINS"] = "https://staging.memoryhub.example"
+    env["GOOGLE_CLIENT_ID"] = "google-client-id"
+    env["GOOGLE_CLIENT_SECRET"] = "google-client-secret"
+    env["GOOGLE_REDIRECT_URI"] = "https://api.staging.memoryhub.example/api/integrations/google-contacts/callback"
+    env["GOOGLE_GMAIL_REDIRECT_URI"] = "https://api.staging.memoryhub.example/api/integrations/gmail/callback"
+    env["INTEGRATIONS_CONTACTS_PROVIDER"] = ""
+    env["INTEGRATIONS_GMAIL_PROVIDER"] = ""
+    env["INTEGRATIONS_TOKEN_KEY"] = ""
+    result = _run_validation(env)
+    assert result.returncode != 0
+    assert "INTEGRATIONS_TOKEN_KEY" in result.stderr
+
+
+def test_staging_rejects_weak_integrations_token_key():
+    env = _base_production_env()
+    env["ENV"] = "staging"
+    env["STRIPE_SECRET_KEY"] = "sk_test_stagingkey1234567890"
+    env["FRONTEND_URL"] = "https://staging.memoryhub.example"
+    env["CORS_ORIGINS"] = "https://staging.memoryhub.example"
+    env["GOOGLE_CLIENT_ID"] = "google-client-id"
+    env["GOOGLE_CLIENT_SECRET"] = "google-client-secret"
+    env["GOOGLE_REDIRECT_URI"] = "https://api.staging.memoryhub.example/api/integrations/google-contacts/callback"
+    env["GOOGLE_GMAIL_REDIRECT_URI"] = "https://api.staging.memoryhub.example/api/integrations/gmail/callback"
+    env["INTEGRATIONS_TOKEN_KEY"] = "too-short"
+    result = _run_validation(env)
+    assert result.returncode != 0
+    assert "INTEGRATIONS_TOKEN_KEY" in result.stderr
+
+
+def test_staging_rejects_integrations_token_key_same_as_jwt():
+    env = _base_production_env()
+    env["ENV"] = "staging"
+    env["STRIPE_SECRET_KEY"] = "sk_test_stagingkey1234567890"
+    env["FRONTEND_URL"] = "https://staging.memoryhub.example"
+    env["CORS_ORIGINS"] = "https://staging.memoryhub.example"
+    env["GOOGLE_CLIENT_ID"] = "google-client-id"
+    env["GOOGLE_CLIENT_SECRET"] = "google-client-secret"
+    env["GOOGLE_REDIRECT_URI"] = "https://api.staging.memoryhub.example/api/integrations/google-contacts/callback"
+    env["GOOGLE_GMAIL_REDIRECT_URI"] = "https://api.staging.memoryhub.example/api/integrations/gmail/callback"
+    env["INTEGRATIONS_TOKEN_KEY"] = env["JWT_SECRET"]
+    result = _run_validation(env)
+    assert result.returncode != 0
+    assert "JWT_SECRET" in result.stderr
+
+
+def test_staging_accepts_complete_google_config():
+    env = _base_production_env()
+    env["ENV"] = "staging"
+    env["STRIPE_SECRET_KEY"] = "sk_test_stagingkey1234567890"
+    env["FRONTEND_URL"] = "https://staging.memoryhub.example"
+    env["CORS_ORIGINS"] = "https://staging.memoryhub.example"
+    env["GOOGLE_CLIENT_ID"] = "google-client-id"
+    env["GOOGLE_CLIENT_SECRET"] = "google-client-secret"
+    env["GOOGLE_REDIRECT_URI"] = "https://api.staging.memoryhub.example/api/integrations/google-contacts/callback"
+    env["GOOGLE_GMAIL_REDIRECT_URI"] = "https://api.staging.memoryhub.example/api/integrations/gmail/callback"
+    env["INTEGRATIONS_TOKEN_KEY"] = "dedicated-integrations-token-key-32chars"
+    env["INTEGRATIONS_CONTACTS_PROVIDER"] = ""
+    env["INTEGRATIONS_GMAIL_PROVIDER"] = ""
+    result = _run_validation(env)
+    assert result.returncode == 0, result.stderr

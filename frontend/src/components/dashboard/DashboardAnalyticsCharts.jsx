@@ -13,25 +13,16 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-
-const TOOLTIP_STYLE = {
-  background: "#ffffff",
-  border: "1px solid #E5E7EB",
-  borderRadius: 10,
-  boxShadow: "0 8px 24px -12px rgba(10,37,64,0.18)",
-  fontSize: 12,
-};
-
-const AXIS_TICK = { fill: "#9CA3AF", fontSize: 11 };
+import { useDashboardChartTheme } from "@/hooks/useDashboardChartTheme";
 
 function ChartShell({ title, children, testId }) {
   return (
     <div
-      className="rounded-xl border border-[#E5E7EB] bg-white p-4 md:p-5 shadow-[0_1px_2px_rgba(10,37,64,0.04)]"
+      className="rounded-xl border border-dash-border bg-dash-surface p-5 md:p-6 dash-panel"
       data-testid={testId}
     >
-      <h3 className="text-sm font-semibold text-[#111827] mb-3">{title}</h3>
-      <div className="h-48 md:h-56 w-full min-w-0">{children}</div>
+      <h3 className="dash-section mb-4">{title}</h3>
+      <div className="h-52 md:h-60 w-full min-w-0">{children}</div>
     </div>
   );
 }
@@ -44,6 +35,7 @@ function tickInterval(dataLength) {
 }
 
 function DashboardAnalyticsCharts({ series, period, labels, formatCurrency, compact = true }) {
+  const chartTheme = useDashboardChartTheme();
   const interval = useMemo(() => tickInterval(series?.length || 0), [series]);
   const revenueData = series || [];
   const docsData = series || [];
@@ -51,7 +43,7 @@ function DashboardAnalyticsCharts({ series, period, labels, formatCurrency, comp
 
   return (
     <div
-      className={compact ? "grid grid-cols-1 gap-3" : "grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4"}
+      className={compact ? "grid grid-cols-1 gap-4" : "grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5"}
       data-testid="dashboard-analytics-charts"
     >
       <ChartShell title={labels.revenue} testId="dashboard-chart-revenue">
@@ -59,32 +51,35 @@ function DashboardAnalyticsCharts({ series, period, labels, formatCurrency, comp
           <AreaChart data={revenueData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="dashRevenueFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#0A2540" stopOpacity={0.18} />
-                <stop offset="100%" stopColor="#0A2540" stopOpacity={0} />
+                <stop offset="0%" stopColor={chartTheme.primary} stopOpacity={chartTheme.areaOpacity} />
+                <stop offset="100%" stopColor={chartTheme.primary} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid stroke="#F3F4F6" vertical={false} />
-            <XAxis dataKey="label" tick={AXIS_TICK} axisLine={false} tickLine={false} interval={interval} />
+            <CartesianGrid stroke={chartTheme.grid} vertical={false} strokeDasharray={chartTheme.gridDash} />
+            <XAxis dataKey="label" tick={chartTheme.axisTick} axisLine={false} tickLine={false} interval={interval} />
             <YAxis
-              tick={AXIS_TICK}
+              tick={chartTheme.axisTick}
               axisLine={false}
               tickLine={false}
               width={44}
               tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))}
             />
             <Tooltip
-              contentStyle={TOOLTIP_STYLE}
+              contentStyle={chartTheme.tooltip}
               formatter={(value) => [formatCurrency(Math.round(value * 100)), labels.revenueSeries]}
-              labelStyle={{ color: "#6B7280" }}
+              labelStyle={chartTheme.tooltipLabel}
             />
             <Area
               type="monotone"
               dataKey="revenueEuros"
-              stroke="#0A2540"
-              strokeWidth={2}
+              stroke={chartTheme.primary}
+              strokeWidth={chartTheme.strokeWidth}
+              strokeLinecap="round"
               fill="url(#dashRevenueFill)"
               name={labels.revenueSeries}
               isAnimationActive={period !== "30d"}
+              activeDot={{ ...chartTheme.activeDot, fill: chartTheme.primary }}
+              style={chartTheme.lineGlow !== "none" ? { filter: chartTheme.lineGlow } : undefined}
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -95,13 +90,13 @@ function DashboardAnalyticsCharts({ series, period, labels, formatCurrency, comp
           <ChartShell title={labels.documents} testId="dashboard-chart-documents">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={docsData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#F3F4F6" vertical={false} />
-                <XAxis dataKey="label" tick={AXIS_TICK} axisLine={false} tickLine={false} interval={interval} />
-                <YAxis allowDecimals={false} tick={AXIS_TICK} axisLine={false} tickLine={false} width={28} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: "#6B7280" }} />
-                <Legend wrapperStyle={{ fontSize: 11, color: "#6B7280" }} />
-                <Bar dataKey="quotes" name={labels.quotes} fill="#0A2540" radius={[4, 4, 0, 0]} maxBarSize={18} />
-                <Bar dataKey="invoices" name={labels.invoices} fill="#60A5FA" radius={[4, 4, 0, 0]} maxBarSize={18} />
+                <CartesianGrid stroke={chartTheme.grid} vertical={false} strokeDasharray={chartTheme.gridDash} />
+                <XAxis dataKey="label" tick={chartTheme.axisTick} axisLine={false} tickLine={false} interval={interval} />
+                <YAxis allowDecimals={false} tick={chartTheme.axisTick} axisLine={false} tickLine={false} width={28} />
+                <Tooltip contentStyle={chartTheme.tooltip} labelStyle={chartTheme.tooltipLabel} />
+                <Legend wrapperStyle={{ fontSize: 11, color: chartTheme.axis }} />
+                <Bar dataKey="quotes" name={labels.quotes} fill={chartTheme.primary} radius={[4, 4, 0, 0]} maxBarSize={18} />
+                <Bar dataKey="invoices" name={labels.invoices} fill={chartTheme.cyan} radius={[4, 4, 0, 0]} maxBarSize={18} />
               </BarChart>
             </ResponsiveContainer>
           </ChartShell>
@@ -109,18 +104,20 @@ function DashboardAnalyticsCharts({ series, period, labels, formatCurrency, comp
           <ChartShell title={labels.clients} testId="dashboard-chart-clients">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={clientsData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="#F3F4F6" vertical={false} />
-                <XAxis dataKey="label" tick={AXIS_TICK} axisLine={false} tickLine={false} interval={interval} />
-                <YAxis allowDecimals={false} tick={AXIS_TICK} axisLine={false} tickLine={false} width={28} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: "#6B7280" }} />
+                <CartesianGrid stroke={chartTheme.grid} vertical={false} strokeDasharray={chartTheme.gridDash} />
+                <XAxis dataKey="label" tick={chartTheme.axisTick} axisLine={false} tickLine={false} interval={interval} />
+                <YAxis allowDecimals={false} tick={chartTheme.axisTick} axisLine={false} tickLine={false} width={28} />
+                <Tooltip contentStyle={chartTheme.tooltip} labelStyle={chartTheme.tooltipLabel} />
                 <Line
                   type="monotone"
                   dataKey="clients"
                   name={labels.clientsSeries}
-                  stroke="#0066FF"
-                  strokeWidth={2}
+                  stroke={chartTheme.violet}
+                  strokeWidth={chartTheme.strokeWidth}
+                  strokeLinecap="round"
                   dot={false}
-                  activeDot={{ r: 4 }}
+                  activeDot={{ ...chartTheme.activeDot, fill: chartTheme.violet }}
+                  style={chartTheme.lineGlow !== "none" ? { filter: chartTheme.lineGlow } : undefined}
                 />
               </LineChart>
             </ResponsiveContainer>

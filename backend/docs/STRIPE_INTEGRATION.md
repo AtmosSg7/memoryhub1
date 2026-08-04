@@ -1,4 +1,4 @@
-# MemoryHub — Stripe Integration V1
+# Basera — Stripe Integration V1
 
 > **Stripe = paiement uniquement.** Toute logique métier reste dans BillingService → SubscriptionService → CreditService.
 
@@ -32,24 +32,31 @@ SubscriptionService + CreditService
 
 | Variable | Description |
 |----------|-------------|
-| `STRIPE_SECRET_KEY` | Clé secrète API (`sk_test_` ou `sk_live_`) |
+| `STRIPE_SECRET_KEY` | Clé secrète API (`sk_test_` ou `sk_live_`) — **uniquement** dans `backend/.env` / secrets deploy |
 | `STRIPE_WEBHOOK_SECRET` | Secret endpoint webhook (`whsec_`) |
-| `STRIPE_PRICE_SOLO` | Price ID abonnement Solo |
-| `STRIPE_PRICE_PRO` | Price ID abonnement Pro |
-| `STRIPE_PRICE_TEAM` | Price ID abonnement Team |
+| `STRIPE_PRICE_SOLO` | Price ID Starter (API id `solo`) — `price_1U0ogXH44aox1nDPS97Gx7Vg` |
+| `STRIPE_PRICE_PRO` | Price ID Pro — `price_1U0ogjH44aox1nDPsQvh4rgY` |
+| `STRIPE_PRICE_TEAM` | Price ID Business (API id `team`) — `price_1U0ogwH44aox1nDPIqCVldxr` |
 | `STRIPE_SUCCESS_URL` | Retour après paiement (ex. `.../billing?checkout=success`) |
 | `STRIPE_CANCEL_URL` | Retour annulation checkout |
 
-Sans ces variables, MemoryHub **continue de fonctionner** — `stripeConfigured: false` dans `/api/billing/me`.
+> Pas de clé publique (`pk_…`) dans le frontend : le Checkout Stripe est créé côté serveur.
+
+Sans `STRIPE_SECRET_KEY` + prices + URLs, Basera **continue de fonctionner** — `stripeConfigured: false` dans `/api/billing/me`.
+
+Catalogue public (UI) : Starter **4,90 €** · Pro **9,90 €** · Business **19,90 €** (`commercial_constants.py`).
+
+Product IDs (référence Dashboard, non lus par le code) :
+`prod_V0qNNdD2ykwbQk` (Starter) · `prod_V0qNzCQW7w0AJc` (Pro) · `prod_V0qNPuHEeAnv9s` (Business).
 
 ---
 
 ## Création produits Stripe
 
 1. Dashboard Stripe → **Products**
-2. Créer 3 produits récurrents mensuels : Solo, Pro, Team
-3. Copier chaque **Price ID** (`price_...`) dans les variables correspondantes
-4. Mode test d'abord (`sk_test_`, prices test)
+2. Créer 3 produits récurrents mensuels : Starter, Pro, Business (montants 4,90 / 9,90 / 19,90 €)
+3. Copier chaque **Price ID** (`price_...`) dans `STRIPE_PRICE_SOLO` / `PRO` / `TEAM`
+4. Mode test d'abord (`sk_test_`, prices test) avant les Price Live ci-dessus
 
 ---
 
@@ -86,7 +93,7 @@ stripe trigger invoice.paid
 
 ## Événements traités
 
-| Événement | Action MemoryHub |
+| Événement | Action Basera |
 |-----------|----------------|
 | `checkout.session.completed` | Crée/ active abonnement + crédits |
 | `customer.subscription.created/updated` | Sync statut, plan, périodes Stripe |

@@ -68,7 +68,7 @@ function StepBadge({ active, done, label }) {
     <div
       className={[
         "w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 transition-colors",
-        done ? "bg-[#ECFDF5] text-[#065F46]" : active ? "bg-[#0A2540] text-white" : "bg-[#F3F4F6] text-[#6B7280]",
+        done ? "bg-[#ECFDF5] text-[#065F46]" : active ? "bg-[var(--dash-nav-active-bg)] text-white" : "bg-dash-surface-muted text-dash-text-muted",
       ].join(" ")}
     >
       {done ? <CheckCircle2 className="w-4 h-4" /> : label}
@@ -79,30 +79,30 @@ function StepBadge({ active, done, label }) {
 function AnalyzingPanel({ progress, stageIndex, t }) {
   return (
     <div
-      className="rounded-2xl border border-[#E7E9EE] bg-gradient-to-br from-[#F8FAFF] to-white p-6 sm:p-8"
+      className="rounded-2xl border border-dash-border bg-gradient-to-br from-[#F8FAFF] to-white p-6 sm:p-8"
       data-testid="import-wizard-analyzing"
     >
       <div className="flex items-start gap-4">
-        <div className="relative w-12 h-12 rounded-2xl bg-[#0A2540] flex items-center justify-center shrink-0">
+        <div className="relative w-12 h-12 rounded-2xl bg-[var(--dash-nav-active-bg)] flex items-center justify-center shrink-0">
           <Sparkles className="w-5 h-5 text-white animate-pulse" />
           <span className="absolute -right-1 -top-1 w-3 h-3 rounded-full bg-[#0066FF] animate-ping" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-cabinet text-lg font-bold text-[#111827] tracking-tight">
+          <p className="font-cabinet text-lg font-bold text-dash-text tracking-tight">
             {t("importWizard.analyzingDocument")}
           </p>
-          <p className="text-sm text-[#6B7280] mt-1">{t("importWizard.analyzingHint")}</p>
+          <p className="text-sm text-dash-text-muted mt-1">{t("importWizard.analyzingHint")}</p>
         </div>
       </div>
 
       <div className="mt-6">
-        <div className="h-2 rounded-full bg-[#E5E7EB] overflow-hidden">
+        <div className="h-2 rounded-full bg-dash-border overflow-hidden">
           <div
             className="h-full rounded-full bg-gradient-to-r from-[#0066FF] to-[#0A2540] transition-all duration-500 ease-out"
             style={{ width: `${progress}%` }}
           />
         </div>
-        <div className="mt-2 text-right text-xs font-medium text-[#0A2540]">{progress}%</div>
+        <div className="mt-2 text-right text-xs font-medium text-dash-primary">{progress}%</div>
       </div>
 
       <div className="mt-5 space-y-2">
@@ -114,7 +114,7 @@ function AnalyzingPanel({ progress, stageIndex, t }) {
               key={key}
               className={[
                 "flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
-                active ? "bg-[#EFF6FF] text-[#0A2540]" : done ? "text-[#065F46]" : "text-[#9CA3AF]",
+                active ? "bg-dash-accent-soft text-dash-primary" : done ? "text-[#065F46]" : "text-dash-text-subtle",
               ].join(" ")}
             >
               {done ? (
@@ -447,7 +447,7 @@ export default function ImportWizard({
             {onSuccessStep ? t("importWizard.successTitle") : t("importWizard.title")}
           </DialogTitle>
           {!onSuccessStep ? (
-            <DialogDescription className="text-[#4B5563]">
+            <DialogDescription className="text-dash-text-muted">
               {t("importWizard.subtitle")}
             </DialogDescription>
           ) : null}
@@ -460,7 +460,7 @@ export default function ImportWizard({
                 <StepBadge key={n} label={n} active={step === n} done={step > n} />
               ))}
             </div>
-            <div className="grid grid-cols-3 gap-1 text-[10px] text-[#6B7280] uppercase tracking-wide mb-4">
+            <div className="grid grid-cols-3 gap-1 text-[10px] text-dash-text-muted uppercase tracking-wide mb-4">
               {stepLabels.map((label) => (
                 <span key={label} className="truncate">
                   {label}
@@ -489,7 +489,7 @@ export default function ImportWizard({
           <div
             className={[
               "border-2 border-dashed rounded-2xl p-8 text-center transition-colors",
-              dragging ? "border-[#0A2540] bg-[#EFF6FF]/40" : "border-[#E5E7EB] bg-[#FAFAFA]",
+              dragging ? "border-dash-primary bg-dash-accent-soft/40" : "border-dash-border bg-dash-surface-muted",
               "cursor-pointer",
             ].join(" ")}
             onDrop={(event) => {
@@ -513,31 +513,31 @@ export default function ImportWizard({
               className="hidden"
               onChange={(event) => handleFilePick(event.target.files)}
             />
-            <div className="w-12 h-12 rounded-xl bg-[#EFF6FF] text-[#0A2540] flex items-center justify-center mx-auto mb-4">
+            <div className="w-12 h-12 rounded-xl bg-dash-accent-soft text-dash-primary flex items-center justify-center mx-auto mb-4">
               <Upload className="w-5 h-5" />
             </div>
-            <p className="text-sm font-medium text-[#111827]">{t("importWizard.dropHint")}</p>
-            <p className="text-xs text-[#6B7280] mt-1">{t("importWizard.fileTypes")}</p>
-            <p className="text-xs text-[#9CA3AF] mt-1">{t("importWizard.multiImageHint")}</p>
+            <p className="text-sm font-medium text-dash-text">{t("importWizard.dropHint")}</p>
+            <p className="text-xs text-dash-text-muted mt-1">{t("importWizard.fileTypes")}</p>
+            <p className="text-xs text-dash-text-subtle mt-1">{t("importWizard.multiImageHint")}</p>
           </div>
         )}
 
         {step === 1 && !analyzing && pendingFiles.length > 0 && (
           <div className="space-y-4" data-testid="import-wizard-file-ready">
-            <div className="rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 space-y-2">
+            <div className="rounded-xl border border-dash-border bg-dash-surface px-4 py-3 space-y-2">
               {pendingFiles.map((file) => (
                 <div key={`${file.name}-${file.size}`} className="flex items-center gap-3">
                   <FileText className="w-5 h-5 text-[#4F46E5] shrink-0" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-[#111827] truncate">{file.name}</p>
-                    <p className="text-xs text-[#6B7280]">
+                    <p className="text-sm font-medium text-dash-text truncate">{file.name}</p>
+                    <p className="text-xs text-dash-text-muted">
                       {(file.size / 1024).toFixed(0)} Ko
                     </p>
                   </div>
                 </div>
               ))}
               {pendingFiles.length > 1 ? (
-                <p className="text-xs text-[#6B7280] pt-1 border-t border-[#F3F4F6]">
+                <p className="text-xs text-dash-text-muted pt-1 border-t border-dash-border-soft">
                   {t("importWizard.multiImageSelected").replace("{count}", String(pendingFiles.length))}
                 </p>
               ) : null}
@@ -612,7 +612,7 @@ export default function ImportWizard({
         {!onSuccessStep ? (
           <div className="flex flex-col gap-2 pt-2">
             {step > 1 && step < 3 && !canGoNext ? (
-              <p className="text-[11px] text-[#9CA3AF] text-right" data-testid="import-wizard-next-hint">
+              <p className="text-[11px] text-dash-text-subtle text-right" data-testid="import-wizard-next-hint">
                 {t("importWizard.nextBlockedStep2")}
               </p>
             ) : null}

@@ -6,7 +6,7 @@ import { commercialDocumentsPath } from "@/utils/commercialDocumentsPath";
 function PipelineBar({ label, count, max, tone, onClick, testId }) {
   const width = max > 0 ? Math.max(count > 0 ? 8 : 0, Math.round((count / max) * 100)) : 0;
   const tones = {
-    navy: "bg-[#0A2540]",
+    navy: "bg-[var(--dash-nav-active-bg)]",
     blue: "bg-[#3B82F6]",
     green: "bg-[#059669]",
     red: "bg-[#DC2626]",
@@ -19,13 +19,13 @@ function PipelineBar({ label, count, max, tone, onClick, testId }) {
       type="button"
       onClick={onClick}
       data-testid={testId}
-      className="w-full text-left group rounded-lg px-1 py-1.5 hover:bg-[#FAFAFA] transition-colors"
+      className="w-full text-left group rounded-lg px-1 py-1.5 hover:bg-dash-surface-muted transition-colors"
     >
       <div className="flex items-center justify-between gap-2 mb-1.5">
-        <span className="text-xs text-[#4B5563] group-hover:text-[#111827]">{label}</span>
-        <span className="text-xs font-semibold tabular-nums text-[#111827]">{count}</span>
+        <span className="text-xs text-dash-text-muted group-hover:text-dash-text">{label}</span>
+        <span className="text-xs font-semibold tabular-nums text-dash-text">{count}</span>
       </div>
-      <div className="h-1.5 rounded-full bg-[#F3F4F6] overflow-hidden">
+      <div className="h-1.5 rounded-full bg-dash-surface-muted overflow-hidden">
         <div
           className={`h-full rounded-full transition-all ${tones[tone] || tones.navy}`}
           style={{ width: `${width}%` }}
@@ -39,7 +39,7 @@ function PipelineGroup({ title, items }) {
   const max = Math.max(...items.map((item) => item.count), 1);
   return (
     <div className="space-y-1">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9CA3AF] px-1 mb-2">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-dash-text-subtle px-1 mb-2">
         {title}
       </p>
       {items.map((item) => (
@@ -136,20 +136,20 @@ function DashboardPipelineCard({ pipeline, loading, periodMeta }) {
 
   return (
     <section
-      className="h-full rounded-xl border border-[#E5E7EB] bg-white p-4 md:p-5 shadow-[0_1px_2px_rgba(10,37,64,0.04)]"
+      className="h-full rounded-xl border border-dash-border bg-dash-surface p-4 md:p-5 shadow-[0_1px_2px_rgba(10,37,64,0.04)]"
       data-testid="dashboard-pipeline"
     >
       <div className="mb-4">
-        <h2 className="font-cabinet text-base md:text-lg font-bold text-[#111827] tracking-tight">
+        <h2 className="font-cabinet text-base md:text-lg font-bold text-dash-text tracking-tight">
           {t("dashboardV2.pipeline.title")}
         </h2>
-        <p className="text-xs text-[#6B7280] mt-0.5">{t("dashboardV2.pipeline.subtitle")}</p>
+        <p className="text-xs text-dash-text-muted mt-0.5">{t("dashboardV2.pipeline.subtitle")}</p>
       </div>
 
       {loading ? (
         <div className="space-y-3 animate-pulse" aria-hidden>
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-8 rounded-lg bg-[#F3F4F6]" />
+            <div key={i} className="h-8 rounded-lg bg-dash-surface-muted" />
           ))}
         </div>
       ) : (

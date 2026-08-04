@@ -36,7 +36,7 @@ export function useCredits({ enabled = true } = {}) {
       setBalance(data);
       return data;
     } catch (err) {
-      setError(err.message || "Failed to load analyses.");
+      setError(err.message || "Failed to load imports.");
       throw err;
     } finally {
       setLoading(false);

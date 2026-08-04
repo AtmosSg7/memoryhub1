@@ -141,10 +141,10 @@ export default function AddQuoteModal() {
     <Dialog open={isOpen} onOpenChange={(open) => !open && closeAddQuote()}>
       <DialogContent overlayClassName={DETAIL_MODAL_OVERLAY_CLASS} className={DETAIL_MODAL_CONTENT_CLASS} data-testid="add-quote-modal">
         <DialogHeader className="space-y-1 pb-1">
-          <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-[#111827]">
+          <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-dash-text">
             {isEdit ? t("quoteForm.editTitle") : t("quoteForm.addTitle")}
           </DialogTitle>
-          <DialogDescription className="text-[#4B5563]">
+          <DialogDescription className="text-dash-text-muted">
             {isEdit ? t("quoteForm.editSubtitle") : t("quoteForm.addSubtitle")}
           </DialogDescription>
         </DialogHeader>
@@ -157,7 +157,7 @@ export default function AddQuoteModal() {
         ) : (
         <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
           {isEdit && editingQuote?.number && (
-            <div className="text-xs font-semibold text-[#0A2540] bg-[#EFF6FF] px-3 py-2 rounded-lg">
+            <div className="text-xs font-semibold text-dash-primary bg-dash-accent-soft px-3 py-2 rounded-lg">
               {editingQuote.number}
             </div>
           )}
@@ -165,7 +165,7 @@ export default function AddQuoteModal() {
           <div className="space-y-2">
             <Label htmlFor="quote-client" className={FORM_LABEL_CLASS}>{t("quoteForm.client")} *</Label>
             {clientLocked ? (
-              <Input id="quote-client" readOnly value={getDisplayCompany(prefillClient)} className={`${FORM_FIELD_CLASS} bg-[#F9FAFB] text-[#6B7280]`} />
+              <Input id="quote-client" readOnly value={getDisplayCompany(prefillClient)} className={`${FORM_FIELD_CLASS} bg-dash-bg text-dash-text-muted`} />
             ) : (
               <Select value={form.clientId || "none"} onValueChange={(v) => setForm((p) => ({ ...p, clientId: v === "none" ? "" : v }))}>
                 <SelectTrigger data-testid="quote-form-client" className={FORM_FIELD_CLASS}><SelectValue placeholder={t("quoteForm.selectClient")} /></SelectTrigger>

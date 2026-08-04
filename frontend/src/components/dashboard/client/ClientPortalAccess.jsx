@@ -90,7 +90,7 @@ export default function ClientPortalAccess({ clientId, t, embedded = false }) {
     }
   };
 
-  const shellClass = embedded ? "" : "rounded-xl border border-[#E5E7EB] bg-white p-4 md:p-5";
+  const shellClass = embedded ? "" : "rounded-xl border border-dash-border bg-dash-surface p-4 md:p-5";
 
   if (loading) {
     return (
@@ -116,19 +116,19 @@ export default function ClientPortalAccess({ clientId, t, embedded = false }) {
     <div className={shellClass} data-testid="client-portal-access">
       {!embedded ? (
         <div className="flex items-start gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-[#EFF6FF] flex items-center justify-center shrink-0">
-            <Link2 className="w-5 h-5 text-[#0A2540]" />
+          <div className="w-10 h-10 rounded-xl bg-dash-accent-soft flex items-center justify-center shrink-0">
+            <Link2 className="w-5 h-5 text-dash-primary" />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="font-cabinet text-lg font-bold text-[#111827] tracking-tight">{t("clientPortal.title")}</h3>
-            <p className="text-xs text-[#6B7280] mt-0.5">{t("clientPortal.description")}</p>
+            <h3 className="font-cabinet text-lg font-bold text-dash-text tracking-tight">{t("clientPortal.title")}</h3>
+            <p className="text-xs text-dash-text-muted mt-0.5">{t("clientPortal.description")}</p>
           </div>
         </div>
       ) : null}
 
       {portal ? (
         <div className="space-y-3">
-          <div className="rounded-lg border border-[#E5E7EB] bg-[#FAFAFA] px-3 py-2 text-xs text-[#374151] break-all" data-testid="client-portal-url">
+          <div className="rounded-lg border border-dash-border bg-dash-surface-muted px-3 py-2 text-xs text-dash-text-muted break-all" data-testid="client-portal-url">
             {portalUrl}
           </div>
           <div className="flex flex-wrap gap-2">

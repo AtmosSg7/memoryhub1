@@ -70,16 +70,16 @@ export default function ClientsPage() {
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3" data-testid="clients-loading" aria-hidden="true">
           {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="bg-white border border-[#E5E7EB] rounded-xl p-5 space-y-3">
+            <div key={index} className="bg-dash-surface border border-dash-border rounded-xl p-5 space-y-3">
               <div className="flex items-center gap-3">
-                <Skeleton className="w-10 h-10 rounded-lg shrink-0 bg-[#F3F4F6]" />
+                <Skeleton className="w-10 h-10 rounded-lg shrink-0 bg-dash-surface-muted" />
                 <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-3/4 bg-[#F3F4F6]" />
-                  <Skeleton className="h-3 w-1/2 bg-[#E5E7EB]" />
+                  <Skeleton className="h-4 w-3/4 bg-dash-surface-muted" />
+                  <Skeleton className="h-3 w-1/2 bg-dash-border" />
                 </div>
               </div>
-              <Skeleton className="h-3 w-full bg-[#E5E7EB]" />
-              <Skeleton className="h-3 w-2/3 bg-[#E5E7EB]" />
+              <Skeleton className="h-3 w-full bg-dash-border" />
+              <Skeleton className="h-3 w-2/3 bg-dash-border" />
             </div>
           ))}
         </div>

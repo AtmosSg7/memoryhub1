@@ -24,7 +24,7 @@ function DashboardKpiCard({
       ? "text-[#065F46] bg-[#ECFDF5]"
       : trendTone === "negative"
         ? "text-[#991B1B] bg-[#FEF2F2]"
-        : "text-[#4B5563] bg-[#F3F4F6]";
+        : "text-dash-text-muted bg-dash-surface-muted";
 
   return (
     <div
@@ -43,18 +43,18 @@ function DashboardKpiCard({
       }
       data-testid={testId}
       className={[
-        "h-full min-h-[108px] rounded-xl border border-[#E5E7EB] bg-white p-4 md:p-5",
+        "h-full min-h-[108px] rounded-xl border border-dash-border bg-dash-surface p-4 md:p-5",
         "shadow-[0_1px_2px_rgba(10,37,64,0.04)] transition-colors",
-        interactive ? "cursor-pointer hover:border-[#0A2540]/25 hover:bg-[#FAFBFC]" : "",
+        interactive ? "cursor-pointer hover:border-dash-primary/25 hover:bg-dash-surface-muted" : "",
       ].join(" ")}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9CA3AF] truncate">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-dash-text-subtle truncate">
           {label}
         </p>
         <KpiInfoHint label={infoLabel || label} text={infoText} testId={testId ? `${testId}-info` : undefined} />
       </div>
-      <p className="mt-2.5 font-cabinet text-2xl md:text-[28px] font-bold tracking-tight text-[#111827] tabular-nums leading-none">
+      <p className="mt-2.5 font-cabinet text-2xl md:text-[28px] font-bold tracking-tight text-dash-text tabular-nums leading-none">
         {value}
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2 min-h-[22px]">
@@ -66,7 +66,7 @@ function DashboardKpiCard({
             {trend}
           </span>
         ) : null}
-        {helper ? <span className="text-xs text-[#6B7280] leading-snug">{helper}</span> : null}
+        {helper ? <span className="text-xs text-dash-text-muted leading-snug">{helper}</span> : null}
       </div>
     </div>
   );

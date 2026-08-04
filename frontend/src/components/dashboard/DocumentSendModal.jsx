@@ -195,7 +195,7 @@ export default function DocumentSendModal({ entityType, entityId, open, onOpenCh
           <DialogTitle className={DETAIL_MODAL_TITLE_CLASS}>
             {t("documentSend.title")}
           </DialogTitle>
-          <DialogDescription className="text-[#4B5563]">
+          <DialogDescription className="text-dash-text-muted">
             {clientName
               ? t("documentSend.subtitle").replace("{client}", clientName)
               : t("documentSend.subtitleGeneric")}
@@ -229,7 +229,7 @@ export default function DocumentSendModal({ entityType, entityId, open, onOpenCh
             <div className="space-y-2">
               <Label className={FORM_LABEL_CLASS}>{t("documentSend.email")}</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dash-text-subtle" />
                 <Input
                   value={clientEmail}
                   readOnly
@@ -259,7 +259,7 @@ export default function DocumentSendModal({ entityType, entityId, open, onOpenCh
                 className={FORM_FIELD_CLASS}
                 data-testid="document-send-preheader"
               />
-              <p className="text-xs text-[#6B7280]">{t("documentSend.preheaderHint")}</p>
+              <p className="text-xs text-dash-text-muted">{t("documentSend.preheaderHint")}</p>
             </div>
 
             <div className="space-y-2">
@@ -273,37 +273,7 @@ export default function DocumentSendModal({ entityType, entityId, open, onOpenCh
               />
             </div>
 
-            {portalUrl ? (
-              <div className="space-y-2">
-                <Label className={FORM_LABEL_CLASS}>{t("documentSend.portalLink")}</Label>
-                <div className="flex gap-2">
-                  <Input value={portalUrl} readOnly className={`${FORM_FIELD_CLASS} flex-1 text-xs`} />
-                  <ActionButton variant="secondary" onClick={handleCopyPortal} className="shrink-0 gap-1.5">
-                    <Copy className="w-3.5 h-3.5" />
-                    {t("documentSend.copyPortal")}
-                  </ActionButton>
-                </div>
-              </div>
-            ) : clientId ? (
-              <div
-                className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-                data-testid="document-send-no-portal"
-              >
-                <p className="text-sm text-[#1E40AF]">{t("documentSend.noPortal")}</p>
-                <ActionButton
-                  variant="primary"
-                  onClick={handleEnablePortal}
-                  disabled={enablingPortal}
-                  className="shrink-0 gap-1.5"
-                  data-testid="document-send-enable-portal"
-                >
-                  {enablingPortal ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-                  {t("clientPortal.enable")}
-                </ActionButton>
-              </div>
-            ) : null}
-
-            <p className="text-xs text-[#6B7280]">{t("documentSend.hint")}</p>
+            <p className="text-xs text-dash-text-muted">{t("documentSend.hint")}</p>
           </div>
         )}
 

@@ -1,4 +1,4 @@
-# MemoryHub — Checklist bêta artisan
+# Basera — Checklist bêta artisan
 
 Parcours manuel complet (sans OpenAI). Cocher chaque étape après test UX.
 
@@ -29,7 +29,7 @@ cd backend && python3 scripts/seed_dev_user.py && python3 scripts/seed_dev_demo.
 
 ## Points d'attention bêta
 
-- Aucun e-mail n'est envoyé depuis MemoryHub — copier/coller dans votre messagerie.
+- Aucun e-mail n'est envoyé depuis Basera — copier/coller dans votre messagerie.
 - Le portail doit être activé **avant** l'envoi pour inclure le lien dans le message.
 - L'import intelligent (OpenAI) est hors scope de cette checklist.
 

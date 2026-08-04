@@ -75,9 +75,9 @@ MRR = Σ ADMIN_MRR_<PLAN>_EUR for each subscription in {trial, active, past_due}
 - **Not** Stripe invoice amounts — configure real catalog prices:
 
 ```env
-ADMIN_MRR_SOLO_EUR=29
-ADMIN_MRR_PRO_EUR=59
-ADMIN_MRR_TEAM_EUR=99
+ADMIN_MRR_SOLO_EUR=4.9
+ADMIN_MRR_PRO_EUR=9.9
+ADMIN_MRR_TEAM_EUR=19.9
 ```
 
 ### Gross AI margin (overview)

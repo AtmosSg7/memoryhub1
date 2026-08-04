@@ -54,7 +54,7 @@ export default function ClientEmailsSection({ clientId, t, lang }) {
 
   if (!items.length) {
     return (
-      <p className="text-sm text-[#6B7280]" data-testid="client-emails-empty">
+      <p className="text-sm text-dash-text-muted" data-testid="client-emails-empty">
         {t("clientEmails.empty")}
       </p>
     );
@@ -62,7 +62,7 @@ export default function ClientEmailsSection({ clientId, t, lang }) {
 
   return (
     <div className="space-y-3" data-testid="client-emails-list">
-      <p className="text-xs text-[#9CA3AF]">
+      <p className="text-xs text-dash-text-subtle">
         {t("clientEmails.count").replace("{count}", String(total))}
       </p>
       <ul className="space-y-2">
@@ -76,32 +76,32 @@ export default function ClientEmailsSection({ clientId, t, lang }) {
           return (
             <li
               key={item.id}
-              className="rounded-xl border border-[#E5E7EB] bg-white px-3 py-3"
+              className="rounded-xl border border-dash-border bg-dash-surface px-3 py-3"
               data-testid={`client-email-${item.id}`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <Mail className="w-3.5 h-3.5 text-[#6B7280] shrink-0" />
-                    <span className="text-sm font-medium text-[#111827] truncate">
+                    <Mail className="w-3.5 h-3.5 text-dash-text-muted shrink-0" />
+                    <span className="text-sm font-medium text-dash-text truncate">
                       {item.subject || t("clientEmails.noSubject")}
                     </span>
-                    <span className="text-[11px] rounded-md bg-[#F3F4F6] px-1.5 py-0.5 text-[#4B5563]">
+                    <span className="text-[11px] rounded-md bg-dash-surface-muted px-1.5 py-0.5 text-dash-text-muted">
                       {item.direction === "outbound"
                         ? t("clientEmails.sent")
                         : t("clientEmails.received")}
                     </span>
                   </div>
-                  <p className="text-xs text-[#6B7280] truncate">
+                  <p className="text-xs text-dash-text-muted truncate">
                     {item.direction === "outbound"
                       ? `${t("clientEmails.to")}: ${counterpart || "—"}`
                       : `${t("clientEmails.from")}: ${counterpart || "—"}`}
                   </p>
                   {item.preview ? (
-                    <p className="text-sm text-[#4B5563] line-clamp-2">{item.preview}</p>
+                    <p className="text-sm text-dash-text-muted line-clamp-2">{item.preview}</p>
                   ) : null}
                   {(item.attachmentCount || 0) > 0 ? (
-                    <p className="text-xs text-[#6B7280] inline-flex items-center gap-1">
+                    <p className="text-xs text-dash-text-muted inline-flex items-center gap-1">
                       <Paperclip className="w-3 h-3" />
                       {t("clientEmails.attachments").replace(
                         "{count}",
@@ -118,7 +118,7 @@ export default function ClientEmailsSection({ clientId, t, lang }) {
                   ) : null}
                 </div>
                 <div className="shrink-0 text-right space-y-2">
-                  <p className="text-xs text-[#9CA3AF] whitespace-nowrap">
+                  <p className="text-xs text-dash-text-subtle whitespace-nowrap">
                     {formatDate(item.sentAt, lang)}
                   </p>
                   {item.gmailUrl ? (
@@ -126,7 +126,7 @@ export default function ClientEmailsSection({ clientId, t, lang }) {
                       href={item.gmailUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-[#0A2540] hover:underline"
+                      className="inline-flex items-center gap-1 text-xs text-dash-primary hover:underline"
                       data-testid={`client-email-open-${item.id}`}
                     >
                       <ExternalLink className="w-3 h-3" />

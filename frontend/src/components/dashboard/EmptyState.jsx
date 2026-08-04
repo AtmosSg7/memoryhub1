@@ -25,7 +25,7 @@ export default function EmptyState({
         inline
           ? "flex flex-col items-center justify-center text-center py-8 px-4"
           : [
-              "flex flex-col items-center justify-center text-center border border-dashed border-[#E5E7EB] rounded-xl bg-[#F9FAFB]",
+              "flex flex-col items-center justify-center text-center border border-dashed border-dash-border rounded-xl bg-dash-bg",
               compact ? "py-8 px-4" : "py-14 px-6",
             ].join(" ")
       }
@@ -34,7 +34,7 @@ export default function EmptyState({
         <div
           aria-hidden="true"
           className={[
-            "rounded-full bg-white border border-[#E5E7EB] flex items-center justify-center text-[#9CA3AF] shadow-sm",
+            "rounded-full bg-dash-surface border border-dash-border flex items-center justify-center text-dash-text-subtle shadow-sm",
             inline || compact ? "w-10 h-10 mb-3" : "w-12 h-12 mb-4",
           ].join(" ")}
         >
@@ -43,12 +43,12 @@ export default function EmptyState({
       ) : null}
       <h4
         id={titleId}
-        className="font-cabinet text-[17px] font-semibold text-[#111827] tracking-tight"
+        className="font-cabinet text-[17px] font-semibold text-dash-text tracking-tight"
       >
         {title}
       </h4>
       {description && (
-        <p className="text-[13px] text-[#4B5563] mt-1.5 max-w-sm leading-relaxed">
+        <p className="text-[13px] text-dash-text-muted mt-1.5 max-w-sm leading-relaxed">
           {description}
         </p>
       )}

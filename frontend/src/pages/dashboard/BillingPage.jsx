@@ -1,15 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import {
-  Sparkles,
-  Zap,
-  ArrowUpRight,
-  Coins,
-  Receipt,
-  Info,
-  Loader2,
-  CreditCard,
-} from "lucide-react";
+import { ArrowUpRight, Info, Loader2, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -17,22 +8,17 @@ import { useAuth } from "@/context/AuthContext";
 import PageHeader from "@/components/dashboard/PageHeader";
 import { PageError, PageLoader } from "@/components/dashboard/PageFeedback";
 import { ActionButton } from "@/components/dashboard/ActionButton";
+import ImportUsageMeter from "@/components/dashboard/ImportUsageMeter";
+import SubscriptionPlanCard from "@/components/dashboard/SubscriptionPlanCard";
 import {
   changeBillingPlan,
   fetchBillingMe,
   openBillingPortal,
   startCheckout,
 } from "@/lib/billingApi";
-import {
-  checkoutCreditPack,
-  devPurchaseCreditPack,
-  fetchCreditPacks,
-  fetchCreditPurchases,
-} from "@/lib/creditPacksApi";
-import AiAnalysisPacksPanel from "@/components/dashboard/AiAnalysisPacksPanel";
-import { invalidateCreditsCache, useCredits } from "@/hooks/useCredits";
-
-const PLAN_ORDER = ["solo", "pro", "team"];
+import { invalidateBillingCache } from "@/hooks/useBillingSummary";
+import { invalidateCreditsCache } from "@/hooks/useCredits";
+import { PLAN_CATALOG, PLAN_ORDER } from "@/constants/planConfig";
 
 function statusLabelKey(status) {
   if (!status) return "billingPage.status.none";
@@ -49,26 +35,13 @@ export default function BillingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(null);
-  const [creditPacks, setCreditPacks] = useState([]);
-  const [packCaps, setPackCaps] = useState({ devCreditPurchasesEnabled: false, stripeCreditCheckoutEnabled: false });
-  const [purchases, setPurchases] = useState([]);
-  const { refresh: refreshCredits } = useCredits();
 
   const loadBilling = useCallback(async () => {
     setError("");
     try {
-      const [billingData, packsData, purchasesData] = await Promise.all([
-        fetchBillingMe(),
-        fetchCreditPacks().catch(() => ({ packs: [], devCreditPurchasesEnabled: false, stripeCreditCheckoutEnabled: false })),
-        fetchCreditPurchases({ limit: 10 }).catch(() => ({ items: [], total: 0 })),
-      ]);
+      const billingData = await fetchBillingMe();
       setBilling(billingData);
-      setCreditPacks(packsData.packs || []);
-      setPackCaps({
-        devCreditPurchasesEnabled: packsData.devCreditPurchasesEnabled,
-        stripeCreditCheckoutEnabled: packsData.stripeCreditCheckoutEnabled,
-      });
-      setPurchases(purchasesData.items || []);
+      invalidateBillingCache();
     } catch (err) {
       setError(err.message || t("billingPage.loadError"));
     } finally {
@@ -87,30 +60,26 @@ export default function BillingPage() {
       searchParams.delete("checkout");
       setSearchParams(searchParams, { replace: true });
       loadBilling();
+      invalidateCreditsCache();
     } else if (checkout === "cancel") {
       toast.message(t("billingPage.checkoutCancel"));
       searchParams.delete("checkout");
       setSearchParams(searchParams, { replace: true });
     }
-    const credits = searchParams.get("credits");
-    if (credits === "success") {
-      toast.success(t("creditPacks.purchaseSuccess"));
-      searchParams.delete("credits");
-      setSearchParams(searchParams, { replace: true });
-      loadBilling();
-      refreshCredits().catch(() => {});
-    } else if (credits === "cancel") {
-      toast.message(t("billingPage.checkoutCancel"));
-      searchParams.delete("credits");
-      setSearchParams(searchParams, { replace: true });
-    }
-  }, [searchParams, setSearchParams, t, loadBilling, refreshCredits]);
+  }, [searchParams, setSearchParams, t, loadBilling]);
 
   const handleCheckout = async (planId) => {
     if (actionLoading) return;
+    if (!billing?.stripeConfigured) {
+      toast.error(t("billingPage.stripeNotConfigured"));
+      return;
+    }
     setActionLoading(`checkout-${planId}`);
     try {
       const { checkoutUrl } = await startCheckout(planId);
+      if (!checkoutUrl) {
+        throw new Error(t("billingPage.checkoutError"));
+      }
       window.location.href = checkoutUrl;
     } catch (err) {
       toast.error(err.message || t("billingPage.checkoutError"));
@@ -137,38 +106,9 @@ export default function BillingPage() {
       const result = await changeBillingPlan(planId);
       toast.success(result.message || t("billingPage.planChangeSubmitted"));
       await loadBilling();
+      invalidateCreditsCache();
     } catch (err) {
       toast.error(err.message || t("billingPage.planChangeError"));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleCreditPackPurchase = async (pack) => {
-    if (actionLoading) return;
-    setActionLoading(`pack-${pack.packKey}`);
-    const idempotencyKey =
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `pack-${pack.packKey}-${Date.now()}`;
-    try {
-      if (packCaps.devCreditPurchasesEnabled) {
-        const result = await devPurchaseCreditPack(pack.packKey, { idempotencyKey });
-        invalidateCreditsCache();
-        await refreshCredits();
-        await loadBilling();
-        toast.success(t("creditPacks.purchaseSuccess"), {
-          description: `+${result.purchase.analyses} ${t("credits.short")}`,
-        });
-      } else if (pack.stripeConfigured && packCaps.stripeCreditCheckoutEnabled) {
-        const { checkoutUrl } = await checkoutCreditPack(pack.packKey);
-        window.location.href = checkoutUrl;
-        return;
-      } else {
-        toast.error(t("billingPage.buyAnalysesSoon"));
-      }
-    } catch (err) {
-      toast.error(err.message || t("billingPage.checkoutError"));
     } finally {
       setActionLoading(null);
     }
@@ -179,7 +119,7 @@ export default function BillingPage() {
 
   const plansToShow = useMemo(() => {
     const available = billing?.availablePlans?.length ? billing.availablePlans : PLAN_ORDER;
-    return PLAN_ORDER.filter((id) => available.includes(id));
+    return PLAN_CATALOG.filter((plan) => available.includes(plan.id));
   }, [billing?.availablePlans]);
 
   if (loading) {
@@ -207,11 +147,11 @@ export default function BillingPage() {
 
       {!billing?.stripeConfigured && (
         <section
-          className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] px-4 py-3 flex items-start gap-3"
+          className="rounded-xl border border-[#BFDBFE] bg-dash-accent-soft px-4 py-3 flex items-start gap-3"
           data-testid="billing-stripe-unconfigured"
         >
-          <Info className="w-4 h-4 text-[#0A2540] mt-0.5 shrink-0" />
-          <p className="text-sm text-[#0A2540] leading-relaxed">{t("billingPage.stripeNotConfigured")}</p>
+          <Info className="w-4 h-4 text-dash-primary mt-0.5 shrink-0" />
+          <p className="text-sm text-dash-primary leading-relaxed">{t("billingPage.stripeNotConfigured")}</p>
         </section>
       )}
 
@@ -221,39 +161,47 @@ export default function BillingPage() {
         </section>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <section className="xl:col-span-2 bg-white border border-[#E5E7EB] rounded-2xl p-5 md:p-6 space-y-5 shadow-[0_1px_2px_rgba(17,24,39,0.04)]">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div>
-              <p className="text-[11px] uppercase tracking-widest text-[#9CA3AF] font-semibold">
-                {billing?.hasSubscription ? t("billingPage.currentPlan") : t("billingPage.noSubscription")}
+      <section className="bg-dash-surface border border-dash-border rounded-2xl p-5 md:p-6 space-y-5 shadow-[0_1px_2px_rgba(17,24,39,0.04)]">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div>
+            <p className="text-[11px] uppercase tracking-widest text-dash-text-subtle font-semibold">
+              {billing?.hasSubscription ? t("billingPage.currentPlan") : t("billingPage.noSubscription")}
+            </p>
+            <h2 className="font-cabinet text-2xl font-bold text-dash-text tracking-tight mt-1">
+              {billing?.hasSubscription ? planLabel : t("billingPage.choosePlan")}
+            </h2>
+            {billing?.hasSubscription && (
+              <p className="text-sm text-dash-text-muted mt-1">
+                {t(statusLabelKey(billing.subscriptionStatus))}
+                {billing.trialEndsAt && (
+                  <span className="block text-xs text-dash-text-subtle mt-1">
+                    {t("billingPage.trialEnds")}: {new Date(billing.trialEndsAt).toLocaleDateString()}
+                  </span>
+                )}
+                {billing.currentPeriodEnd && !billing.trialEndsAt && (
+                  <span className="block text-xs text-dash-text-subtle mt-1">
+                    {t("billingPage.renewal")}: {new Date(billing.currentPeriodEnd).toLocaleDateString()}
+                  </span>
+                )}
+                {billing.cancelAtPeriodEnd && (
+                  <span className="block text-xs text-amber-700 mt-1">{t("billingPage.cancelScheduled")}</span>
+                )}
               </p>
-              <h2 className="font-cabinet text-2xl font-bold text-[#111827] tracking-tight mt-1">
-                {billing?.hasSubscription ? planLabel : t("billingPage.choosePlan")}
-              </h2>
-              {billing?.hasSubscription && (
-                <p className="text-sm text-[#6B7280] mt-1">
-                  {t(statusLabelKey(billing.subscriptionStatus))}
-                  {billing.trialEndsAt && (
-                    <span className="block text-xs text-[#9CA3AF] mt-1">
-                      {t("billingPage.trialEnds")}: {new Date(billing.trialEndsAt).toLocaleDateString()}
-                    </span>
-                  )}
-                  {billing.currentPeriodEnd && !billing.trialEndsAt && (
-                    <span className="block text-xs text-[#9CA3AF] mt-1">
-                      {t("billingPage.renewal")}: {new Date(billing.currentPeriodEnd).toLocaleDateString()}
-                    </span>
-                  )}
-                  {billing.cancelAtPeriodEnd && (
-                    <span className="block text-xs text-amber-700 mt-1">{t("billingPage.cancelScheduled")}</span>
-                  )}
-                </p>
-              )}
-            </div>
-            {billing?.actions?.canManage && (
+            )}
+            <p className="text-sm text-dash-text-muted mt-2 truncate">{user?.companyName || user?.email || "—"}</p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+            <ImportUsageMeter
+              planId={currentPlanId || "solo"}
+              monthlyRemaining={billing?.monthlyAnalysesRemaining}
+              monthlyAllocated={billing?.monthlyAnalysesAllocated}
+              className="min-w-[220px]"
+            />
+            {billing?.actions?.canManage ? (
               <ActionButton
                 variant="primary"
-                className="shrink-0"
+                className="shrink-0 self-start"
                 onClick={handlePortal}
                 disabled={!!actionLoading}
                 data-testid="billing-manage-button"
@@ -265,145 +213,65 @@ export default function BillingPage() {
                 )}
                 {t("billingPage.manageSubscription")}
               </ActionButton>
-            )}
+            ) : null}
           </div>
-
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div className="rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] p-4">
-              <div className="flex items-center gap-2 text-[#0A2540]">
-                <Sparkles className="w-4 h-4" />
-                <span className="text-xs font-semibold uppercase tracking-wide">
-                  {t("billingPage.analysesRemaining")}
-                </span>
-              </div>
-              <p className="mt-2 text-2xl font-cabinet font-bold text-[#111827]">
-                {billing?.totalAnalysesRemaining ?? 0}
-                <span className="text-sm font-normal text-[#6B7280] ml-1">{t("billingPage.analysesShort")}</span>
-              </p>
-              <p className="text-xs text-[#9CA3AF] mt-1">
-                {t("billingPage.analysesBreakdown")
-                  .replace("{monthly}", String(billing?.monthlyAnalysesRemaining ?? 0))
-                  .replace("{permanent}", String(billing?.permanentAnalysesRemaining ?? 0))}
-              </p>
-              <Link
-                to="/dashboard/billing/ai-history"
-                className="inline-flex items-center gap-1 text-xs font-medium text-[#0A2540] mt-3 hover:underline"
-                data-testid="billing-ai-history-link"
-              >
-                {t("credits.historyViewAll")}
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-            <div className="rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] p-4">
-              <div className="flex items-center gap-2 text-[#0A2540]">
-                <Receipt className="w-4 h-4" />
-                <span className="text-xs font-semibold uppercase tracking-wide">
-                  {t("billingPage.account")}
-                </span>
-              </div>
-              <p className="mt-2 text-sm font-medium text-[#111827] truncate">
-                {user?.companyName || "—"}
-              </p>
-            </div>
-          </div>
-
-          {billing?.stripeConfigured && (
-            <div className="grid gap-3 sm:grid-cols-3" data-testid="billing-plan-cards">
-              {plansToShow.map((planId) => {
-                const isCurrent = currentPlanId === planId;
-                const canCheckout = billing.actions?.canCheckout && !isCurrent;
-                const canChange = billing.actions?.canChangePlan && !isCurrent && billing.hasSubscription;
-                return (
-                  <div
-                    key={planId}
-                    className={`rounded-xl border p-4 ${isCurrent ? "border-[#0A2540] bg-[#EFF6FF]" : "border-[#E5E7EB]"}`}
-                  >
-                    <p className="font-cabinet font-semibold text-[#111827]">{t(`billingPage.plans.${planId}`)}</p>
-                    {isCurrent && (
-                      <p className="text-xs text-[#0A2540] mt-1 font-medium">{t("billingPage.currentBadge")}</p>
-                    )}
-                    <div className="mt-3 flex flex-col gap-2">
-                      {canCheckout && (
-                        <ActionButton
-                          variant="primary"
-                          className="w-full justify-center text-sm"
-                          disabled={!!actionLoading}
-                          onClick={() => handleCheckout(planId)}
-                          data-testid={`billing-checkout-${planId}`}
-                        >
-                          {actionLoading === `checkout-${planId}` ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <ArrowUpRight className="w-4 h-4" />
-                          )}
-                          {t("billingPage.subscribe")}
-                        </ActionButton>
-                      )}
-                      {canChange && (
-                        <ActionButton
-                          variant="secondary"
-                          className="w-full justify-center text-sm"
-                          disabled={!!actionLoading}
-                          onClick={() => handleChangePlan(planId)}
-                          data-testid={`billing-change-${planId}`}
-                        >
-                          {actionLoading === `change-${planId}` ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : null}
-                          {t("billingPage.changeToPlan").replace("{plan}", t(`billingPage.plans.${planId}`))}
-                        </ActionButton>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        <AiAnalysisPacksPanel
-          packs={creditPacks}
-          packCaps={packCaps}
-          actionLoading={actionLoading}
-          disabled={!!actionLoading}
-          onPurchase={handleCreditPackPurchase}
-        />
-      </div>
-
-      {purchases.length > 0 ? (
-        <section className="rounded-xl border border-[#E5E7EB] bg-white overflow-hidden" data-testid="credit-purchase-history">
-          <div className="px-4 py-3 border-b border-[#F3F4F6]">
-            <h3 className="font-cabinet font-semibold text-[#111827]">{t("creditPacks.purchaseHistory")}</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <tbody className="divide-y divide-[#F3F4F6]">
-                {purchases.map((row) => (
-                  <tr key={row.id}>
-                    <td className="px-4 py-3 text-[#111827] whitespace-nowrap">
-                      {new Date(row.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3 text-[#4B5563]">{row.packName || row.packKey}</td>
-                    <td className="px-4 py-3 text-right tabular-nums font-medium">+{row.analyses}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-[#6B7280]">
-                      {(row.priceCents / 100).toFixed(2)} {row.currency.toUpperCase()}
-                    </td>
-                    <td className="px-4 py-3 text-[#6B7280]">
-                      {row.method === "development" ? t("creditPacks.methodDev") : t("creditPacks.methodStripe")}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      ) : null}
-
-      <section className="rounded-xl border border-[#BFDBFE] bg-[#EFF6FF] px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div className="flex items-start gap-2">
-          <Zap className="w-4 h-4 text-[#0A2540] mt-0.5 shrink-0" />
-          <p className="text-sm text-[#0A2540]">{t("billingPage.aiExplainer")}</p>
         </div>
+
+        <Link
+          to="/dashboard/billing/ai-history"
+          className="inline-flex items-center gap-1 text-xs font-medium text-dash-primary hover:underline"
+          data-testid="billing-import-history-link"
+        >
+          {t("imports.historyViewAll")}
+          <ArrowUpRight className="w-3.5 h-3.5" />
+        </Link>
+      </section>
+
+      <section className="space-y-4" data-testid="billing-plan-cards">
+        <div>
+          <h2 className="font-cabinet text-lg md:text-xl font-bold text-dash-text tracking-tight">
+            {t("billingPage.plansSectionTitle")}
+          </h2>
+          <p className="text-sm text-dash-text-muted mt-1">{t("billingPage.plansSectionSubtitle")}</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
+          {plansToShow.map((plan) => {
+            const isCurrent = currentPlanId === plan.id;
+            const stripeBacked = Boolean(billing?.actions?.canManage);
+            const onLocalTrial =
+              billing?.subscriptionStatus === "trial" && !stripeBacked;
+            // Trial without Stripe can pick any plan (including current) to open Checkout.
+            const canCheckout =
+              Boolean(billing?.stripeConfigured) &&
+              Boolean(billing?.actions?.canCheckout) &&
+              (!isCurrent || onLocalTrial);
+            const canChange =
+              Boolean(billing?.stripeConfigured) &&
+              Boolean(billing?.actions?.canChangePlan) &&
+              !isCurrent &&
+              stripeBacked;
+
+            return (
+              <SubscriptionPlanCard
+                key={plan.id}
+                plan={plan}
+                isCurrent={isCurrent}
+                canCheckout={canCheckout}
+                canChange={canChange}
+                actionLoading={!!actionLoading}
+                checkoutLoading={actionLoading === `checkout-${plan.id}`}
+                changeLoading={actionLoading === `change-${plan.id}`}
+                onCheckout={handleCheckout}
+                onChangePlan={handleChangePlan}
+              />
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-[#BFDBFE] bg-dash-accent-soft px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <p className="text-sm text-dash-primary leading-relaxed">{t("billingPage.importExplainer")}</p>
         <ActionButton variant="quick" className="shrink-0" onClick={() => navigate("/dashboard/settings")}>
           {t("billingPage.manageAccount")}
         </ActionButton>

@@ -43,7 +43,7 @@ def main() -> int:
         build_user_document(
             first_name="Dev",
             last_name="Admin",
-            company_name="MemoryHub Dev",
+            company_name="Basera Dev",
             email=email,
             password=password,
             email_verified=True,

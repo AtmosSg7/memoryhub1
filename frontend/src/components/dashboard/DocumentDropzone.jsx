@@ -69,9 +69,9 @@ export default function DocumentDropzone({
   return (
     <div
       className={[
-        "border-2 border-dashed rounded-xl bg-white transition-colors",
+        "border-2 border-dashed rounded-xl bg-dash-surface transition-colors",
         compact ? "p-4" : "p-6",
-        dragging ? "border-[#0A2540] bg-[#EFF6FF]/40" : "border-[#E5E7EB]",
+        dragging ? "border-dash-primary bg-dash-accent-soft/40" : "border-dash-border",
         disabled || uploading ? "opacity-60 pointer-events-none" : "cursor-pointer",
       ].join(" ")}
       data-testid={testId}
@@ -104,7 +104,7 @@ export default function DocumentDropzone({
         ].join(" ")}
       >
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-lg bg-[#EFF6FF] text-[#0A2540] flex items-center justify-center shrink-0">
+          <div className="w-10 h-10 rounded-lg bg-dash-accent-soft text-dash-primary flex items-center justify-center shrink-0">
             {uploading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
@@ -112,10 +112,10 @@ export default function DocumentDropzone({
             )}
           </div>
           <div>
-            <div className="text-sm font-medium text-[#111827]">
+            <div className="text-sm font-medium text-dash-text">
               {uploading ? t("documents.uploading") : t("documents.dropHint")}
             </div>
-            <div className="text-[12px] text-[#6B7280]">
+            <div className="text-[12px] text-dash-text-muted">
               {ALLOWED_EXTENSIONS_LABEL} — {t("documents.maxSize").replace("{size}", String(MAX_UPLOAD_MB))}
             </div>
           </div>
@@ -129,7 +129,7 @@ export default function DocumentDropzone({
               inputRef.current?.click();
             }}
             disabled={disabled || uploading}
-            className="text-xs font-medium bg-[#0A2540] hover:bg-[#173A5E] text-white rounded-md px-3.5 py-2 shrink-0"
+            className="text-xs font-medium bg-[var(--dash-nav-active-bg)] hover:bg-[#173A5E] text-white rounded-md px-3.5 py-2 shrink-0"
             data-testid={`${testId}-btn`}
           >
             {uploading ? t("documents.uploading") : t("common.import")}

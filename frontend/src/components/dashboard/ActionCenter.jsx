@@ -5,10 +5,10 @@ import EmptyState from "@/components/dashboard/EmptyState";
 import { ListChecks } from "lucide-react";
 
 const PRIORITY_CLASS = {
-  critical: "bg-[#FEF2F2] text-[#991B1B] border-[#FECACA]",
-  high: "bg-[#FFF7ED] text-[#9A3412] border-[#FED7AA]",
-  medium: "bg-[#EFF6FF] text-[#1E3A5F] border-[#BFDBFE]",
-  low: "bg-[#F9FAFB] text-[#4B5563] border-[#E5E7EB]",
+  critical: "dash-badge dash-badge-danger",
+  high: "dash-badge dash-badge-warning",
+  medium: "dash-badge dash-badge-info",
+  low: "dash-badge dash-badge-neutral",
 };
 
 function formatDate(value, lang) {
@@ -62,10 +62,10 @@ export default function ActionCenter({
   return (
     <ul
       className={[
-        "divide-y divide-[#F3F4F6] overflow-hidden",
+        "divide-y divide-dash-border-soft overflow-hidden",
         compact
-          ? "rounded-lg border border-[#F3F4F6] bg-[#FAFAFA]"
-          : "rounded-xl border border-[#E5E7EB] bg-white",
+          ? "rounded-lg border border-dash-border-soft bg-dash-surface-muted"
+          : "rounded-xl border border-dash-border bg-dash-surface",
       ].join(" ")}
       data-testid={testId}
     >
@@ -75,7 +75,7 @@ export default function ActionCenter({
             type="button"
             onClick={() => action.link && navigate(action.link)}
             className={[
-              "w-full text-left hover:bg-white transition-colors",
+              "w-full text-left hover:bg-dash-surface transition-colors",
               compact ? "px-3 py-2.5" : "px-4 py-3",
             ].join(" ")}
             data-testid={`action-item-${action.ruleId}`}
@@ -84,27 +84,27 @@ export default function ActionCenter({
               <div className="min-w-0">
                 <p
                   className={[
-                    "font-medium text-[#111827] truncate",
+                    "font-medium text-dash-text truncate",
                     compact ? "text-[13px]" : "text-sm",
                   ].join(" ")}
                 >
                   {action.title}
                 </p>
                 {!compact || action.priority === "critical" || action.priority === "high" ? (
-                  <p className="text-xs text-[#6B7280] mt-0.5 line-clamp-1">{action.reason}</p>
+                  <p className="text-xs text-dash-text-muted mt-0.5 line-clamp-1">{action.reason}</p>
                 ) : null}
               </div>
               <div className="shrink-0 text-right space-y-1">
                 <span
                   className={[
-                    "inline-flex text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-md border",
+                    "uppercase tracking-wide",
                     PRIORITY_CLASS[action.priority] || PRIORITY_CLASS.medium,
                   ].join(" ")}
                 >
                   {t(`intelligence.priority.${action.priority}`)}
                 </span>
                 {!compact && action.date ? (
-                  <p className="text-[10px] text-[#9CA3AF]">{formatDate(action.date, lang)}</p>
+                  <p className="text-[10px] text-dash-text-subtle">{formatDate(action.date, lang)}</p>
                 ) : null}
               </div>
             </div>

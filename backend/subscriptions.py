@@ -81,7 +81,7 @@ async def read_subscription_history(
 
 @subscriptions_router.get("/plans", response_model=list[CreditPlanPublic])
 async def read_plans(db=Depends(get_db)):
-    """Public plan catalog (Solo, Pro, Team)."""
+    """Public plan catalog (Starter, Pro, Business)."""
     return await list_active_plans(db)
 
 

@@ -15,8 +15,8 @@ export default function StartupChecklist({ checklist, onDismiss }) {
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-[#0A2540]">{t("checklist.title")}</h3>
-          <p className="text-[11px] text-[#4B5563] mt-0.5">
+          <h3 className="text-sm font-semibold text-dash-primary">{t("checklist.title")}</h3>
+          <p className="text-[11px] text-dash-text-muted mt-0.5">
             {t("checklist.progress")
               .replace("{done}", String(checklist.doneCount))
               .replace("{total}", String(checklist.totalCount))}
@@ -25,7 +25,7 @@ export default function StartupChecklist({ checklist, onDismiss }) {
         <button
           type="button"
           onClick={onDismiss}
-          className="p-1 rounded-md text-[#6B7280] hover:bg-white/80 hover:text-[#111827]"
+          className="p-1 rounded-md text-dash-text-muted hover:bg-dash-surface/80 hover:text-dash-text"
           aria-label={t("checklist.dismiss")}
           data-testid="startup-checklist-dismiss"
         >
@@ -42,15 +42,15 @@ export default function StartupChecklist({ checklist, onDismiss }) {
               className={[
                 "w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs transition-colors",
                 item.done
-                  ? "text-[#6B7280] line-through"
-                  : "text-[#111827] hover:bg-white/90",
+                  ? "text-dash-text-muted line-through"
+                  : "text-dash-text hover:bg-dash-surface/90",
               ].join(" ")}
               data-testid={`checklist-item-${item.id}`}
             >
               <span
                 className={[
                   "w-4 h-4 rounded-full border flex items-center justify-center shrink-0",
-                  item.done ? "bg-[#0A2540] border-[#0A2540] text-white" : "border-[#93C5FD] bg-white",
+                  item.done ? "bg-[var(--dash-nav-active-bg)] border-dash-primary text-white" : "border-[#93C5FD] bg-dash-surface",
                 ].join(" ")}
               >
                 {item.done ? <Check className="w-2.5 h-2.5" strokeWidth={3} /> : null}

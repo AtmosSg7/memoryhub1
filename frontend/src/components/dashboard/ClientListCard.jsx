@@ -38,7 +38,7 @@ export default function ClientListCard({ client, lang, t, onClick }) {
       type="button"
       onClick={onClick}
       data-testid={`client-card-${client.id}`}
-      className="group w-full text-left bg-white border border-[#E5E7EB] rounded-xl p-4 sm:p-5 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-16px_rgba(10,37,64,0.2)] hover:border-[#0A2540]/20 transition-all"
+      className="group w-full text-left bg-dash-surface border border-dash-border rounded-xl p-4 sm:p-5 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-16px_rgba(10,37,64,0.2)] hover:border-dash-primary/20 transition-all"
     >
       <div className="flex items-start gap-3">
         <div
@@ -52,7 +52,7 @@ export default function ClientListCard({ client, lang, t, onClick }) {
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <div className="flex items-center gap-1.5 min-w-0">
-                <span className="font-medium text-[#111827] truncate">{name}</span>
+                <span className="font-medium text-dash-text truncate">{name}</span>
                 {favorite ? (
                   <Star
                     className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0"
@@ -62,7 +62,7 @@ export default function ClientListCard({ client, lang, t, onClick }) {
                 ) : null}
               </div>
               {(phone || email) && (
-                <div className="mt-0.5 text-[12px] text-[#6B7280] truncate">
+                <div className="mt-0.5 text-[12px] text-dash-text-muted truncate">
                   {[phone, email].filter(Boolean).join(" · ")}
                 </div>
               )}
@@ -83,7 +83,7 @@ export default function ClientListCard({ client, lang, t, onClick }) {
               {tags.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex max-w-full truncate px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#F3F4F6] text-[#4B5563]"
+                  className="inline-flex max-w-full truncate px-1.5 py-0.5 rounded text-[10px] font-medium bg-dash-surface-muted text-dash-text-muted"
                 >
                   {tag}
                 </span>
@@ -91,11 +91,11 @@ export default function ClientListCard({ client, lang, t, onClick }) {
             </div>
           ) : null}
 
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#6B7280]">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-dash-text-muted">
             <span data-testid={`client-card-activity-${client.id}`}>
               {t("page.clients.meta.lastActivity")}: {lastActivity}
             </span>
-            <span className="tabular-nums font-medium text-[#0A2540]" data-testid={`client-card-revenue-${client.id}`}>
+            <span className="tabular-nums font-medium text-dash-primary" data-testid={`client-card-revenue-${client.id}`}>
               {formatInvoiceAmount(revenue, lang)}
             </span>
             <span data-testid={`client-card-docs-${client.id}`}>

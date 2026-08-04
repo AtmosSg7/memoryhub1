@@ -10,8 +10,8 @@ fi
 
 ARCHIVE="$1"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-COMPOSE_FILE="${ROOT_DIR}/docker-compose.yml"
-ENV_FILE="${ROOT_DIR}/deploy/.env"
+# shellcheck source=compose-production.sh
+source "${ROOT_DIR}/deploy/scripts/compose-production.sh"
 
 if [[ ! -f "${ARCHIVE}" ]]; then
   echo "Archive not found: ${ARCHIVE}"
@@ -25,7 +25,7 @@ if [[ "${confirm}" != "RESTORE" ]]; then
   exit 1
 fi
 
-cat "${ARCHIVE}" | docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" exec -T backend \
+cat "${ARCHIVE}" | compose_prod exec -T backend \
   tar -xzf - -C /app/uploads
 
 echo "Uploads restore completed."

@@ -8,7 +8,7 @@ import { LIST_TABLE_CONTAINER_CLASS, METRIC_CARD_CLASS } from "@/components/dash
 export function InlineLoader({ label, className, testId = "inline-loading" }) {
   return (
     <div
-      className={cn("flex items-center justify-center py-10 text-sm text-[#6B7280]", className)}
+      className={cn("flex items-center justify-center py-10 text-sm text-dash-text-muted", className)}
       data-testid={testId}
       role="status"
       aria-live="polite"
@@ -23,7 +23,7 @@ export function PageLoader({ label, testId = "page-loading", compact = false }) 
   return (
     <div
       className={cn(
-        "flex items-center justify-center text-[#6B7280]",
+        "flex items-center justify-center text-dash-text-muted",
         compact ? "py-10" : "py-16"
       )}
       data-testid={testId}
@@ -40,7 +40,7 @@ export function PageError({ message, testId = "page-error" }) {
   const { t } = useDashboardLang();
   return (
     <div
-      className="rounded-xl border border-[#FECACA] bg-[#FEF2F2] p-5 text-sm text-[#991B1B]"
+      className="rounded-xl border border-[var(--dash-danger-border)] bg-[var(--dash-danger-bg)] p-5 text-sm text-[color:var(--dash-danger-text)]"
       data-testid={testId}
       role="alert"
     >
@@ -55,11 +55,11 @@ export function TableSkeleton({ rows = 5, columns = 6, testId = "table-skeleton"
       <div className="p-4 space-y-3">
         <div className="flex gap-3">
           {Array.from({ length: columns }).map((_, index) => (
-            <Skeleton key={`head-${index}`} className="h-3 flex-1 bg-[#E5E7EB]" />
+            <Skeleton key={`head-${index}`} className="h-3 flex-1 bg-dash-border" />
           ))}
         </div>
         {Array.from({ length: rows }).map((_, rowIndex) => (
-          <Skeleton key={`row-${rowIndex}`} className="h-11 w-full bg-[#F3F4F6]" />
+          <Skeleton key={`row-${rowIndex}`} className="h-11 w-full bg-dash-surface-muted" />
         ))}
       </div>
     </div>
@@ -79,8 +79,8 @@ export function MetricCardsSkeleton({ count = 3, testId = "metric-skeleton" }) {
     <div className={`grid ${cols} gap-3`} data-testid={testId} aria-hidden="true">
       {Array.from({ length: count }).map((_, index) => (
         <div key={index} className={METRIC_CARD_CLASS}>
-          <Skeleton className="h-3 w-24 mb-3 bg-[#E5E7EB]" />
-          <Skeleton className="h-8 w-16 bg-[#F3F4F6]" />
+          <Skeleton className="h-3 w-24 mb-3 bg-dash-border" />
+          <Skeleton className="h-8 w-16 bg-dash-surface-muted" />
         </div>
       ))}
     </div>
@@ -93,13 +93,13 @@ export function DashboardOverviewSkeleton({ testId = "dashboard-overview-skeleto
       <div className={LIST_TABLE_CONTAINER_CLASS}>
         <div className="p-4 space-y-3">
           {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-10 w-full bg-[#F3F4F6]" />
+            <Skeleton key={index} className="h-10 w-full bg-dash-surface-muted" />
           ))}
         </div>
       </div>
-      <div className="rounded-xl border border-[#E5E7EB] bg-white p-5 space-y-3">
+      <div className="rounded-xl border border-dash-border bg-dash-surface p-5 space-y-3">
         {Array.from({ length: 3 }).map((_, index) => (
-          <Skeleton key={index} className="h-12 w-full bg-[#F3F4F6]" />
+          <Skeleton key={index} className="h-12 w-full bg-dash-surface-muted" />
         ))}
       </div>
     </div>

@@ -21,7 +21,7 @@ export default function AdminLayout() {
       <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-20">
         <div className="max-w-[1400px] mx-auto px-5 md:px-8 py-4 flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-wider text-indigo-400 font-medium">MemoryHub Internal</p>
+            <p className="text-xs uppercase tracking-wider text-indigo-400 font-medium">Basera Internal</p>
             <h1 className="text-lg font-semibold text-white">Admin Operations</h1>
           </div>
           <div className="text-right text-sm text-slate-400">

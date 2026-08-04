@@ -91,13 +91,13 @@ export default function FollowUpModal({ entityType, entityId, open, onOpenChange
           <DialogTitle className={DETAIL_MODAL_TITLE_CLASS}>
             {t("followUp.title")}
           </DialogTitle>
-          <DialogDescription className="text-[#4B5563]">
+          <DialogDescription className="text-dash-text-muted">
             {clientName ? t("followUp.subtitle").replace("{client}", clientName) : t("followUp.subtitleGeneric")}
           </DialogDescription>
         </DialogHeader>
 
         {loading ? (
-          <div className="flex items-center justify-center py-10 text-[#6B7280]">
+          <div className="flex items-center justify-center py-10 text-dash-text-muted">
             <Loader2 className="w-5 h-5 animate-spin mr-2" />
             {t("followUp.loading")}
           </div>
@@ -129,7 +129,7 @@ export default function FollowUpModal({ entityType, entityId, open, onOpenChange
                 className={FORM_FIELD_CLASS}
                 data-testid="follow-up-preheader"
               />
-              <p className="text-xs text-[#6B7280]">{t("followUp.preheaderHint")}</p>
+              <p className="text-xs text-dash-text-muted">{t("followUp.preheaderHint")}</p>
             </div>
             <div className="space-y-2">
               <Label className={FORM_LABEL_CLASS}>{t("followUp.message")}</Label>
@@ -141,7 +141,7 @@ export default function FollowUpModal({ entityType, entityId, open, onOpenChange
                 data-testid="follow-up-message"
               />
             </div>
-            <p className="text-xs text-[#6B7280]">{t("followUp.hint")}</p>
+            <p className="text-xs text-dash-text-muted">{t("followUp.hint")}</p>
           </div>
         )}
 

@@ -27,26 +27,26 @@ function DashboardActionCenterCard({
 
   return (
     <section
-      className="h-full rounded-xl border border-[#E5E7EB] bg-white p-4 md:p-5 shadow-[0_1px_2px_rgba(10,37,64,0.04)]"
+      className="h-full rounded-xl border border-dash-border bg-dash-surface p-4 md:p-5 shadow-[0_1px_2px_rgba(10,37,64,0.04)]"
       data-testid="dashboard-action-center-card"
       id="dashboard-actions"
     >
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-7 h-7 rounded-lg bg-[#F3F4F6] flex items-center justify-center shrink-0">
-            <ListChecks className="w-3.5 h-3.5 text-[#0A2540]" strokeWidth={2} />
+          <div className="w-7 h-7 rounded-lg bg-dash-surface-muted flex items-center justify-center shrink-0">
+            <ListChecks className="w-3.5 h-3.5 text-dash-primary" strokeWidth={2} />
           </div>
           <div className="min-w-0">
-            <h2 className="font-cabinet text-base md:text-lg font-bold text-[#111827] tracking-tight truncate">
+            <h2 className="font-cabinet text-base md:text-lg font-bold text-dash-text tracking-tight truncate">
               {t("dashboardV2.actionCenter.title")}
             </h2>
-            <p className="text-[11px] text-[#6B7280] truncate">
+            <p className="text-[11px] text-dash-text-muted truncate">
               {t("dashboardV2.actionCenter.subtitle")}
             </p>
           </div>
         </div>
         {!loading && important.length > 0 ? (
-          <span className="inline-flex items-center justify-center min-w-[1.5rem] h-6 px-2 rounded-full bg-[#0A2540] text-white text-[11px] font-semibold tabular-nums shrink-0">
+          <span className="inline-flex items-center justify-center min-w-[1.5rem] h-6 px-2 rounded-full bg-[var(--dash-nav-active-bg)] text-white text-[11px] font-semibold tabular-nums shrink-0">
             {Math.min(important.length, 99)}
           </span>
         ) : null}
@@ -54,7 +54,7 @@ function DashboardActionCenterCard({
 
       {onboardingHint ? (
         <p
-          className="text-sm text-[#4B5563] rounded-lg border border-[#F3F4F6] bg-[#FAFAFA] px-3 py-2.5 leading-relaxed"
+          className="text-sm text-dash-text-muted rounded-lg border border-dash-border-soft bg-dash-surface-muted px-3 py-2.5 leading-relaxed"
           data-testid="today-actions-onboarding-hint"
         >
           {t("dashboardV2.today.onboardingHint")}
@@ -73,7 +73,7 @@ function DashboardActionCenterCard({
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium text-[#0A2540] hover:bg-[#F9FAFB] transition-colors"
+              className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium text-dash-primary hover:bg-dash-bg transition-colors"
               data-testid="action-center-expand"
             >
               {expanded

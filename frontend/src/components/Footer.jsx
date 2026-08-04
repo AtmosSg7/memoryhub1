@@ -14,7 +14,7 @@ export const Footer = () => {
               <div className="w-8 h-8 rounded-[10px] bg-gradient-to-br from-[#4F46E5] to-[#0EA5E9] flex items-center justify-center shadow-[0_1px_0_rgba(255,255,255,0.2)_inset,0_4px_12px_-4px_rgba(79,70,229,0.5)]">
                 <Sparkles className="w-4 h-4 text-white" />
               </div>
-              <span className="font-display text-[17px] font-bold tracking-tight text-[#0A0A0B]">MemoryHub</span>
+              <span className="font-display text-[17px] font-bold tracking-tight text-[#0A0A0B]">Basera</span>
             </div>
             <p className="mt-5 max-w-sm text-[14.5px] text-[#52535E] leading-[1.6]">{t("footer.tagline")}</p>
           </div>
@@ -42,7 +42,7 @@ export const Footer = () => {
           </div>
         </div>
         <div className="mt-14 pt-6 border-t border-[#EEF0F3] flex flex-col sm:flex-row items-center justify-between gap-3 text-[12px] text-[#8A8F98]">
-          <p>© {new Date().getFullYear()} MemoryHub. {t("footer.rights")}</p>
+          <p>© {new Date().getFullYear()} Basera. {t("footer.rights")}</p>
           <p className="font-mono tracking-tight">Made in France · Hosted in Europe</p>
         </div>
       </div>

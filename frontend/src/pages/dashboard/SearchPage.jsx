@@ -54,7 +54,7 @@ export default function SearchPage() {
         testId="search-header"
       />
 
-      <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 md:p-6">
+      <div className="bg-dash-surface border border-dash-border rounded-xl p-5 md:p-6">
         <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2">
           <SearchField
             data-testid="search-page-input"
@@ -76,7 +76,7 @@ export default function SearchPage() {
         </form>
 
         {trimmed.length > 0 && trimmed.length < minChars && (
-          <p className="mt-3 text-[12px] text-[#6B7280]" data-testid="search-min-chars-hint">
+          <p className="mt-3 text-[12px] text-dash-text-muted" data-testid="search-min-chars-hint">
             {t("search.minChars").replace("{count}", String(minChars))}
           </p>
         )}
@@ -107,9 +107,9 @@ export default function SearchPage() {
         )}
       </div>
 
-      <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 md:p-6">
+      <div className="bg-dash-surface border border-dash-border rounded-xl p-5 md:p-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-cabinet text-lg font-bold text-[#111827] tracking-tight">
+          <h3 className="font-cabinet text-lg font-bold text-dash-text tracking-tight">
             {t("search.historyTitle")}
           </h3>
           {history.length > 0 && (
@@ -117,7 +117,7 @@ export default function SearchPage() {
               type="button"
               onClick={clearHistory}
               data-testid="search-history-clear"
-              className="text-[11px] text-[#6B7280] hover:text-[#111827] transition-colors"
+              className="text-[11px] text-dash-text-muted hover:text-dash-text transition-colors"
             >
               {t("search.historyClear")}
             </button>
@@ -125,11 +125,11 @@ export default function SearchPage() {
         </div>
 
         {history.length === 0 ? (
-          <p className="text-[13px] text-[#6B7280]" data-testid="search-history-empty">
+          <p className="text-[13px] text-dash-text-muted" data-testid="search-history-empty">
             {t("search.historyEmpty")}
           </p>
         ) : (
-          <ul className="divide-y divide-[#F3F4F6]">
+          <ul className="divide-y divide-dash-border-soft">
             {history.map((query, index) => (
               <li
                 key={`${query}-${index}`}
@@ -141,13 +141,13 @@ export default function SearchPage() {
                   onClick={() => handleHistoryClick(query)}
                   className="flex items-center gap-3 min-w-0 flex-1 text-left"
                 >
-                  <Clock3 className="w-4 h-4 text-[#9CA3AF] shrink-0" />
-                  <span className="text-[13px] text-[#111827] truncate">{query}</span>
+                  <Clock3 className="w-4 h-4 text-dash-text-subtle shrink-0" />
+                  <span className="text-[13px] text-dash-text truncate">{query}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => removeSearch(query)}
-                  className="p-1.5 text-[#9CA3AF] hover:text-[#991B1B] transition-colors sm:opacity-0 sm:group-hover:opacity-100 shrink-0"
+                  className="p-1.5 text-dash-text-subtle hover:text-[#991B1B] transition-colors sm:opacity-0 sm:group-hover:opacity-100 shrink-0"
                   aria-label={t("search.historyRemove")}
                   data-testid={`search-history-remove-${index}`}
                 >

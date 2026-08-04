@@ -1,14 +1,16 @@
 import { useState } from "react";
 import {
   Download,
-  ExternalLink,
+  FileUp,
+  Link2,
   Loader2,
   MoreHorizontal,
   Pencil,
-  Receipt,
   RotateCcw,
   Send,
-  SendHorizonal,
+  StickyNote,
+  ThumbsDown,
+  ThumbsUp,
   Trash2,
   Wallet,
 } from "lucide-react";
@@ -17,8 +19,9 @@ import { toastApiError } from "@/utils/apiErrors";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { useAddQuote } from "@/context/AddQuoteContext";
 import { useAddInvoice } from "@/context/AddInvoiceContext";
-import { convertQuoteToInvoice } from "@/lib/quotesApi";
-import { getInvoice, markInvoiceInProgress, markInvoicePaid } from "@/lib/invoicesApi";
+import { useAddNote } from "@/context/AddNoteContext";
+import { updateQuote } from "@/lib/quotesApi";
+import { markInvoiceInProgress, markInvoicePaid } from "@/lib/invoicesApi";
 import { downloadInvoicePdf, downloadQuotePdf } from "@/lib/commercialPdfApi";
 import {
   getInvoiceAmountDue,
@@ -31,7 +34,7 @@ import { ActionButton } from "@/components/dashboard/ActionButton";
 import DocumentSendModal from "@/components/dashboard/DocumentSendModal";
 import FollowUpModal from "@/components/dashboard/FollowUpModal";
 import InvoicePaymentModal from "@/components/dashboard/InvoicePaymentModal";
-import { DetailModalFooter } from "@/components/dashboard/detailModalLayout";
+import { DANGER_MENU_ITEM_CLASS, DetailModalFooter } from "@/components/dashboard/detailModalLayout";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,10 +50,12 @@ export default function CommercialDocumentDetailFooter({
   onEdit,
   onDelete,
   onDocumentUpdated,
+  onImportFinalInvoice,
 }) {
   const { t, lang } = useDashboardLang();
   const { notifyQuotesChanged } = useAddQuote();
-  const { notifyInvoicesChanged, queueOpenInvoice } = useAddInvoice();
+  const { notifyInvoicesChanged } = useAddInvoice();
+  const { openAddNote } = useAddNote();
   const [submitting, setSubmitting] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const [followUpOpen, setFollowUpOpen] = useState(false);
@@ -64,9 +69,10 @@ export default function CommercialDocumentDetailFooter({
   const amountPaid = isQuote ? 0 : getInvoiceAmountPaid(document);
   const canCollect = !isQuote && amountDue > 0 && (status === "in_progress" || status === "overdue");
   const canReopen = !isQuote && amountPaid > 0;
-  const canCreateInvoice = isQuote && document.status === "accepted" && !document.invoiceId;
-  const hasLinkedInvoice = isQuote && Boolean(document.invoiceId);
-  const prioritizeSend = isQuote && (document.status === "draft" || document.status === "sent");
+  const canImportFinal = isQuote && document.status === "accepted" && !document.invoiceId;
+  const canMarkWon = isQuote && document.status === "sent";
+  const canMarkLost = isQuote && ["draft", "sent"].includes(document.status);
+  const hasClient = Boolean(document.clientId);
 
   const refresh = () => {
     if (isQuote) notifyQuotesChanged();
@@ -116,96 +122,103 @@ export default function CommercialDocumentDetailFooter({
     }
   };
 
-  const handleConvert = async () => {
+  const handleMarkWon = async () => {
     setSubmitting(true);
     try {
-      const invoice = await convertQuoteToInvoice(document.id);
-      notifyQuotesChanged();
-      notifyInvoicesChanged();
-      toast.success(t("toast.invoiceCreatedFromQuote"), { description: invoice.number });
-      onClose?.();
-      queueOpenInvoice(invoice);
+      const updated = await updateQuote(document.id, { status: "accepted" });
+      onDocumentUpdated?.(updated);
+      refresh();
+      toast.success(t("documentActions.markWonSuccess"), { description: document.number });
     } catch (err) {
-      toastApiError(err, t, "toast.quoteConvertError");
+      toastApiError(err, t, "toast.quoteError");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleViewInvoice = async () => {
-    if (!document.invoiceId) return;
+  const handleMarkLost = async () => {
     setSubmitting(true);
     try {
-      const invoice = await getInvoice(document.invoiceId);
-      onClose?.();
-      queueOpenInvoice(invoice);
+      const updated = await updateQuote(document.id, { status: "rejected" });
+      onDocumentUpdated?.(updated);
+      refresh();
+      toast.success(t("documentActions.markLostSuccess"), { description: document.number });
     } catch (err) {
-      toastApiError(err, t, "toast.linkedInvoiceMissing");
+      toastApiError(err, t, "toast.quoteError");
     } finally {
       setSubmitting(false);
     }
   };
 
-  let primaryAction = null;
-  if (prioritizeSend && canSend) {
-    primaryAction = (
-      <ActionButton variant="primary" onClick={() => setSendOpen(true)} disabled={submitting} className="gap-1.5">
-        <SendHorizonal className="w-3.5 h-3.5" />
-        {t("actions.sendToClient")}
-      </ActionButton>
-    );
-  } else if (canCreateInvoice) {
-    primaryAction = (
-      <ActionButton variant="primary" onClick={handleConvert} disabled={submitting} className="gap-1.5">
-        {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Receipt className="w-3.5 h-3.5" />}
-        {t("actions.createInvoiceFromQuote")}
-      </ActionButton>
-    );
-  } else if (canCollect) {
-    primaryAction = (
-      <ActionButton variant="success" onClick={handleMarkPaid} disabled={submitting} className="gap-1.5">
-        {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wallet className="w-3.5 h-3.5" />}
-        {t("actions.markPaid")}
-      </ActionButton>
-    );
-  } else if (onEdit) {
-    primaryAction = (
-      <ActionButton variant="primary" onClick={onEdit} className="gap-1.5">
-        <Pencil className="w-3.5 h-3.5" />
-        {t("actions.edit")}
-      </ActionButton>
-    );
-  }
+  const handleAddNote = () => {
+    if (!hasClient) return;
+    openAddNote({ id: document.clientId, name: document.clientName });
+  };
 
   const menuItems = [];
-  if (!prioritizeSend && canSend) {
-    menuItems.push({ key: "send", label: t("actions.sendToClient"), icon: SendHorizonal, onClick: () => setSendOpen(true) });
+
+  if (onEdit) {
+    menuItems.push({ key: "edit", label: t("documentActions.editInfo"), icon: Pencil, onClick: onEdit });
+    menuItems.push({ key: "link-client", label: t("documentActions.linkClient"), icon: Link2, onClick: onEdit });
   }
-  menuItems.push({ key: "pdf", label: t("actions.downloadPdf"), icon: Download, onClick: handleDownload });
-  if (canFollowUp) {
-    menuItems.push({ key: "follow-up", label: t("actions.followUp"), icon: Send, onClick: () => setFollowUpOpen(true) });
+
+  if (hasClient) {
+    menuItems.push({ key: "add-note", label: t("documentActions.addNote"), icon: StickyNote, onClick: handleAddNote });
   }
+
+  if (canImportFinal && onImportFinalInvoice) {
+    menuItems.push({
+      key: "import-final",
+      label: t("documentActions.importFinalInvoice"),
+      icon: FileUp,
+      onClick: () => onImportFinalInvoice(document),
+    });
+  }
+
+  if (canMarkWon) {
+    menuItems.push({ key: "mark-won", label: t("documentActions.markWon"), icon: ThumbsUp, onClick: handleMarkWon });
+  }
+
+  if (canMarkLost) {
+    menuItems.push({ key: "mark-lost", label: t("documentActions.markLost"), icon: ThumbsDown, onClick: handleMarkLost });
+  }
+
   if (canCollect) {
+    menuItems.push({ key: "mark-settled", label: t("documentActions.markSettled"), icon: Wallet, onClick: handleMarkPaid });
     menuItems.push({ key: "partial", label: t("actions.partialPayment"), icon: Wallet, onClick: () => setPaymentOpen(true) });
   }
+
   if (canReopen) {
     menuItems.push({ key: "reopen", label: t("actions.reopen"), icon: RotateCcw, onClick: handleReopen });
   }
-  if (hasLinkedInvoice) {
-    menuItems.push({ key: "view-invoice", label: t("actions.viewInvoice"), icon: ExternalLink, onClick: handleViewInvoice });
+
+  if (canFollowUp) {
+    menuItems.push({ key: "follow-up", label: t("actions.followUp"), icon: Send, onClick: () => setFollowUpOpen(true) });
   }
-  if (canCreateInvoice && primaryAction) {
-    menuItems.push({ key: "convert", label: t("actions.createInvoiceFromQuote"), icon: Receipt, onClick: handleConvert });
+
+  if (canSend) {
+    menuItems.push({ key: "send", label: t("documentActions.sendAdvanced"), icon: Send, onClick: () => setSendOpen(true) });
   }
-  if (onEdit && primaryAction) {
-    menuItems.push({ key: "edit", label: t("actions.edit"), icon: Pencil, onClick: onEdit });
-  }
+
+  menuItems.push({ key: "pdf", label: t("actions.downloadPdf"), icon: Download, onClick: handleDownload });
+
+  const primaryAction = onEdit ? (
+    <ActionButton
+      variant="primary"
+      onClick={onEdit}
+      className="gap-1.5"
+      data-testid="commercial-detail-edit"
+    >
+      <Pencil className="w-3.5 h-3.5" />
+      {t("documentActions.editInfo")}
+    </ActionButton>
+  ) : null;
 
   return (
     <>
       <DetailModalFooter
         secondary={
-          <ActionButton variant="secondary" onClick={onClose}>
+          <ActionButton variant="secondary" onClick={onClose} data-testid="commercial-detail-close">
             {t("actions.close")}
           </ActionButton>
         }
@@ -216,14 +229,14 @@ export default function CommercialDocumentDetailFooter({
               <DropdownMenuTrigger asChild>
                 <ActionButton
                   variant="secondary"
-                  aria-label={t("actions.moreActions")}
+                  aria-label={t("documentActions.more")}
                   data-testid="commercial-detail-more-actions"
                 >
                   <MoreHorizontal className="w-4 h-4" />
-                  {t("actions.moreActions")}
+                  {t("documentActions.more")}
                 </ActionButton>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52" data-testid="commercial-detail-more-menu">
+              <DropdownMenuContent align="end" className="w-56" data-testid="commercial-detail-more-menu">
                 {menuItems.map((item) => {
                   const Icon = item.icon;
                   return (
@@ -236,7 +249,7 @@ export default function CommercialDocumentDetailFooter({
                 {onDelete ? (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={onDelete} className="text-red-600 focus:text-red-600">
+                    <DropdownMenuItem onSelect={onDelete} className={DANGER_MENU_ITEM_CLASS}>
                       <Trash2 className="w-4 h-4 mr-2" />
                       {t("actions.delete")}
                     </DropdownMenuItem>

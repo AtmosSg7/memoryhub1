@@ -1,0 +1,79 @@
+# Production overrides for OVH / public VPS.
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env up -d --build
+#
+# Alias: docker-compose.prod.yml (same content, kept for older docs).
+
+services:
+  mongo:
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+    command: ["mongod", "--auth", "--quiet"]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh -u \"$$MONGO_INITDB_ROOT_USERNAME\" -p \"$$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --quiet --eval \"db.runCommand('ping').ok\" | grep -q 1",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  backend:
+    environment:
+      ENV: production
+      MONGO_URL: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/?authSource=admin
+      LOCAL_UPLOAD_DIR: /app/uploads
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+
+  frontend:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  nginx:
+    # Production publishes only 80/443 (from base compose). Port 8080 stays
+    # inside the container for the nginx image healthcheck — not exposed.
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  scheduler:
+    build:
+      context: ./backend
+    image: memoryhub-backend:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    env_file:
+      - deploy/.env
+    environment:
+      ENV: production
+      MONGO_URL: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongo:27017/?authSource=admin
+      LOCAL_UPLOAD_DIR: /app/uploads
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - internal
+    command: ["python", "scripts/run_scheduled_tasks.py", "--loop", "--interval", "300"]
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

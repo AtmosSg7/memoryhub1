@@ -28,8 +28,8 @@ export default function ActivityFeed({
       className={[
         "rounded-xl",
         muted
-          ? "bg-[#FAFAFA] border border-[#F3F4F6] p-3"
-          : `bg-white border border-[#E5E7EB] ${compact ? "p-4" : "p-5 md:p-6"}`,
+          ? "bg-dash-surface-muted border border-dash-border-soft p-3"
+          : `bg-dash-surface border border-dash-border ${compact ? "p-4" : "p-5 md:p-6"}`,
       ].join(" ")}
     >
       {showHeader && (
@@ -38,13 +38,13 @@ export default function ActivityFeed({
             <h3
               className={[
                 "font-cabinet font-bold tracking-tight",
-                muted ? "text-xs text-[#6B7280]" : compact ? "text-sm text-[#111827]" : "text-lg text-[#111827]",
+                muted ? "text-xs text-dash-text-muted" : compact ? "text-sm text-dash-text" : "text-lg text-dash-text",
               ].join(" ")}
             >
               {t("activity.title")}
             </h3>
             {!compact && !muted && (
-              <p className="text-xs text-[#6B7280] mt-0.5">{t("activity.subtitle")}</p>
+              <p className="text-xs text-dash-text-muted mt-0.5">{t("activity.subtitle")}</p>
             )}
           </div>
           {showViewAll && (
@@ -54,8 +54,8 @@ export default function ActivityFeed({
               onClick={() => navigate(viewAllPath)}
               className={
                 muted
-                  ? "text-[10px] font-medium text-[#9CA3AF] hover:text-[#6B7280]"
-                  : "text-xs font-medium text-[#0A2540] hover:text-[#173A5E]"
+                  ? "text-[10px] font-medium text-dash-text-subtle hover:text-dash-text-muted"
+                  : "text-xs font-medium text-dash-primary hover:text-dash-primary"
               }
             >
               {t("activity.viewAll")}

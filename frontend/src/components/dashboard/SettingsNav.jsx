@@ -27,8 +27,8 @@ export default function SettingsNav({ activeKey, testId = "settings-nav" }) {
             className={[
               "w-full text-left px-3 py-2.5 rounded-xl transition-colors",
               isActive
-                ? "bg-[#0A2540] text-white font-medium shadow-sm"
-                : "text-[#4B5563] hover:bg-[#F3F4F6]",
+                ? "bg-[var(--dash-nav-active-bg)] text-[var(--dash-nav-active-text)] font-medium shadow-sm"
+                : "text-dash-text-muted hover:bg-dash-surface-muted",
             ].join(" ")}
           >
             {t(`settingsForm.nav.${item.key}`)}

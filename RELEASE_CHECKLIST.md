@@ -1,4 +1,4 @@
-# MemoryHub V1 — Release Checklist
+# Basera V1 — Release Checklist
 
 Checklist finale avant **staging**, **bêta fermée** et **production**.
 
@@ -62,7 +62,7 @@ cd e2e && npm ci && npx playwright install chromium && npm run test:chromium && 
 - [ ] Compte Stripe activé (paiements live)
 - [ ] `STRIPE_SECRET_KEY=sk_live_...`
 - [ ] `STRIPE_WEBHOOK_SECRET=whsec_...`
-- [ ] Prix créés : Solo, Pro, Team → `STRIPE_PRICE_*`
+- [ ] Prix créés : Starter / Pro / Business (4,90 / 9,90 / 19,90 €) → `STRIPE_PRICE_SOLO` / `PRO` / `TEAM`
 - [ ] URLs checkout : `STRIPE_SUCCESS_URL`, `STRIPE_CANCEL_URL`
 - [ ] Webhook endpoint : `https://<domaine>/api/stripe/webhook`
 - [ ] Événements webhook : `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.deleted`, `customer.subscription.updated`
@@ -93,7 +93,7 @@ cd e2e && npm ci && npx playwright install chromium && npm run test:chromium && 
 
 ## MongoDB (bloquant prod)
 
-- [ ] Authentification activée (`docker-compose.prod.yml`)
+- [ ] Authentification activée (`docker-compose.production.yml`)
 - [ ] Volume persistant `mongo_data`
 - [ ] Indexes migrés : `python scripts/migrate_indexes.py`
 - [ ] `./deploy/scripts/check-database.sh` OK
@@ -165,7 +165,7 @@ cd e2e && npm ci && npx playwright install chromium && npm run test:chromium && 
 ## Docker & CI/CD (bloquant)
 
 - [ ] Images buildées avec `IMAGE_TAG=<git-sha>`
-- [ ] `docker-compose.prod.yml` : limites mémoire, Mongo auth, scheduler
+- [ ] `docker-compose.production.yml` : limites mémoire, Mongo auth, scheduler
 - [ ] Nginx : TLS, security headers, cache static
 - [ ] GitHub Actions CI verte sur `main`
 - [ ] Pas de secrets dans le repo

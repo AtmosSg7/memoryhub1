@@ -34,7 +34,7 @@ Preview local (dev) : `python backend/scripts/preview_emails.py`
 1. Billing → checkout Solo → carte test `4242…`
 2. Webhook endpoint configuré sur dashboard Stripe
 3. `STRIPE_WEBHOOK_SECRET` correspond au endpoint staging
-4. Admin MRR cohérent avec plans (19/49/99 €)
+4. Admin MRR cohérent avec plans (4,90 / 9,90 / 19,90 €)
 
 ## Validation env sans secrets
 

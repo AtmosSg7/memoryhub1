@@ -21,4 +21,10 @@ async def submit_feedback(
     db=Depends(get_db),
 ):
     ua = request.headers.get("user-agent")
-    return await create_beta_feedback(db, current_user["id"], body, user_agent=ua)
+    return await create_beta_feedback(
+        db,
+        current_user["id"],
+        body,
+        user_agent=ua,
+        user_email=current_user.get("email"),
+    )

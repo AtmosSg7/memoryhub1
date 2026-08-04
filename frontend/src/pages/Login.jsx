@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { HoneypotField, useFormAbuseGuard } from "@/components/auth/FormAbuseFields";
 
 const Login = () => {
   const { t } = useLang();
@@ -26,6 +27,8 @@ const Login = () => {
   const location = useLocation();
   const [serverError, setServerError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [honeypot, setHoneypot] = useState("");
+  const { formStartedAt } = useFormAbuseGuard();
 
   const schema = z.object({
     email: z.string().email(t("auth.errors.invalidEmail")),
@@ -38,10 +41,14 @@ const Login = () => {
   });
 
   const onSubmit = async (values) => {
+    if (loading) return;
     setServerError("");
     setLoading(true);
     try {
-      await login(values.email, values.password);
+      await login(values.email, values.password, {
+        website: honeypot,
+        formStartedAt,
+      });
       const redirectTo = location.state?.from || "/dashboard";
       navigate(redirectTo, { replace: true });
     } catch (err) {
@@ -54,7 +61,8 @@ const Login = () => {
   return (
     <AuthLayout title={t("auth.login.title")} subtitle={t("auth.login.subtitle")}>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="relative space-y-4">
+          <HoneypotField value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
           <FormField
             control={form.control}
             name="email"

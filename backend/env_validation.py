@@ -8,6 +8,7 @@ from typing import Iterable
 from urllib.parse import urlparse
 
 DEV_JWT_SECRET = "dev-jwt-secret-change-in-production"
+DEV_INTEGRATIONS_TOKEN_KEY = "dev-integrations-token-key-change-me"
 ENV_NAME = os.environ.get("ENV", "development").lower()
 IS_PRODUCTION = ENV_NAME == "production"
 IS_STAGING = ENV_NAME == "staging"
@@ -207,6 +208,18 @@ def _validate_stripe_config(errors: list[str]) -> None:
         errors.append("STRIPE_SECRET_KEY must be a test key (sk_test_...) in staging.")
 
 
+def _google_contacts_credentials_complete(
+    client_id: str, client_secret: str, redirect_uri: str
+) -> bool:
+    return bool(client_id and client_secret and redirect_uri)
+
+
+def _gmail_credentials_complete(
+    client_id: str, client_secret: str, redirect_uri: str, gmail_redirect: str
+) -> bool:
+    return bool(client_id and client_secret and (gmail_redirect or redirect_uri))
+
+
 def _validate_google_contacts_config(errors: list[str]) -> None:
     """Google OAuth credentials are optional — partial sets must be complete."""
     client_id = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
@@ -231,23 +244,51 @@ def _validate_google_contacts_config(errors: list[str]) -> None:
             "GOOGLE_GMAIL_REDIRECT_URI", gmail_redirect, errors, require_https=IS_PRODUCTION
         )
 
+    contacts_complete = _google_contacts_credentials_complete(client_id, client_secret, redirect_uri)
+    gmail_complete = _gmail_credentials_complete(
+        client_id, client_secret, redirect_uri, gmail_redirect
+    )
+
     provider_mode = os.environ.get("INTEGRATIONS_CONTACTS_PROVIDER", "").strip().lower()
     if provider_mode and provider_mode not in {"google", "mock"}:
         errors.append("INTEGRATIONS_CONTACTS_PROVIDER must be 'google' or 'mock' when set.")
     if IS_DEPLOYED and provider_mode == "mock":
         errors.append("INTEGRATIONS_CONTACTS_PROVIDER=mock is not allowed in staging or production.")
+    if IS_DEPLOYED and provider_mode == "google" and not contacts_complete:
+        errors.append(
+            "INTEGRATIONS_CONTACTS_PROVIDER=google requires GOOGLE_CLIENT_ID, "
+            "GOOGLE_CLIENT_SECRET, and GOOGLE_REDIRECT_URI."
+        )
 
     gmail_mode = os.environ.get("INTEGRATIONS_GMAIL_PROVIDER", "").strip().lower()
     if gmail_mode and gmail_mode not in {"google", "mock"}:
         errors.append("INTEGRATIONS_GMAIL_PROVIDER must be 'google' or 'mock' when set.")
     if IS_DEPLOYED and gmail_mode == "mock":
         errors.append("INTEGRATIONS_GMAIL_PROVIDER=mock is not allowed in staging or production.")
+    if IS_DEPLOYED and gmail_mode == "google" and not gmail_complete:
+        errors.append(
+            "INTEGRATIONS_GMAIL_PROVIDER=google requires GOOGLE_CLIENT_ID, "
+            "GOOGLE_CLIENT_SECRET, and GOOGLE_GMAIL_REDIRECT_URI or GOOGLE_REDIRECT_URI."
+        )
 
     token_key = os.environ.get("INTEGRATIONS_TOKEN_KEY", "").strip()
+    jwt_secret = os.environ.get("JWT_SECRET", "").strip()
     if IS_DEPLOYED and any_set and not token_key:
         errors.append("INTEGRATIONS_TOKEN_KEY is required when Google integrations are configured.")
-    if IS_PRODUCTION and token_key and len(token_key) < 32:
-        errors.append("INTEGRATIONS_TOKEN_KEY must be at least 32 characters in production.")
+    if IS_DEPLOYED and any_set and token_key:
+        if len(token_key) < 32:
+            errors.append(
+                "INTEGRATIONS_TOKEN_KEY must be at least 32 characters when Google integrations are configured."
+            )
+        if token_key == DEV_INTEGRATIONS_TOKEN_KEY:
+            errors.append(
+                "INTEGRATIONS_TOKEN_KEY must not use the development default when Google integrations are configured."
+            )
+        if jwt_secret and token_key == jwt_secret:
+            errors.append(
+                "INTEGRATIONS_TOKEN_KEY must be a dedicated secret, not JWT_SECRET, "
+                "when Google integrations are configured."
+            )
 
 
 def _validate_dev_runtime_flags(errors: list[str]) -> None:

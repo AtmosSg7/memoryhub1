@@ -83,8 +83,8 @@ def test_auth_templates_are_branded():
         sender_name="Martin Rénovation",
         portal_url="https://app.memoryhub.fr/portal/t",
     )
-    assert "MemoryHub" in verify.subject
-    assert "MemoryHub" in reset.subject
+    assert "Basera" in verify.subject
+    assert "Basera" in reset.subject
     assert "espace client" in portal.subject.lower()
     assert verify.preheader and reset.preheader and portal.preheader
 

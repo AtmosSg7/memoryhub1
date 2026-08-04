@@ -90,14 +90,16 @@ def _build_actions(
     if not stripe_ok:
         return BillingActions()
 
-    has_active = bool(sub_doc and sub_doc.get("status") in ACTIVE_LIKE_STATUSES)
+    # Local app trials (no Stripe subscription id) must still be able to open Checkout.
+    has_stripe_sub = bool(sub_doc and sub_doc.get("stripeSubscriptionId"))
+    stripe_active = has_stripe_sub and sub_doc.get("status") in ACTIVE_LIKE_STATUSES
     return BillingActions(
-        canCheckout=not has_active,
-        canManage=bool(sub_doc and sub_doc.get("stripeSubscriptionId")),
-        canUpgrade=has_active,
-        canDowngrade=has_active,
-        canCancel=has_active,
-        canChangePlan=has_active,
+        canCheckout=not stripe_active,
+        canManage=has_stripe_sub,
+        canUpgrade=stripe_active,
+        canDowngrade=stripe_active,
+        canCancel=stripe_active,
+        canChangePlan=stripe_active,
     )
 
 
@@ -249,7 +251,12 @@ async def start_checkout(
     try:
         await get_plan(db, body.planId)
         sub_doc = await get_subscription_doc(db, current_user["id"])
-        if sub_doc and sub_doc.get("status") in ACTIVE_LIKE_STATUSES:
+        # Block only Stripe-backed active-like subscriptions. Local trials can convert via Checkout.
+        if (
+            sub_doc
+            and sub_doc.get("stripeSubscriptionId")
+            and sub_doc.get("status") in ACTIVE_LIKE_STATUSES
+        ):
             raise StripeSubscriptionConflictError()
 
         include_trial = not await user_has_trial_history(db, current_user["id"])

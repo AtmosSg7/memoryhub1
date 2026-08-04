@@ -3,22 +3,17 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-COMPOSE_FILE="${ROOT_DIR}/docker-compose.yml"
-ENV_FILE="${ROOT_DIR}/deploy/.env"
+# shellcheck source=compose-production.sh
+source "${ROOT_DIR}/deploy/scripts/compose-production.sh"
 BACKUP_DIR="${ROOT_DIR}/deploy/backups"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 ARCHIVE="${BACKUP_DIR}/uploads-${TIMESTAMP}.tar.gz"
-
-if [[ ! -f "${ENV_FILE}" ]]; then
-  echo "Missing ${ENV_FILE}."
-  exit 1
-fi
 
 mkdir -p "${BACKUP_DIR}"
 
 echo "Creating uploads backup..."
 
-docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" exec -T backend \
+compose_prod exec -T backend \
   tar -czf - -C /app/uploads . > "${ARCHIVE}"
 
 if [[ ! -s "${ARCHIVE}" ]]; then

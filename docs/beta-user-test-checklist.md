@@ -1,4 +1,4 @@
-# Checklist de test utilisateur — MemoryHub pré-bêta
+# Checklist de test utilisateur — Basera pré-bêta
 
 Session : _______________  
 Date : _______________  
@@ -20,7 +20,7 @@ Notation pour chaque tâche :
 
 | Question | Note | Commentaire |
 |----------|------|-------------|
-| Comprend-il le but de MemoryHub en moins de 30 secondes ? | R / H / A / E | |
+| Comprend-il le but de Basera en moins de 30 secondes ? | R / H / A / E | |
 | Comprend-il le Dashboard ? | R / H / A / E | |
 | Comprend-il « encaissé » et « à encaisser » ? | R / H / A / E | |
 | Comprend-il Client 360 ? | R / H / A / E | |

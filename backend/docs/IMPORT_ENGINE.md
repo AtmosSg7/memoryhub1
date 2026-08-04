@@ -1,4 +1,4 @@
-# MemoryHub — Import Engine (Beta)
+# Basera — Import Engine (Beta)
 
 Pipeline d'import IA robuste pour artisans : dépôt PDF ou photos, prétraitement, analyse OpenAI, rattachement client et création devis/facture.
 

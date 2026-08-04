@@ -1,25 +1,35 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { useIsShowcaseDemo } from "@/context/ShowcaseThemeIsolation";
 
 const AddInvoiceContext = createContext(null);
 
 export function AddInvoiceProvider({ children }) {
+  const isShowcase = useIsShowcaseDemo();
   const [isOpen, setIsOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState(null);
   const [prefillClient, setPrefillClient] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [pendingOpenInvoice, setPendingOpenInvoice] = useState(null);
 
-  const openAddInvoice = useCallback((client = null) => {
-    setEditingInvoice(null);
-    setPrefillClient(client);
-    setIsOpen(true);
-  }, []);
+  const openAddInvoice = useCallback(
+    (client = null) => {
+      if (isShowcase) return;
+      setEditingInvoice(null);
+      setPrefillClient(client);
+      setIsOpen(true);
+    },
+    [isShowcase]
+  );
 
-  const openEditInvoice = useCallback((invoice) => {
-    setEditingInvoice(invoice);
-    setPrefillClient(null);
-    setIsOpen(true);
-  }, []);
+  const openEditInvoice = useCallback(
+    (invoice) => {
+      if (isShowcase) return;
+      setEditingInvoice(invoice);
+      setPrefillClient(null);
+      setIsOpen(true);
+    },
+    [isShowcase]
+  );
 
   const closeAddInvoice = useCallback(() => {
     setIsOpen(false);
@@ -41,8 +51,8 @@ export function AddInvoiceProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      isOpen,
-      editingInvoice,
+      isOpen: isShowcase ? false : isOpen,
+      editingInvoice: isShowcase ? null : editingInvoice,
       prefillClient,
       refreshKey,
       pendingOpenInvoice,
@@ -54,6 +64,7 @@ export function AddInvoiceProvider({ children }) {
       clearPendingOpenInvoice,
     }),
     [
+      isShowcase,
       isOpen,
       editingInvoice,
       prefillClient,

@@ -167,10 +167,10 @@ export default function AddNoteModal() {
         data-testid="add-note-modal"
       >
         <DialogHeader className="space-y-1 pb-1">
-          <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-[#111827]">
+          <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-dash-text">
             {isEdit ? t("noteForm.editTitle") : t("noteForm.addTitle")}
           </DialogTitle>
-          <DialogDescription className="text-[#4B5563]">
+          <DialogDescription className="text-dash-text-muted">
             {isEdit ? t("noteForm.editSubtitle") : t("noteForm.addSubtitle")}
           </DialogDescription>
         </DialogHeader>
@@ -196,7 +196,7 @@ export default function AddNoteModal() {
           <button
             type="button"
             onClick={() => setShowMore((value) => !value)}
-            className="inline-flex items-center gap-1 text-xs font-medium text-[#0A2540] hover:text-[#173A5E]"
+            className="inline-flex items-center gap-1 text-xs font-medium text-dash-primary hover:text-[#173A5E]"
             data-testid="note-form-toggle-options"
           >
             <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMore ? "rotate-180" : ""}`} />
@@ -238,7 +238,7 @@ export default function AddNoteModal() {
                     <SelectItem
                       key={type}
                       value={type}
-                      className="rounded-lg focus:bg-[#F3F4F6] focus:text-[#111827]"
+                      className="rounded-lg focus:bg-dash-surface-muted focus:text-dash-text"
                     >
                       {t(`noteType.${type}`)}
                     </SelectItem>
@@ -282,7 +282,7 @@ export default function AddNoteModal() {
                 <SelectContent className={FORM_SELECT_CONTENT_CLASS}>
                   <SelectItem
                     value="none"
-                    className="rounded-lg focus:bg-[#F3F4F6] focus:text-[#111827]"
+                    className="rounded-lg focus:bg-dash-surface-muted focus:text-dash-text"
                   >
                     {t("noteForm.noClient")}
                   </SelectItem>
@@ -290,7 +290,7 @@ export default function AddNoteModal() {
                     <SelectItem
                       key={client.id}
                       value={client.id}
-                      className="rounded-lg focus:bg-[#F3F4F6] focus:text-[#111827]"
+                      className="rounded-lg focus:bg-dash-surface-muted focus:text-dash-text"
                     >
                       {getDisplayCompany(client)}
                     </SelectItem>
@@ -300,11 +300,11 @@ export default function AddNoteModal() {
           </div>
           ) : null}
 
-          <div className="rounded-xl border border-[#F3F4F6] bg-[#FAFAFA] px-4 py-3 space-y-3">
+          <div className="rounded-xl border border-dash-border-soft bg-dash-surface-muted px-4 py-3 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-[#111827]">{t("noteForm.reminderToggle")}</p>
-                <p className="text-xs text-[#6B7280] mt-0.5">{t("noteForm.reminderHint")}</p>
+                <p className="text-sm font-medium text-dash-text">{t("noteForm.reminderToggle")}</p>
+                <p className="text-xs text-dash-text-muted mt-0.5">{t("noteForm.reminderHint")}</p>
               </div>
               <Switch
                 checked={form.enableReminder}

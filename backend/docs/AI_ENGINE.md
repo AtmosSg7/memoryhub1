@@ -1,4 +1,4 @@
-# MemoryHub — AI Engine (Import, Credits, Observability)
+# Basera — AI Engine (Import, Credits, Observability)
 
 Architecture du moteur IA production-ready : estimation, consommation, mesure OpenAI, historique et métriques.
 

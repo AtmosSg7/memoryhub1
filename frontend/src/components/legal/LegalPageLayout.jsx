@@ -6,9 +6,9 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { applyLegalPlaceholders, legalPlaceholdersPending } from "@/constants/legalConfig";
 
-const DEFAULT_TITLE = "MemoryHub";
+const DEFAULT_TITLE = "Basera";
 const DEFAULT_DESCRIPTION =
-  "MemoryHub centralise clients, devis, factures, notes et documents pour les artisans et indépendants.";
+  "Basera centralise clients, devis, factures, notes et documents pour les artisans et indépendants.";
 
 export const LegalPageLayout = ({ pageKey }) => {
   const { t, lang } = useLang();
@@ -19,7 +19,7 @@ export const LegalPageLayout = ({ pageKey }) => {
   const sections = t(`legal.${pageKey}.sections`);
 
   useEffect(() => {
-    document.title = `${title} | MemoryHub`;
+    document.title = `${title} | Basera`;
 
     let meta = document.querySelector('meta[name="description"]');
     if (!meta) {

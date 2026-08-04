@@ -14,10 +14,10 @@ const ROW_GRID =
   "grid grid-cols-[minmax(140px,1fr)_52px_72px_44px_60px_76px_28px] gap-1 items-center";
 
 const FIELD_CLASS =
-  "h-8 rounded-lg border border-[#E7E9EE] bg-white px-2 text-xs text-[#111827] shadow-none placeholder:text-[#8A8F98] focus-visible:border-[#0A2540] focus-visible:ring-1 focus-visible:ring-[#0A2540]/15";
+  "h-8 rounded-lg border border-dash-border bg-dash-surface px-2 text-xs text-dash-text shadow-none placeholder:text-[#8A8F98] focus-visible:border-dash-primary focus-visible:ring-1 focus-visible:ring-dash-primary/15";
 
 const HEADER_CLASS =
-  "text-[10px] font-semibold uppercase tracking-wide text-[#9CA3AF] truncate px-1";
+  "text-[10px] font-semibold uppercase tracking-wide text-dash-text-subtle truncate px-1";
 
 export default function CommercialLineItemsEditor({ lines, onChange, t, lang, i18nPrefix = "quoteForm" }) {
   const totals = computeDocumentTotalsFromLines(lines);
@@ -73,8 +73,8 @@ export default function CommercialLineItemsEditor({ lines, onChange, t, lang, i1
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <Label className="text-sm font-medium text-[#374151]">{label("title")}</Label>
-          <p className="text-[11px] text-[#9CA3AF] mt-0.5 leading-snug">{examplesHint}</p>
+          <Label className="text-sm font-medium text-dash-text-muted">{label("title")}</Label>
+          <p className="text-[11px] text-dash-text-subtle mt-0.5 leading-snug">{examplesHint}</p>
         </div>
         <Button type="button" variant="outline" size="sm" className="rounded-lg h-7 text-xs px-2" onClick={addLine}>
           <Plus className="w-3 h-3 mr-1" />
@@ -82,10 +82,10 @@ export default function CommercialLineItemsEditor({ lines, onChange, t, lang, i1
         </Button>
       </div>
 
-      <div className="rounded-xl border border-[#E7E9EE] bg-white overflow-hidden">
+      <div className="rounded-xl border border-dash-border bg-dash-surface overflow-hidden">
         <div className="overflow-x-auto">
           <div className="min-w-[560px] px-2 py-2 space-y-1">
-            <div className={`${ROW_GRID} px-0.5 pb-1 border-b border-[#E7E9EE]`}>
+            <div className={`${ROW_GRID} px-0.5 pb-1 border-b border-dash-border`}>
               <span className={HEADER_CLASS}>{label("description")}</span>
               <span className={`${HEADER_CLASS} text-center`}>{label("quantityShort")}</span>
               <span className={`${HEADER_CLASS} text-right`}>{label("unitPriceShort")}</span>
@@ -143,14 +143,14 @@ export default function CommercialLineItemsEditor({ lines, onChange, t, lang, i1
                   onKeyDown={(e) => handleEnterKey(index, e)}
                   placeholder="10%"
                 />
-                <div className="text-right text-xs font-semibold text-[#111827] tabular-nums px-1 truncate">
+                <div className="text-right text-xs font-semibold text-dash-text tabular-nums px-1 truncate">
                   {formatCommercialAmount(computeLineAmountHT(line), lang)}
                 </div>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-7 w-7 p-0 text-[#991B1B] hover:text-[#991B1B] hover:bg-[#FEF2F2]"
+                  className="h-7 w-7 p-0 text-[color:var(--dash-danger-text)] hover:text-[color:var(--dash-danger-text)] hover:bg-[color:var(--dash-danger-bg)]"
                   onClick={() => removeLine(index)}
                   aria-label={label("remove")}
                 >
@@ -162,20 +162,20 @@ export default function CommercialLineItemsEditor({ lines, onChange, t, lang, i1
         </div>
       </div>
 
-      <div className="rounded-xl border border-[#E7E9EE] bg-[#FAFAFA] px-3 py-2 grid grid-cols-3 gap-2 text-xs">
+      <div className="rounded-xl border border-dash-border bg-dash-surface-muted px-3 py-2 grid grid-cols-3 gap-2 text-xs">
         <div>
-          <div className="text-[10px] uppercase tracking-wide text-[#9CA3AF] font-semibold">{totalLabel("amountHT")}</div>
-          <div className="font-semibold text-[#111827] tabular-nums">{formatCommercialAmount(totals.amountHT, lang)}</div>
+          <div className="text-[10px] uppercase tracking-wide text-dash-text-subtle font-semibold">{totalLabel("amountHT")}</div>
+          <div className="font-semibold text-dash-text tabular-nums">{formatCommercialAmount(totals.amountHT, lang)}</div>
         </div>
         <div>
-          <div className="text-[10px] uppercase tracking-wide text-[#9CA3AF] font-semibold">{totalLabel("vat")}</div>
-          <div className="font-semibold text-[#111827] tabular-nums">
+          <div className="text-[10px] uppercase tracking-wide text-dash-text-subtle font-semibold">{totalLabel("vat")}</div>
+          <div className="font-semibold text-dash-text tabular-nums">
             {totals.vatRate} % ({formatCommercialAmount(totals.vatAmount, lang)})
           </div>
         </div>
         <div>
-          <div className="text-[10px] uppercase tracking-wide text-[#9CA3AF] font-semibold">{totalLabel("amountTTC")}</div>
-          <div className="font-semibold text-[#0A2540] tabular-nums">{formatCommercialAmount(totals.amountTTC, lang)}</div>
+          <div className="text-[10px] uppercase tracking-wide text-dash-text-subtle font-semibold">{totalLabel("amountTTC")}</div>
+          <div className="font-semibold text-dash-primary tabular-nums">{formatCommercialAmount(totals.amountTTC, lang)}</div>
         </div>
       </div>
     </div>

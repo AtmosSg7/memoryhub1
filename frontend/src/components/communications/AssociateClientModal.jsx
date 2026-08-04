@@ -48,7 +48,7 @@ export default function AssociateClientModal({
         data-testid="associate-client-modal"
       >
         <DialogHeader className="space-y-1 pb-1">
-          <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-[#111827]">
+          <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-dash-text">
             {title || t("unlinkedEmails.associateTitle")}
           </DialogTitle>
           <DialogDescription className="text-[#4B5563]">
@@ -58,7 +58,7 @@ export default function AssociateClientModal({
 
         <div className="space-y-3">
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#9CA3AF]" />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-dash-text-subtle" />
             <Input
               type="search"
               value={query}
@@ -74,7 +74,7 @@ export default function AssociateClientModal({
           </div>
 
           {query.trim().length > 0 && query.trim().length < minChars ? (
-            <p className="text-xs text-[#9CA3AF]">
+            <p className="text-xs text-dash-text-subtle">
               {t("search.minChars").replace("{count}", String(SEARCH_MIN_CHARS))}
             </p>
           ) : null}
@@ -86,7 +86,7 @@ export default function AssociateClientModal({
           ) : clients.length === 0 && query.trim().length >= minChars ? (
             <p className="text-sm text-[#6B7280] py-2">{t("unlinkedEmails.noClientMatch")}</p>
           ) : (
-            <ul className="max-h-64 overflow-y-auto divide-y divide-[#F3F4F6] rounded-xl border border-[#E5E7EB]">
+            <ul className="max-h-64 overflow-y-auto divide-y divide-dash-border-soft rounded-xl border border-dash-border">
               {clients.map((item) => {
                 const isSelected = selected?.id === item.id;
                 return (
@@ -96,13 +96,13 @@ export default function AssociateClientModal({
                       onClick={() => setSelected(item)}
                       className={[
                         "w-full text-left px-3 py-2.5 flex items-start gap-2.5 transition-colors",
-                        isSelected ? "bg-[#EFF6FF]" : "hover:bg-[#F9FAFB]",
+                        isSelected ? "bg-dash-accent-soft" : "hover:bg-dash-surface-muted",
                       ].join(" ")}
                       data-testid={`associate-client-option-${item.id}`}
                     >
                       <User className="w-4 h-4 mt-0.5 text-[#6B7280] shrink-0" />
                       <span className="min-w-0">
-                        <span className="block text-sm font-medium text-[#111827] truncate">
+                        <span className="block text-sm font-medium text-dash-text truncate">
                           {item.title}
                         </span>
                         {item.subtitle ? (

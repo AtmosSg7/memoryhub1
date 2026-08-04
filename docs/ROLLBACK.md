@@ -1,4 +1,4 @@
-# MemoryHub — Rollback
+# Basera — Rollback
 
 Procédure pour revenir à une version précédente après un déploiement problématique.
 
@@ -12,8 +12,8 @@ export IMAGE_TAG=<commit-sha-stable>
 
 git checkout <commit-sha-stable>
 
-docker compose -f docker-compose.yml -f docker-compose.prod.yml build
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env build
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env up -d
 ```
 
 ## Rollback avec restauration données
@@ -21,7 +21,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 Si le déploiement a corrompu des données :
 
 1. Mettre l'application en maintenance (arrêter nginx ou afficher page statique)
-2. `docker compose -f docker-compose.yml -f docker-compose.prod.yml stop backend scheduler`
+2. `docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env stop backend scheduler`
 3. Restaurer MongoDB : `deploy/scripts/restore-mongodb.sh <archive>`
 4. Restaurer uploads si nécessaire : `deploy/scripts/restore-uploads.sh <archive>`
 5. Checkout code stable + rebuild + `up -d`
@@ -30,7 +30,7 @@ Si le déploiement a corrompu des données :
 ## Rollback partiel (backend seul)
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-deps --build backend
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env up -d --no-deps --build backend
 ```
 
 ## Indexes après rollback

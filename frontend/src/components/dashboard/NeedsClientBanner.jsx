@@ -7,7 +7,7 @@ export default function NeedsClientBanner({ onCreateClient, testId = "needs-clie
   return (
     <div
       data-testid={testId}
-      className="rounded-xl border border-[#FDE68A] bg-[#FFFBEB] p-5 space-y-4"
+      className="rounded-xl border border-[var(--dash-warning-border)] bg-[var(--dash-warning-bg)] p-5 space-y-4 text-[color:var(--dash-warning-text)]"
     >
       <div>
         <p className="font-cabinet text-[15px] font-semibold text-[#92400E]">{t("empty.needsClient.title")}</p>

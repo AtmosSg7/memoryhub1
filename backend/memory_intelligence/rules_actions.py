@@ -94,7 +94,7 @@ def _rule_complete_address(ctx: RuleContext) -> List[MemorySignal]:
         _action(
             "complete_address",
             title=f"Ajouter une adresse — {c.displayName}",
-            reason="Utile pour devis et factures",
+            reason="Utile pour vos documents commerciaux",
             priority="low",
             category="data_quality",
             link=f"/dashboard/clients/{c.clientId}?section=contacts",

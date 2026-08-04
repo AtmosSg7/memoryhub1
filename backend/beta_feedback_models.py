@@ -12,6 +12,8 @@ class BetaFeedbackCreate(BaseModel):
     blocker: str = Field(default="", max_length=500)
     suggestion: str = Field(default="", max_length=1000)
     page: Optional[str] = Field(default=None, max_length=200)
+    website: str = Field(default="", max_length=200)
+    formStartedAt: Optional[float] = None
 
 
 class BetaFeedbackResponse(BaseModel):

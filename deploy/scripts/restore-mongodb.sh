@@ -10,16 +10,11 @@ fi
 
 ARCHIVE="$1"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-COMPOSE_FILE="${ROOT_DIR}/docker-compose.yml"
-ENV_FILE="${ROOT_DIR}/deploy/.env"
+# shellcheck source=compose-production.sh
+source "${ROOT_DIR}/deploy/scripts/compose-production.sh"
 
 if [[ ! -f "${ARCHIVE}" ]]; then
   echo "Archive not found: ${ARCHIVE}"
-  exit 1
-fi
-
-if [[ ! -f "${ENV_FILE}" ]]; then
-  echo "Missing ${ENV_FILE}."
   exit 1
 fi
 
@@ -28,7 +23,7 @@ set -a
 source "${ENV_FILE}"
 set +a
 
-DB_NAME="${DB_NAME:-memoryhub}"
+DB_NAME="${DB_NAME:-basera}"
 
 echo "WARNING: This will overwrite database '${DB_NAME}'."
 read -r -p "Type RESTORE to continue: " confirm
@@ -37,9 +32,14 @@ if [[ "${confirm}" != "RESTORE" ]]; then
   exit 1
 fi
 
+AUTH_ARGS=()
+if [[ -n "${MONGO_ROOT_USERNAME:-}" && -n "${MONGO_ROOT_PASSWORD:-}" ]]; then
+  AUTH_ARGS=(-u "${MONGO_ROOT_USERNAME}" -p "${MONGO_ROOT_PASSWORD}" --authenticationDatabase admin)
+fi
+
 echo "Restoring ${ARCHIVE} into ${DB_NAME}..."
 
-gunzip -c "${ARCHIVE}" | docker compose -f "${COMPOSE_FILE}" --env-file "${ENV_FILE}" exec -T mongo \
-  mongorestore --archive --drop --db="${DB_NAME}"
+gunzip -c "${ARCHIVE}" | compose_prod exec -T mongo \
+  mongorestore "${AUTH_ARGS[@]}" --archive --drop --db="${DB_NAME}"
 
 echo "Restore completed. Run deploy/scripts/check-database.sh to verify."

@@ -618,10 +618,10 @@ async def _seed_follow_ups(db, user_id: str, quotes: dict) -> list:
                 f"Je me permets de revenir vers vous concernant le devis {quote['number']} "
                 f"« {quote.get('title', '')} ».\n\n"
                 "Avez-vous eu l'occasion de l'examiner ?\n\n"
-                "Cordialement,\nMemoryHub Dev"
+                "Cordialement,\nBasera Dev"
             ),
             lang="fr",
-            company_name="MemoryHub Dev",
+            company_name="Basera Dev",
         )
         follow_ups.append(result)
     return follow_ups

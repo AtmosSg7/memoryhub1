@@ -39,54 +39,54 @@ export default function UnlinkedEmailCard({
 
   return (
     <article
-      className="rounded-xl border border-[#E5E7EB] bg-white px-4 py-3 space-y-3"
+      className="rounded-xl border border-dash-border bg-dash-surface dash-panel px-4 py-3 space-y-3"
       data-testid={`unlinked-email-${item.id}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#4B5563] bg-[#F3F4F6] rounded-md px-1.5 py-0.5">
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-dash-text-muted bg-dash-surface-muted rounded-md px-1.5 py-0.5">
               <DirectionIcon className="w-3 h-3" />
               {inbound ? t("unlinkedEmails.inbound") : t("unlinkedEmails.outbound")}
             </span>
             {isIgnored ? (
-              <span className="text-[11px] font-medium text-[#6B7280] bg-[#F3F4F6] rounded-md px-1.5 py-0.5">
+              <span className="text-[11px] font-medium text-dash-text-muted bg-dash-surface-muted rounded-md px-1.5 py-0.5">
                 {t("unlinkedEmails.statusIgnored")}
               </span>
             ) : null}
             {isLinked ? (
-              <span className="text-[11px] font-medium text-emerald-800 bg-emerald-50 rounded-md px-1.5 py-0.5">
+              <span className="text-[11px] font-medium text-[color:var(--dash-success-text)] bg-[color:var(--dash-success-bg)] rounded-md px-1.5 py-0.5">
                 {t("unlinkedEmails.statusLinked")}
               </span>
             ) : null}
             {item.attachmentsCount > 0 ? (
-              <span className="inline-flex items-center gap-1 text-[11px] text-[#9CA3AF]">
+              <span className="inline-flex items-center gap-1 text-[11px] text-dash-text-subtle">
                 <Paperclip className="w-3 h-3" />
                 {item.attachmentsCount}
               </span>
             ) : null}
           </div>
-          <h3 className="text-sm font-semibold text-[#111827] truncate">
+          <h3 className="text-sm font-semibold text-dash-text truncate">
             {item.subject || t("clientEmails.noSubject")}
           </h3>
-          <p className="text-xs text-[#6B7280] truncate">
-            <span className="text-[#9CA3AF]">{t("unlinkedEmails.from")}: </span>
+          <p className="text-xs text-dash-text-muted truncate">
+            <span className="text-dash-text-subtle">{t("unlinkedEmails.from")}: </span>
             {fromLabel}
           </p>
-          <p className="text-xs text-[#6B7280] truncate">
-            <span className="text-[#9CA3AF]">{t("unlinkedEmails.to")}: </span>
+          <p className="text-xs text-dash-text-muted truncate">
+            <span className="text-dash-text-subtle">{t("unlinkedEmails.to")}: </span>
             {toLabel}
           </p>
           {item.preview ? (
-            <p className="text-[13px] text-[#4B5563] line-clamp-2 leading-relaxed">{item.preview}</p>
+            <p className="text-[13px] text-dash-text-muted line-clamp-2 leading-relaxed">{item.preview}</p>
           ) : null}
         </div>
         <div className="text-right shrink-0 space-y-1">
-          <p className="text-[11px] text-[#9CA3AF] tabular-nums whitespace-nowrap">
+          <p className="text-[11px] text-dash-text-subtle tabular-nums whitespace-nowrap">
             {formatDate(item.createdAt, lang)}
           </p>
           {item.accountEmail ? (
-            <p className="text-[10px] text-[#9CA3AF] truncate max-w-[9rem]" title={item.accountEmail}>
+            <p className="text-[10px] text-dash-text-subtle truncate max-w-[9rem]" title={item.accountEmail}>
               {item.accountEmail}
             </p>
           ) : null}
@@ -95,7 +95,7 @@ export default function UnlinkedEmailCard({
               href={item.externalUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-[11px] font-medium text-[#0A2540] hover:underline"
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-dash-accent hover:underline"
               data-testid={`unlinked-email-gmail-${item.id}`}
             >
               <ExternalLink className="w-3 h-3" />
@@ -107,13 +107,13 @@ export default function UnlinkedEmailCard({
 
       {suggestion && !isIgnored && !isLinked ? (
         <div
-          className="rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-2.5 space-y-2"
+          className="rounded-lg border border-[color:var(--dash-info-border)] bg-dash-accent-soft px-3 py-2.5 space-y-2"
           data-testid={`unlinked-suggestion-${item.id}`}
         >
-          <p className="text-sm text-[#0A2540]">
+          <p className="text-sm text-dash-accent">
             {t("unlinkedEmails.suggestedClient").replace("{name}", suggestion.clientName)}
           </p>
-          <p className="text-[11px] text-[#6B7280]">
+          <p className="text-[11px] text-dash-text-muted">
             {[suggestion.email, suggestion.phone, suggestion.company].filter(Boolean).join(" · ")}
           </p>
           <div className="flex flex-wrap gap-2">

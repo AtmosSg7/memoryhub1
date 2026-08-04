@@ -1,25 +1,35 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { useIsShowcaseDemo } from "@/context/ShowcaseThemeIsolation";
 
 const AddClientContext = createContext(null);
 
 export function AddClientProvider({ children }) {
+  const isShowcase = useIsShowcaseDemo();
   const [isOpen, setIsOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [lastCreatedClient, setLastCreatedClient] = useState(null);
   const [chainAfterCreate, setChainAfterCreate] = useState(null);
 
-  const openAddClient = useCallback((chain = null) => {
-    setEditingClient(null);
-    setChainAfterCreate(typeof chain === "string" ? chain : null);
-    setIsOpen(true);
-  }, []);
+  const openAddClient = useCallback(
+    (chain = null) => {
+      if (isShowcase) return;
+      setEditingClient(null);
+      setChainAfterCreate(typeof chain === "string" ? chain : null);
+      setIsOpen(true);
+    },
+    [isShowcase]
+  );
 
-  const openEditClient = useCallback((client) => {
-    setEditingClient(client);
-    setChainAfterCreate(null);
-    setIsOpen(true);
-  }, []);
+  const openEditClient = useCallback(
+    (client) => {
+      if (isShowcase) return;
+      setEditingClient(client);
+      setChainAfterCreate(null);
+      setIsOpen(true);
+    },
+    [isShowcase]
+  );
 
   const closeAddClient = useCallback(() => {
     setIsOpen(false);
@@ -41,8 +51,8 @@ export function AddClientProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      isOpen,
-      editingClient,
+      isOpen: isShowcase ? false : isOpen,
+      editingClient: isShowcase ? null : editingClient,
       refreshKey,
       lastCreatedClient,
       chainAfterCreate,
@@ -54,6 +64,7 @@ export function AddClientProvider({ children }) {
       clearLastCreatedClient,
     }),
     [
+      isShowcase,
       isOpen,
       editingClient,
       refreshKey,

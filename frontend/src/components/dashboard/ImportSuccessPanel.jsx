@@ -56,7 +56,7 @@ export default function ImportSuccessPanel({ summary, onView, onImportAnother, o
       >
         <div className="relative w-16 h-16 mx-auto mb-4">
           <span className="absolute inset-0 rounded-full bg-[#A7F3D0]/40 animate-ping" />
-          <div className="relative w-16 h-16 rounded-full bg-white border-2 border-[#A7F3D0] flex items-center justify-center">
+          <div className="relative w-16 h-16 rounded-full bg-dash-surface border-2 border-[#A7F3D0] flex items-center justify-center">
             <CheckCircle2 className="w-8 h-8 text-[#059669]" />
           </div>
         </div>
@@ -85,13 +85,13 @@ export default function ImportSuccessPanel({ summary, onView, onImportAnother, o
       </DetailModalSummary>
 
       {summary.number ? (
-        <div className="flex items-center justify-between rounded-xl border border-[#E7E9EE] bg-[#FAFAFA] px-4 py-3">
-          <span className="text-sm text-[#6B7280]">{summary.number}</span>
+        <div className="flex items-center justify-between rounded-xl border border-dash-border bg-dash-surface-muted px-4 py-3">
+          <span className="text-sm text-dash-text-muted">{summary.number}</span>
           <StatusBadge kind={isQuote ? "quote" : "invoice"} status={isQuote ? "draft" : "in_progress"} size="sm" />
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-2 pt-2 border-t border-[#F3F4F6]">
+      <div className="flex flex-col gap-2 pt-2 border-t border-dash-border-soft">
         <ActionButton variant="primary" onClick={onView} className="gap-1.5 w-full justify-center" data-testid="import-success-view">
           <Eye className="w-4 h-4" />
           {isQuote ? t("importWizard.success.viewQuote") : t("importWizard.success.viewInvoice")}
@@ -110,7 +110,7 @@ export default function ImportSuccessPanel({ summary, onView, onImportAnother, o
           variant="ghost"
           onClick={handleDownload}
           disabled={downloading}
-          className="gap-1.5 justify-center text-[#6B7280]"
+          className="gap-1.5 justify-center text-dash-text-muted"
           data-testid="import-success-download-pdf"
         >
           {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}

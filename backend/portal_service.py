@@ -104,7 +104,7 @@ def portal_artisan_public(user: dict) -> PortalArtisanPublic:
     first = (user.get("firstName") or "").strip()
     last = (user.get("lastName") or "").strip()
     contact = f"{first} {last}".strip() or None
-    display = (seller.get("tradeName") or seller.get("legalName") or user.get("companyName") or "MemoryHub").strip()
+    display = (seller.get("tradeName") or seller.get("legalName") or user.get("companyName") or "Basera").strip()
     return PortalArtisanPublic(
         companyName=display,
         contactName=contact,

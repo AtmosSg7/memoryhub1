@@ -33,7 +33,7 @@ export default function ListCollectionFooter({
     >
       <div className="space-y-1.5 min-w-0">
         {loadedCount > 0 ? (
-          <p className="text-sm text-[#6B7280]" data-testid={`${testId}-range`}>
+          <p className="text-sm text-dash-text-muted" data-testid={`${testId}-range`}>
             {formatListText(t("list.showing"), {
               from: rangeStart,
               to: rangeEnd,
@@ -56,7 +56,7 @@ export default function ListCollectionFooter({
 
       {showPagination ? (
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs text-[#9CA3AF] hidden sm:inline">
+          <span className="text-xs text-dash-text-subtle hidden sm:inline">
             {formatListText(t("list.page"), { page, pages: totalPages })}
           </span>
           <ActionButton

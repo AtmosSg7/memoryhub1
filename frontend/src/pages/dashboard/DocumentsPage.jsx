@@ -155,7 +155,7 @@ export default function DocumentsPage() {
         testId="files-header"
       />
 
-      <p className="text-xs text-[#6B7280] leading-relaxed">{t("documents.uploadHint")}</p>
+      <p className="text-xs text-dash-text-muted leading-relaxed">{t("documents.uploadHint")}</p>
 
       <DocumentDropzone onUpload={handleUpload} />
 
@@ -207,13 +207,13 @@ export default function DocumentsPage() {
                     >
                       <td className={TABLE_BODY_CELL_CLASS}>
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-[#F3F4F6] flex items-center justify-center text-[#4B5563]">
+                          <div className="w-8 h-8 rounded-lg bg-dash-surface-muted flex items-center justify-center text-dash-text-muted">
                             <FileText className="w-4 h-4" />
                           </div>
-                          <span className="text-[#111827] font-medium">{doc.name}</span>
+                          <span className="text-dash-text font-medium">{doc.name}</span>
                         </div>
                       </td>
-                      <td className={`${TABLE_BODY_CELL_CLASS} text-[#4B5563]`}>
+                      <td className={`${TABLE_BODY_CELL_CLASS} text-dash-text-muted`}>
                         {doc.clientName || "—"}
                       </td>
                       <td className={TABLE_BODY_CELL_CLASS}>
@@ -223,7 +223,7 @@ export default function DocumentsPage() {
                           {typeStyle.label}
                         </span>
                       </td>
-                      <td className={`${TABLE_BODY_CELL_CLASS} text-[#6B7280]`}>
+                      <td className={`${TABLE_BODY_CELL_CLASS} text-dash-text-muted`}>
                         {formatFileSize(doc.sizeBytes, lang)}
                       </td>
                       <td className={TABLE_BODY_CELL_CLASS}>

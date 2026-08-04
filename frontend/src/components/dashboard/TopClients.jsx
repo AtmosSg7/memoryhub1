@@ -13,20 +13,20 @@ function TopClients({ clients, loading, compact = false }) {
     <section
       data-testid="top-clients-section"
       className={[
-        "bg-white border border-[#E5E7EB] rounded-xl shadow-[0_1px_2px_rgba(10,37,64,0.04)]",
+        "bg-dash-surface border border-dash-border rounded-xl shadow-[0_1px_2px_rgba(10,37,64,0.04)]",
         compact ? "p-4" : "p-4 md:p-5",
       ].join(" ")}
     >
       <div className={["flex items-start justify-between", compact ? "mb-3" : "mb-4"].join(" ")}>
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-[#EFF6FF] flex items-center justify-center shrink-0">
-            <Users className="w-4 h-4 text-[#0A2540]" strokeWidth={2} />
+          <div className="w-8 h-8 rounded-lg bg-dash-accent-soft flex items-center justify-center shrink-0">
+            <Users className="w-4 h-4 text-dash-primary" strokeWidth={2} />
           </div>
           <div className="min-w-0">
-            <h3 className="font-cabinet text-base md:text-lg font-bold text-[#111827] tracking-tight">
+            <h3 className="font-cabinet text-base md:text-lg font-bold text-dash-text tracking-tight">
               {t("dashboardV2.topClients.title")}
             </h3>
-            <p className="text-xs text-[#6B7280] mt-0.5 truncate">
+            <p className="text-xs text-dash-text-muted mt-0.5 truncate">
               {t("dashboardV2.topClients.subtitle")}
             </p>
           </div>
@@ -34,36 +34,37 @@ function TopClients({ clients, loading, compact = false }) {
         <button
           type="button"
           onClick={() => navigate("/dashboard/clients")}
-          className="text-xs font-medium text-[#0A2540] hover:text-[#173A5E] shrink-0"
+          className="text-xs font-medium text-dash-primary hover:text-[#173A5E] shrink-0"
+          data-testid="top-clients-view-all"
         >
           {t("dashboardV2.topClients.viewAll")}
         </button>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-8 text-[#6B7280]">
+        <div className="flex items-center justify-center py-8 text-dash-text-muted">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : !clients?.length ? (
-        <p className="text-sm text-[#6B7280] py-4">{t("dashboardV2.topClients.empty")}</p>
+        <p className="text-sm text-dash-text-muted py-4">{t("dashboardV2.topClients.empty")}</p>
       ) : (
         <div className="overflow-x-auto -mx-1">
           <table className="w-full min-w-[520px] text-left" data-testid="top-clients-table">
             <thead>
-              <tr className="border-b border-[#F3F4F6]">
-                <th className="pb-2 pl-1 pr-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9CA3AF]">
+              <tr className="border-b border-dash-border-soft">
+                <th className="pb-2 pl-1 pr-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-dash-text-subtle">
                   {t("dashboardV2.topClients.col.name")}
                 </th>
-                <th className="pb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9CA3AF] text-right">
+                <th className="pb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-dash-text-subtle text-right">
                   {t("dashboardV2.topClients.col.revenue")}
                 </th>
-                <th className="pb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9CA3AF] text-right hidden sm:table-cell">
+                <th className="pb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-dash-text-subtle text-right hidden sm:table-cell">
                   {t("dashboardV2.topClients.col.quotes")}
                 </th>
-                <th className="pb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9CA3AF] text-right hidden sm:table-cell">
+                <th className="pb-2 px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-dash-text-subtle text-right hidden sm:table-cell">
                   {t("dashboardV2.topClients.col.invoices")}
                 </th>
-                <th className="pb-2 pl-2 pr-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9CA3AF] text-right">
+                <th className="pb-2 pl-2 pr-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-dash-text-subtle text-right">
                   {t("dashboardV2.topClients.col.lastContact")}
                 </th>
               </tr>
@@ -75,7 +76,7 @@ function TopClients({ clients, loading, compact = false }) {
                 return (
                   <tr
                     key={client.clientId}
-                    className="border-b border-[#F9FAFB] last:border-0 hover:bg-[#FAFAFA] transition-colors"
+                    className="border-b border-dash-border-soft last:border-0 hover:bg-dash-surface-muted transition-colors"
                   >
                     <td className="py-2.5 pl-1 pr-2">
                       <button
@@ -90,21 +91,21 @@ function TopClients({ clients, loading, compact = false }) {
                         >
                           {initials}
                         </div>
-                        <span className="text-[13px] font-medium text-[#111827] truncate">
+                        <span className="text-[13px] font-medium text-dash-text truncate">
                           {client.clientName}
                         </span>
                       </button>
                     </td>
-                    <td className="py-2.5 px-2 text-right text-[13px] font-semibold text-[#0A2540] tabular-nums whitespace-nowrap">
+                    <td className="py-2.5 px-2 text-right text-[13px] font-semibold text-dash-primary tabular-nums whitespace-nowrap">
                       {formatQuoteAmount(client.total, lang)}
                     </td>
-                    <td className="py-2.5 px-2 text-right text-[13px] tabular-nums text-[#4B5563] hidden sm:table-cell">
+                    <td className="py-2.5 px-2 text-right text-[13px] tabular-nums text-dash-text-muted hidden sm:table-cell">
                       {client.quoteCount || 0}
                     </td>
-                    <td className="py-2.5 px-2 text-right text-[13px] tabular-nums text-[#4B5563] hidden sm:table-cell">
+                    <td className="py-2.5 px-2 text-right text-[13px] tabular-nums text-dash-text-muted hidden sm:table-cell">
                       {client.invoiceCount || 0}
                     </td>
-                    <td className="py-2.5 pl-2 pr-1 text-right text-[11px] text-[#6B7280] whitespace-nowrap">
+                    <td className="py-2.5 pl-2 pr-1 text-right text-[11px] text-dash-text-muted whitespace-nowrap">
                       {formatLastInteraction(client.lastContactAt, lang)}
                     </td>
                   </tr>

@@ -1,4 +1,4 @@
-# Transactional Emails V1 — MemoryHub
+# Transactional Emails V1 — Basera
 
 Production-grade outbound email infrastructure: provider-agnostic, bilingual (FR/EN), HTML + text, journaled, retriable.
 
@@ -34,13 +34,29 @@ EmailProvider (smtp | console | fake | none)
 | `SMTP_USER` | Auth username | — |
 | `SMTP_PASSWORD` | Auth password | — |
 | `SMTP_FROM_EMAIL` | From address | — |
-| `SMTP_FROM_NAME` | From display name | `MemoryHub` |
+| `SMTP_FROM_NAME` | From display name | `Basera` |
 | `SMTP_USE_TLS` | `1` / `0` | `1` |
 | `SMTP_TIMEOUT_SECONDS` | Connection timeout | `30` |
-| `FRONTEND_PUBLIC_URL` | Base URL for links | `FRONTEND_URL` or `http://localhost:3000` |
-| `SUPPORT_EMAIL` | Footer support address | `support@memoryhub.fr` |
+| `FRONTEND_PUBLIC_URL` | Base URL for links (verify / reset) | `FRONTEND_URL` or `http://localhost:3000` |
+| `FRONTEND_URL` | Fallback base URL | `http://localhost:3000` |
+| `SUPPORT_EMAIL` | Footer + beta feedback notify address | `support@memoryhub.fr` |
+| `BETA_FEEDBACK_ENABLED` | `1`/`0` — force feedback API on/off | on in local, off when deployed unless `1` |
+| `FORM_MIN_SUBMIT_SECONDS` | Min form fill time (anti-bot) | `1.2` |
+| `FORM_ABUSE_DISABLED` | Disable honeypot/timing checks | unset |
+| `JWT_SECRET` | Cookie JWT signing secret | required in staging/prod |
+| `JWT_EXPIRE_HOURS` | Session length | `168` |
+| `EMAIL_VERIFICATION_TTL_HOURS` | Verify-link TTL | `72` |
 
 Legacy: `SMTP_FROM` and `FRONTEND_URL` are still read as fallbacks.
+
+**Real user launch — SMTP checklist**
+
+1. Set `EMAIL_PROVIDER=smtp`
+2. Provide `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`, `SMTP_FROM_NAME`
+3. Set `FRONTEND_PUBLIC_URL=https://your-domain` (HTTPS required in production)
+4. Set `SUPPORT_EMAIL` (receives beta feedback copies)
+5. Set `BETA_FEEDBACK_ENABLED=1` when deployed if testers should submit feedback
+6. Dev without SMTP: keep `EMAIL_PROVIDER=console` — previews in `backend/email_previews/`
 
 ### Development (`EMAIL_PROVIDER=console`)
 
@@ -131,7 +147,7 @@ SMTP_PORT=587
 SMTP_USER=<your-brevo-login-email>
 SMTP_PASSWORD=<smtp-key>
 SMTP_FROM_EMAIL=noreply@yourdomain.com
-SMTP_FROM_NAME=MemoryHub
+SMTP_FROM_NAME=Basera
 ```
 
 ### Postmark

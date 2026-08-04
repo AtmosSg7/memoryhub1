@@ -235,7 +235,7 @@ async def get_or_create_customer_id(
         return existing
 
     backend = backend or get_stripe_backend()
-    name = f"{user.get('firstName', '')} {user.get('lastName', '')}".strip() or user.get("companyName", "MemoryHub user")
+    name = f"{user.get('firstName', '')} {user.get('lastName', '')}".strip() or user.get("companyName", "Basera user")
     try:
         customer = backend.create_customer(
             email=user["email"],

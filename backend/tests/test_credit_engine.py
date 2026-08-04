@@ -55,7 +55,7 @@ def test_monthly_grant_and_balance():
     user_id = _user_id()
     _run(grant_monthly_credits(_db, user_id, "solo"))
     balance = _run(get_balance(_db, user_id))
-    assert balance.monthlyRemaining == 1000
+    assert balance.monthlyRemaining == 500
     assert balance.permanentRemaining == 0
     assert balance.planId == "solo"
 
@@ -125,7 +125,7 @@ def test_idempotency_prevents_double_debit():
     assert second.transactionId == first.transactionId
 
     balance = _run(get_balance(_db, user_id))
-    assert balance.monthlyRemaining == 995
+    assert balance.monthlyRemaining == 495
 
 
 def test_rollback_restores_buckets():
@@ -160,7 +160,7 @@ def test_monthly_expiry_on_period_rollover():
     _run(rollover_period_if_needed(_db, user_id, account))
 
     balance = _run(get_balance(_db, user_id))
-    assert balance.monthlyRemaining == 1000
+    assert balance.monthlyRemaining == 500
 
     items, _total = _run(list_transactions(_db, user_id, limit=20))
     types = [item.type for item in items]
@@ -189,7 +189,7 @@ def test_tier_cost_resolution():
 def test_billing_service_activate_subscription():
     user_id = _user_id()
     balance = _run(activate_subscription(_db, user_id, "pro"))
-    assert balance.monthlyRemaining == 4000
+    assert balance.monthlyRemaining == 1000
 
 
 def test_billing_service_purchase_and_bonus():

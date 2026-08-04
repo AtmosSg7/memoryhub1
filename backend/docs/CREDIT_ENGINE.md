@@ -1,4 +1,4 @@
-# MemoryHub — AI Credit Engine V1
+# Basera — AI Credit Engine V1
 
 > **Unité client unique : Crédits IA.**  
 > Jamais d'euros, de dollars, ni de coût OpenAI exposé à l'utilisateur.
@@ -316,7 +316,7 @@ Couverture critique :
 > **Implémenté** — voir [`STRIPE_INTEGRATION.md`](./STRIPE_INTEGRATION.md).
 
 1. ~~Webhooks Stripe~~ → `POST /api/stripe/webhook` → `BillingService`
-2. **Mapper** `price_id` Stripe → `planId` MemoryHub
+2. **Mapper** `price_id` Stripe → `planId` Basera
 3. **Renouvellement mensuel** : webhook `invoice.paid` → `activate_subscription()` (rollover gère l'expiration)
 4. **Achat crédits** : checkout one-shot → `record_credit_purchase()` — **implémenté** (voir ci-dessous)
 5. **Activer** `CREDITS_ENFORCED=true` en production

@@ -27,7 +27,7 @@ _PLAN_LABELS = {
 
 def _plan_display(plan_id: str, locale: str) -> str:
     labels = _PLAN_LABELS.get(plan_id or "", {})
-    return labels.get(locale) or labels.get("fr") or (plan_id or "MemoryHub").title()
+    return labels.get(locale) or labels.get("fr") or (plan_id or "Basera").title()
 
 
 def _format_period_end(ts: Optional[int], locale: str) -> str:

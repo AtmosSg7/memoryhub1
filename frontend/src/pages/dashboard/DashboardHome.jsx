@@ -29,8 +29,8 @@ const DashboardAnalyticsSection = lazy(
 function AnalyticsFallback() {
   return (
     <div className="space-y-3" data-testid="dashboard-analytics-fallback">
-      <Skeleton className="h-6 w-40 bg-[#E5E7EB]" />
-      <Skeleton className="h-56 w-full rounded-xl bg-[#F3F4F6]" />
+      <Skeleton className="h-6 w-40 bg-dash-border" />
+      <Skeleton className="h-56 w-full rounded-xl bg-dash-surface-muted" />
     </div>
   );
 }
@@ -194,7 +194,7 @@ export default function DashboardHome() {
             showViewAll
             showHeader
             showEmptyState={false}
-            viewAllPath="/dashboard/timeline"
+            viewAllPath="/dashboard/communications"
           />
         </>
       ) : (

@@ -34,7 +34,7 @@ DropdownMenuSubTrigger.displayName =
 
 /** Above dashboard dialogs (z-[100]/z-[110]) so menus stay visible and clickable. */
 const DROPDOWN_SURFACE_CLASS =
-  "z-[200] min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg"
+  "z-[200] min-w-[8rem] overflow-hidden rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-[var(--dash-panel-shadow,0_8px_24px_-8px_rgba(0,0,0,0.35))]"
 
 const DropdownMenuSubContent = React.forwardRef(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.SubContent

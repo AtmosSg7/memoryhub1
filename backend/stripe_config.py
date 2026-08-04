@@ -30,7 +30,16 @@ def stripe_configured() -> bool:
     return bool(key)
 
 
+def stripe_webhook_configured() -> bool:
+    """Webhook secret is optional for Checkout; required only to verify Stripe events."""
+    return bool(os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip())
+
+
 def get_stripe_settings() -> Optional[StripeSettings]:
+    """
+    Settings required to create Checkout / portal sessions.
+    STRIPE_WEBHOOK_SECRET may be empty until the webhook endpoint is configured.
+    """
     secret = os.environ.get("STRIPE_SECRET_KEY", "").strip()
     if not secret:
         return None
@@ -40,7 +49,7 @@ def get_stripe_settings() -> Optional[StripeSettings]:
     team = os.environ.get("STRIPE_PRICE_TEAM", "").strip()
     success = os.environ.get("STRIPE_SUCCESS_URL", "").strip()
     cancel = os.environ.get("STRIPE_CANCEL_URL", "").strip()
-    if not all([webhook, solo, pro, team, success, cancel]):
+    if not all([solo, pro, team, success, cancel]):
         return None
     return StripeSettings(
         secret_key=secret,

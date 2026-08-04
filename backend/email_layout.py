@@ -1,4 +1,4 @@
-"""MemoryHub HTML email layout — inline CSS, table-based, mobile-friendly."""
+"""Basera HTML email layout — inline CSS, table-based, mobile-friendly."""
 
 from __future__ import annotations
 
@@ -59,10 +59,10 @@ def footer_block(*, locale: str) -> str:
     support = support_email()
     if locale == "en":
         text = f"Need help? Contact us at {support}."
-        tagline = "MemoryHub — your client workspace."
+        tagline = "Basera — your client workspace."
     else:
         text = f"Besoin d'aide ? Contactez-nous à {support}."
-        tagline = "MemoryHub — votre espace client."
+        tagline = "Basera — votre espace client."
     return (
         f'<tr><td style="padding:24px 32px 32px;border-top:1px solid {BORDER_COLOR};">'
         f'<p style="margin:0 0 8px;font-family:-apple-system,BlinkMacSystemFont,'
@@ -121,7 +121,7 @@ def render_email_layout(
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;background:{BG_CARD};border:1px solid {BORDER_COLOR};border-radius:14px;overflow:hidden;">
           <tr>
             <td style="padding:28px 32px 8px;text-align:center;">
-              <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:22px;font-weight:700;color:{BRAND_COLOR};letter-spacing:-0.02em;">MemoryHub</p>
+              <p style="margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:22px;font-weight:700;color:{BRAND_COLOR};letter-spacing:-0.02em;">Basera</p>
             </td>
           </tr>
           <tr>

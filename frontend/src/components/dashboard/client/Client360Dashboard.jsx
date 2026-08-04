@@ -33,15 +33,15 @@ function formatDate(value, lang) {
 function IntegrationPill({ connected, label, email, lastSync, lang, t }) {
   return (
     <div
-      className="rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-2.5"
+      className="rounded-xl border border-dash-border bg-dash-bg px-3 py-2.5"
       data-testid={`client360-integration-${label}`}
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium text-[#111827]">{label}</p>
+        <p className="text-sm font-medium text-dash-text">{label}</p>
         <span
           className={[
             "text-[11px] rounded-md px-1.5 py-0.5 font-medium",
-            connected ? "bg-emerald-50 text-emerald-800" : "bg-[#F3F4F6] text-[#6B7280]",
+            connected ? "bg-emerald-50 text-emerald-800" : "bg-dash-surface-muted text-dash-text-muted",
           ].join(" ")}
         >
           {connected
@@ -49,9 +49,9 @@ function IntegrationPill({ connected, label, email, lastSync, lang, t }) {
             : t("integrations.shared.statusDisconnected")}
         </span>
       </div>
-      {email ? <p className="text-xs text-[#6B7280] mt-1 truncate">{email}</p> : null}
+      {email ? <p className="text-xs text-dash-text-muted mt-1 truncate">{email}</p> : null}
       {lastSync ? (
-        <p className="text-[11px] text-[#9CA3AF] mt-1">
+        <p className="text-[11px] text-dash-text-subtle mt-1">
           {t("integrations.shared.lastSync")}: {formatDate(lastSync, lang)}
         </p>
       ) : null}
@@ -154,25 +154,25 @@ export default function Client360Dashboard({
             />
           ))}
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 text-xs text-[#6B7280]">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3 text-xs text-dash-text-muted">
           <p>
-            {t("nav.notes")}: <span className="font-semibold text-[#111827]">{stats.notesCount ?? 0}</span>
+            {t("nav.notes")}: <span className="font-semibold text-dash-text">{stats.notesCount ?? 0}</span>
           </p>
           <p>
             {t("nav.files")}:{" "}
-            <span className="font-semibold text-[#111827]">{stats.documentsCount ?? 0}</span>
+            <span className="font-semibold text-dash-text">{stats.documentsCount ?? 0}</span>
           </p>
           <p>
             {t("nav.quotes")}:{" "}
-            <span className="font-semibold text-[#111827]">{stats.quotesCount ?? 0}</span>
+            <span className="font-semibold text-dash-text">{stats.quotesCount ?? 0}</span>
           </p>
           <p>
             {t("nav.invoices")}:{" "}
-            <span className="font-semibold text-[#111827]">{stats.invoicesCount ?? 0}</span>
+            <span className="font-semibold text-dash-text">{stats.invoicesCount ?? 0}</span>
           </p>
         </div>
         {stats.lastActivityAt ? (
-          <p className="text-xs text-[#9CA3AF] mt-3">
+          <p className="text-xs text-dash-text-subtle mt-3">
             {t("client360.lastActivity")}: {formatDate(stats.lastActivityAt, lang)}
           </p>
         ) : null}
@@ -182,24 +182,24 @@ export default function Client360Dashboard({
       <SectionPanel title={t("client360.info")} testId="client360-info">
         <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           <div>
-            <dt className="text-xs text-[#9CA3AF]">{t("clientDetail.company")}</dt>
-            <dd className="font-medium text-[#111827]">
+            <dt className="text-xs text-dash-text-subtle">{t("clientDetail.company")}</dt>
+            <dd className="font-medium text-dash-text">
               {client?.company || client?.name || "—"}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-[#9CA3AF]">{t("clientDetail.contact")}</dt>
-            <dd className="font-medium text-[#111827]">
+            <dt className="text-xs text-dash-text-subtle">{t("clientDetail.contact")}</dt>
+            <dd className="font-medium text-dash-text">
               {client?.contactName || client?.name || "—"}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-[#9CA3AF]">{t("clientContacts.emails")}</dt>
-            <dd className="font-medium text-[#111827] truncate">{client?.email || "—"}</dd>
+            <dt className="text-xs text-dash-text-subtle">{t("clientContacts.emails")}</dt>
+            <dd className="font-medium text-dash-text truncate">{client?.email || "—"}</dd>
           </div>
           <div>
-            <dt className="text-xs text-[#9CA3AF]">{t("clientContacts.phones")}</dt>
-            <dd className="font-medium text-[#111827]">{client?.phone || "—"}</dd>
+            <dt className="text-xs text-dash-text-subtle">{t("clientContacts.phones")}</dt>
+            <dd className="font-medium text-dash-text">{client?.phone || "—"}</dd>
           </div>
         </dl>
         <ClientSectionLink onClick={() => onOpenSection("contacts")}>
@@ -211,20 +211,20 @@ export default function Client360Dashboard({
         {/* Communications */}
         <SectionPanel title={t("client360.communications")} testId="client360-comms">
           {(data.recentCommunications || []).length === 0 ? (
-            <p className="text-sm text-[#6B7280]">{t("client360.noComms")}</p>
+            <p className="text-sm text-dash-text-muted">{t("client360.noComms")}</p>
           ) : (
             <ul className="space-y-2">
               {data.recentCommunications.slice(0, 5).map((item) => (
                 <li
                   key={item.id}
-                  className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2"
+                  className="rounded-lg border border-dash-border bg-dash-surface px-3 py-2"
                   data-testid={`client360-comm-${item.id}`}
                 >
-                  <p className="text-sm font-medium text-[#111827] truncate">
+                  <p className="text-sm font-medium text-dash-text truncate">
                     {item.subject || t("clientEmails.noSubject")}
                   </p>
-                  <p className="text-xs text-[#6B7280] truncate">{item.preview || "—"}</p>
-                  <p className="text-[11px] text-[#9CA3AF] mt-1">
+                  <p className="text-xs text-dash-text-muted truncate">{item.preview || "—"}</p>
+                  <p className="text-[11px] text-dash-text-subtle mt-1">
                     {formatDate(item.createdAt, lang)}
                   </p>
                 </li>
@@ -239,7 +239,7 @@ export default function Client360Dashboard({
         {/* Documents */}
         <SectionPanel title={t("client360.documents")} testId="client360-docs">
           {(data.recentDocuments || []).length === 0 ? (
-            <p className="text-sm text-[#6B7280]">{t("client360.noDocs")}</p>
+            <p className="text-sm text-dash-text-muted">{t("client360.noDocs")}</p>
           ) : (
             <ul className="space-y-2">
               {data.recentDocuments.slice(0, 5).map((doc) => (
@@ -249,13 +249,13 @@ export default function Client360Dashboard({
                   data-testid={`client360-doc-${doc.id}`}
                 >
                   {doc.kind === "file" ? (
-                    <FolderClosed className="w-3.5 h-3.5 text-[#6B7280]" />
+                    <FolderClosed className="w-3.5 h-3.5 text-dash-text-muted" />
                   ) : doc.kind === "note" ? (
-                    <StickyNote className="w-3.5 h-3.5 text-[#6B7280]" />
+                    <StickyNote className="w-3.5 h-3.5 text-dash-text-muted" />
                   ) : (
-                    <FileText className="w-3.5 h-3.5 text-[#6B7280]" />
+                    <FileText className="w-3.5 h-3.5 text-dash-text-muted" />
                   )}
-                  <span className="truncate font-medium text-[#111827]">
+                  <span className="truncate font-medium text-dash-text">
                     {doc.number ? `${doc.number} — ` : ""}
                     {doc.title}
                   </span>
@@ -272,23 +272,23 @@ export default function Client360Dashboard({
       {/* Activity */}
       <SectionPanel title={t("client360.activity")} testId="client360-activity">
         {(data.recentEvents || []).length === 0 ? (
-          <p className="text-sm text-[#6B7280]">{t("client360.noActivity")}</p>
+          <p className="text-sm text-dash-text-muted">{t("client360.noActivity")}</p>
         ) : (
           <ul className="space-y-2">
             {data.recentEvents.slice(0, 6).map((event) => {
               const presentation = getEventPresentation(event, lang);
               return (
                 <li key={event.id} className="text-sm flex items-start justify-between gap-3">
-                  <span className="text-[#111827]">
+                  <span className="text-dash-text">
                     {t(presentation.labelKey) || event.type}
                     {event.metadata?.subject || event.metadata?.excerpt ? (
-                      <span className="text-[#6B7280]">
+                      <span className="text-dash-text-muted">
                         {" "}
                         — {event.metadata.subject || event.metadata.excerpt}
                       </span>
                     ) : null}
                   </span>
-                  <span className="text-[11px] text-[#9CA3AF] whitespace-nowrap">
+                  <span className="text-[11px] text-dash-text-subtle whitespace-nowrap">
                     {formatDate(event.createdAt, lang)}
                   </span>
                 </li>

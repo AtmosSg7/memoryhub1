@@ -1,6 +1,6 @@
-# Facturation électronique — architecture MemoryHub
+# Facturation électronique — architecture Basera
 
-MemoryHub prépare la compatibilité **Factur-X** et **PDP** sans implémenter de plateforme réelle. Le moteur commercial existant (devis, factures, PDF ReportLab) reste la source de vérité ; les nouvelles couches ajoutent validation, statuts d'export et points d'extension.
+Basera prépare la compatibilité **Factur-X** et **PDP** sans implémenter de plateforme réelle. Le moteur commercial existant (devis, factures, PDF ReportLab) reste la source de vérité ; les nouvelles couches ajoutent validation, statuts d'export et points d'extension.
 
 ## Vue d'ensemble
 

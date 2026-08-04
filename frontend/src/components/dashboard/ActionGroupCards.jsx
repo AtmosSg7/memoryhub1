@@ -23,10 +23,10 @@ const GROUP_ICONS = {
 };
 
 const GROUP_STYLES = {
-  critical: "border-[#FECACA] bg-[#FEF2F2] hover:bg-[#FEE2E2]",
-  high: "border-[#FECACA] bg-[#FFF7F7] hover:bg-[#FEF2F2]",
-  medium: "border-[#FDE68A] bg-[#FFFBEB] hover:bg-[#FEF3C7]",
-  low: "border-[#E5E7EB] bg-[#FAFAFA] hover:bg-[#F3F4F6]",
+  critical: "border-[var(--dash-danger-border)] bg-[var(--dash-danger-bg)] hover:brightness-110",
+  high: "border-[var(--dash-danger-border)] bg-[var(--dash-danger-bg)] hover:brightness-110",
+  medium: "border-[var(--dash-warning-border)] bg-[var(--dash-warning-bg)] hover:brightness-110",
+  low: "border-dash-border bg-dash-surface-muted hover:bg-dash-surface-elevated",
 };
 
 export default function ActionGroupCards({ reminders, loading, error }) {
@@ -59,13 +59,13 @@ export default function ActionGroupCards({ reminders, loading, error }) {
         className="space-y-3"
       >
         {loading ? (
-          <div className="flex items-center justify-center py-8 text-[#6B7280]">
+          <div className="flex items-center justify-center py-8 text-dash-text-muted">
             <Loader2 className="w-5 h-5 animate-spin" />
           </div>
         ) : error ? (
           <p className="text-sm text-[#991B1B] py-4">{error}</p>
         ) : groups.length === 0 ? (
-          <p className="text-sm text-[#6B7280] py-2">{t("dashboardV2.priority.empty")}</p>
+          <p className="text-sm text-dash-text-muted py-2">{t("dashboardV2.priority.empty")}</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {groups.map((group) => {
@@ -84,13 +84,13 @@ export default function ActionGroupCards({ reminders, loading, error }) {
                     cardStyle,
                   ].join(" ")}
                 >
-                  <div className="w-10 h-10 rounded-lg bg-white/70 flex items-center justify-center shrink-0">
-                    <Icon className="w-5 h-5 text-[#111827]" strokeWidth={1.75} />
+                  <div className="w-10 h-10 rounded-lg bg-dash-surface/70 flex items-center justify-center shrink-0">
+                    <Icon className="w-5 h-5 text-dash-text" strokeWidth={1.75} />
                   </div>
-                  <span className="flex-1 text-[15px] font-semibold text-[#111827] leading-snug">
+                  <span className="flex-1 text-[15px] font-semibold text-dash-text leading-snug">
                     {label}
                   </span>
-                  <ChevronRight className="w-4 h-4 text-[#9CA3AF] shrink-0" strokeWidth={2} />
+                  <ChevronRight className="w-4 h-4 text-dash-text-subtle shrink-0" strokeWidth={2} />
                 </button>
               );
             })}
@@ -99,7 +99,7 @@ export default function ActionGroupCards({ reminders, loading, error }) {
       </section>
 
       <Dialog open={!!openGroup} onOpenChange={(open) => !open && setOpenGroup(null)}>
-        <DialogContent className="max-w-md max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-md max-h-[80vh] overflow-hidden flex flex-col bg-[var(--dash-modal-bg,#FFFFFF)] backdrop-blur-none">
           {openGroup && (
             <>
               <DialogHeader>
@@ -120,19 +120,19 @@ export default function ActionGroupCards({ reminders, loading, error }) {
                         className={[
                           "w-full flex items-start gap-2 p-3 rounded-lg border transition-colors text-left",
                           style.border,
-                          reminder.link ? "cursor-pointer hover:bg-[#FAFAFA]" : "cursor-default",
+                          reminder.link ? "cursor-pointer hover:bg-dash-surface-muted" : "cursor-default",
                         ].join(" ")}
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-medium text-[#111827] truncate">
+                          <p className="text-[13px] font-medium text-dash-text truncate">
                             {reminder.title}
                           </p>
-                          <p className="text-[11px] text-[#6B7280] mt-0.5">
+                          <p className="text-[11px] text-dash-text-muted mt-0.5">
                             {formatReminderDate(reminder.date, lang)}
                           </p>
                         </div>
                         {reminder.link && (
-                          <ChevronRight className="w-4 h-4 text-[#9CA3AF] shrink-0 mt-0.5" />
+                          <ChevronRight className="w-4 h-4 text-dash-text-subtle shrink-0 mt-0.5" />
                         )}
                       </button>
                     </li>
@@ -146,7 +146,7 @@ export default function ActionGroupCards({ reminders, loading, error }) {
                     setOpenGroup(null);
                     navigate(openGroup.link);
                   }}
-                  className="text-sm font-medium text-[#0A2540] hover:text-[#173A5E] pt-2"
+                  className="text-sm font-medium text-dash-primary hover:text-[#173A5E] pt-2"
                 >
                   {t("dashboardV2.actions.viewAll")}
                 </button>

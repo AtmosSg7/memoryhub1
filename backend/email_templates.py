@@ -1,4 +1,4 @@
-"""Bilingual plain-text email copy for MemoryHub outbound messages."""
+"""Bilingual plain-text email copy for Basera outbound messages."""
 
 from dataclasses import dataclass
 from typing import Literal, Optional
@@ -59,10 +59,10 @@ def _signature(sender: str, lang: EmailLang) -> str:
 def _pdf_attachment_hint(lang: EmailLang) -> str:
     if lang == "en":
         return (
-            "Download the PDF from MemoryHub (Download PDF button) and attach it to your message."
+            "Download the PDF from Basera (Download PDF button) and attach it to your message."
         )
     return (
-        "Téléchargez le PDF depuis MemoryHub (bouton « Télécharger PDF ») et joignez-le à votre message."
+        "Téléchargez le PDF depuis Basera (bouton « Télécharger PDF ») et joignez-le à votre message."
     )
 
 
@@ -279,38 +279,38 @@ def build_email_verification_email(
 ) -> EmailMessage:
     if lang == "en":
         return EmailMessage(
-            subject="Confirm your email — MemoryHub",
-            preheader="One click to activate your MemoryHub account",
+            subject="Confirm your email — Basera",
+            preheader="One click to activate your Basera account",
             body="\n".join(
                 [
                     f"Hello {greeting},",
                     "",
-                    "Welcome to MemoryHub. Please confirm your email address to secure your account:",
+                    "Welcome to Basera. Please confirm your email address to secure your account:",
                     "",
                     verify_url,
                     "",
                     "If you did not create an account, you can ignore this message.",
                     "",
                     "Best regards,",
-                    "The MemoryHub team",
+                    "The Basera team",
                 ]
             ),
         )
     return EmailMessage(
-        subject="Confirmez votre adresse e-mail — MemoryHub",
-        preheader="Un clic pour activer votre compte MemoryHub",
+        subject="Confirmez votre adresse e-mail — Basera",
+        preheader="Un clic pour activer votre compte Basera",
         body="\n".join(
             [
                 f"Bonjour {greeting},",
                 "",
-                "Bienvenue sur MemoryHub. Confirmez votre adresse e-mail pour sécuriser votre compte :",
+                "Bienvenue sur Basera. Confirmez votre adresse e-mail pour sécuriser votre compte :",
                 "",
                 verify_url,
                 "",
                 "Si vous n'êtes pas à l'origine de cette inscription, ignorez ce message.",
                 "",
                 "Cordialement,",
-                "L'équipe MemoryHub",
+                "L'équipe Basera",
             ]
         ),
     )
@@ -324,13 +324,13 @@ def build_password_reset_email(
 ) -> EmailMessage:
     if lang == "en":
         return EmailMessage(
-            subject="Reset your password — MemoryHub",
+            subject="Reset your password — Basera",
             preheader="Secure link to choose a new password",
             body="\n".join(
                 [
                     f"Hello {greeting},",
                     "",
-                    "We received a request to reset your MemoryHub password.",
+                    "We received a request to reset your Basera password.",
                     "Choose a new password using the link below (valid for 1 hour):",
                     "",
                     reset_url,
@@ -338,18 +338,18 @@ def build_password_reset_email(
                     "If you did not request this, you can safely ignore this email.",
                     "",
                     "Best regards,",
-                    "The MemoryHub team",
+                    "The Basera team",
                 ]
             ),
         )
     return EmailMessage(
-        subject="Réinitialisation de votre mot de passe — MemoryHub",
+        subject="Réinitialisation de votre mot de passe — Basera",
         preheader="Lien sécurisé pour choisir un nouveau mot de passe",
         body="\n".join(
             [
                 f"Bonjour {greeting},",
                 "",
-                "Vous avez demandé la réinitialisation de votre mot de passe MemoryHub.",
+                "Vous avez demandé la réinitialisation de votre mot de passe Basera.",
                 "Choisissez un nouveau mot de passe via le lien ci-dessous (valable 1 heure) :",
                 "",
                 reset_url,
@@ -357,7 +357,7 @@ def build_password_reset_email(
                 "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.",
                 "",
                 "Cordialement,",
-                "L'équipe MemoryHub",
+                "L'équipe Basera",
             ]
         ),
     )
@@ -370,30 +370,30 @@ def build_welcome_email(
 ) -> EmailMessage:
     if lang == "en":
         return EmailMessage(
-            subject="Welcome to MemoryHub",
+            subject="Welcome to Basera",
             preheader="Your account is ready — start managing your clients",
             body="\n".join(
                 [
                     f"Hello {greeting},",
                     "",
-                    "Your MemoryHub account is active. You can sign in and start organizing clients, quotes, and invoices.",
+                    "Your Basera account is active. You can sign in and start organizing clients, quotes, and invoices.",
                     "",
                     "Best regards,",
-                    "The MemoryHub team",
+                    "The Basera team",
                 ]
             ),
         )
     return EmailMessage(
-        subject="Bienvenue sur MemoryHub",
+        subject="Bienvenue sur Basera",
         preheader="Votre compte est prêt — gérez vos clients sereinement",
         body="\n".join(
             [
                 f"Bonjour {greeting},",
                 "",
-                "Votre compte MemoryHub est actif. Connectez-vous pour organiser vos clients, devis et factures.",
+                "Votre compte Basera est actif. Connectez-vous pour organiser vos clients, devis et factures.",
                 "",
                 "Cordialement,",
-                "L'équipe MemoryHub",
+                "L'équipe Basera",
             ]
         ),
     )
@@ -406,34 +406,34 @@ def build_password_changed_email(
 ) -> EmailMessage:
     if lang == "en":
         return EmailMessage(
-            subject="Your password was changed — MemoryHub",
+            subject="Your password was changed — Basera",
             preheader="If you did not make this change, contact support immediately",
             body="\n".join(
                 [
                     f"Hello {greeting},",
                     "",
-                    "Your MemoryHub password was changed successfully.",
+                    "Your Basera password was changed successfully.",
                     "",
                     "If you did not make this change, contact our support team right away.",
                     "",
                     "Best regards,",
-                    "The MemoryHub team",
+                    "The Basera team",
                 ]
             ),
         )
     return EmailMessage(
-        subject="Votre mot de passe a été modifié — MemoryHub",
+        subject="Votre mot de passe a été modifié — Basera",
         preheader="Si vous n'êtes pas à l'origine de ce changement, contactez le support",
         body="\n".join(
             [
                 f"Bonjour {greeting},",
                 "",
-                "Votre mot de passe MemoryHub a été modifié avec succès.",
+                "Votre mot de passe Basera a été modifié avec succès.",
                 "",
                 "Si vous n'êtes pas à l'origine de ce changement, contactez immédiatement notre support.",
                 "",
                 "Cordialement,",
-                "L'équipe MemoryHub",
+                "L'équipe Basera",
             ]
         ),
     )
@@ -441,8 +441,8 @@ def build_password_changed_email(
 
 def _subscription_signature(lang: EmailLang) -> str:
     if lang == "en":
-        return "Best regards,\nThe MemoryHub team"
-    return "Cordialement,\nL'équipe MemoryHub"
+        return "Best regards,\nThe Basera team"
+    return "Cordialement,\nL'équipe Basera"
 
 
 def build_subscription_trial_started_email(
@@ -453,28 +453,28 @@ def build_subscription_trial_started_email(
 ) -> EmailMessage:
     if lang == "en":
         return EmailMessage(
-            subject="Your MemoryHub trial has started",
+            subject="Your Basera trial has started",
             preheader=f"Plan: {plan_name}",
             body="\n".join(
                 [
                     f"Hello {greeting},",
                     "",
                     f"Your trial on the {plan_name} plan is now active.",
-                    "Explore MemoryHub and manage your clients with confidence.",
+                    "Explore Basera and manage your clients with confidence.",
                     "",
                     _subscription_signature(lang),
                 ]
             ),
         )
     return EmailMessage(
-        subject="Votre essai MemoryHub a démarré",
+        subject="Votre essai Basera a démarré",
         preheader=f"Offre : {plan_name}",
         body="\n".join(
             [
                 f"Bonjour {greeting},",
                 "",
                 f"Votre essai sur l'offre {plan_name} est maintenant actif.",
-                "Découvrez MemoryHub et gérez vos clients sereinement.",
+                "Découvrez Basera et gérez vos clients sereinement.",
                 "",
                 _subscription_signature(lang),
             ]
@@ -490,7 +490,7 @@ def build_subscription_activated_email(
 ) -> EmailMessage:
     if lang == "en":
         return EmailMessage(
-            subject="Your MemoryHub subscription is active",
+            subject="Your Basera subscription is active",
             preheader=f"Plan: {plan_name}",
             body="\n".join(
                 [
@@ -503,7 +503,7 @@ def build_subscription_activated_email(
             ),
         )
     return EmailMessage(
-        subject="Votre abonnement MemoryHub est actif",
+        subject="Votre abonnement Basera est actif",
         preheader=f"Offre : {plan_name}",
         body="\n".join(
             [
@@ -525,7 +525,7 @@ def build_subscription_renewed_email(
 ) -> EmailMessage:
     if lang == "en":
         return EmailMessage(
-            subject="Your MemoryHub subscription was renewed",
+            subject="Your Basera subscription was renewed",
             preheader=f"Plan: {plan_name}",
             body="\n".join(
                 [
@@ -538,7 +538,7 @@ def build_subscription_renewed_email(
             ),
         )
     return EmailMessage(
-        subject="Votre abonnement MemoryHub a été renouvelé",
+        subject="Votre abonnement Basera a été renouvelé",
         preheader=f"Offre : {plan_name}",
         body="\n".join(
             [
@@ -560,7 +560,7 @@ def build_subscription_plan_changed_email(
 ) -> EmailMessage:
     if lang == "en":
         return EmailMessage(
-            subject="Your MemoryHub plan was updated",
+            subject="Your Basera plan was updated",
             preheader=f"New plan: {plan_name}",
             body="\n".join(
                 [
@@ -573,7 +573,7 @@ def build_subscription_plan_changed_email(
             ),
         )
     return EmailMessage(
-        subject="Votre offre MemoryHub a été modifiée",
+        subject="Votre offre Basera a été modifiée",
         preheader=f"Nouvelle offre : {plan_name}",
         body="\n".join(
             [
@@ -596,7 +596,7 @@ def build_subscription_cancellation_scheduled_email(
 ) -> EmailMessage:
     if lang == "en":
         return EmailMessage(
-            subject="Your MemoryHub cancellation is scheduled",
+            subject="Your Basera cancellation is scheduled",
             preheader=f"Active until {period_end}",
             body="\n".join(
                 [
@@ -610,7 +610,7 @@ def build_subscription_cancellation_scheduled_email(
             ),
         )
     return EmailMessage(
-        subject="Votre annulation MemoryHub est programmée",
+        subject="Votre annulation Basera est programmée",
         preheader=f"Actif jusqu'au {period_end}",
         body="\n".join(
             [
@@ -633,7 +633,7 @@ def build_subscription_cancelled_email(
 ) -> EmailMessage:
     if lang == "en":
         return EmailMessage(
-            subject="Your MemoryHub subscription has ended",
+            subject="Your Basera subscription has ended",
             preheader=f"Plan: {plan_name}",
             body="\n".join(
                 [
@@ -647,7 +647,7 @@ def build_subscription_cancelled_email(
             ),
         )
     return EmailMessage(
-        subject="Votre abonnement MemoryHub est terminé",
+        subject="Votre abonnement Basera est terminé",
         preheader=f"Offre : {plan_name}",
         body="\n".join(
             [
@@ -670,7 +670,7 @@ def build_subscription_reactivated_email(
 ) -> EmailMessage:
     if lang == "en":
         return EmailMessage(
-            subject="Your MemoryHub subscription is active again",
+            subject="Your Basera subscription is active again",
             preheader=f"Plan: {plan_name}",
             body="\n".join(
                 [
@@ -683,7 +683,7 @@ def build_subscription_reactivated_email(
             ),
         )
     return EmailMessage(
-        subject="Votre abonnement MemoryHub est réactivé",
+        subject="Votre abonnement Basera est réactivé",
         preheader=f"Offre : {plan_name}",
         body="\n".join(
             [
@@ -747,7 +747,7 @@ def build_subscription_expired_email(
 ) -> EmailMessage:
     if lang == "en":
         return EmailMessage(
-            subject="Your MemoryHub subscription has expired",
+            subject="Your Basera subscription has expired",
             preheader=f"Plan: {plan_name}",
             body="\n".join(
                 [
@@ -761,7 +761,7 @@ def build_subscription_expired_email(
             ),
         )
     return EmailMessage(
-        subject="Votre abonnement MemoryHub a expiré",
+        subject="Votre abonnement Basera a expiré",
         preheader=f"Offre : {plan_name}",
         body="\n".join(
             [
@@ -796,7 +796,7 @@ def build_quote_accepted_email(
                     f"{client_name} accepted quote no. {number} ({amount}) via the client portal.",
                     "",
                     "Best regards,",
-                    "MemoryHub",
+                    "Basera",
                 ]
             ),
         )
@@ -810,7 +810,7 @@ def build_quote_accepted_email(
                 f"{client_name} a accepté le devis n°{number} ({amount}) via l'espace client.",
                 "",
                 "Cordialement,",
-                "MemoryHub",
+                "Basera",
             ]
         ),
     )
@@ -836,7 +836,7 @@ def build_quote_rejected_email(
                     f"{client_name} declined quote no. {number} ({amount}) via the client portal.",
                     "",
                     "Best regards,",
-                    "MemoryHub",
+                    "Basera",
                 ]
             ),
         )
@@ -850,7 +850,7 @@ def build_quote_rejected_email(
                 f"{client_name} a refusé le devis n°{number} ({amount}) via l'espace client.",
                 "",
                 "Cordialement,",
-                "MemoryHub",
+                "Basera",
             ]
         ),
     )
@@ -878,7 +878,7 @@ def build_payment_recorded_email(
         ]
         if portal_url:
             lines.extend(["", f"View your invoice online:\n{portal_url}"])
-        lines.extend(["", "Best regards,", "MemoryHub"])
+        lines.extend(["", "Best regards,", "Basera"])
         body = "\n".join(lines)
     else:
         subject = f"Paiement enregistré — facture n°{number}"
@@ -891,7 +891,7 @@ def build_payment_recorded_email(
         ]
         if portal_url:
             lines.extend(["", f"Consulter votre facture en ligne :\n{portal_url}"])
-        lines.extend(["", "Cordialement,", "MemoryHub"])
+        lines.extend(["", "Cordialement,", "Basera"])
         body = "\n".join(lines)
     return EmailMessage(subject=subject, preheader=preheader, body=body)
 

@@ -35,7 +35,7 @@ async function handleResponse(res, data, fallback) {
 
 export async function fetchCreditBalance() {
   const { res, data } = await apiFetch("/api/credits/balance");
-  return handleResponse(res, data, "Failed to load analysis balance.");
+  return handleResponse(res, data, "Failed to load import balance.");
 }
 
 export async function fetchImportEstimate({ extension, sizeBytes, mimeType, files }) {

@@ -14,7 +14,7 @@ function DemoDataBadge() {
 
   return (
     <span
-      className="inline-flex items-center rounded-md border border-[#FDE68A] bg-[#FFFBEB] px-2 py-0.5 text-[11px] font-medium text-[#92400E]"
+      className="dash-badge dash-badge-warning"
       data-testid="demo-data-badge"
     >
       {t("demoData.badge")}

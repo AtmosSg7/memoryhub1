@@ -97,7 +97,7 @@ export default function InvoicePaymentModal({ invoice, open, onOpenChange, onUpd
       <DialogContent overlayClassName={NESTED_MODAL_OVERLAY_CLASS} className={NESTED_MODAL_CONTENT_CLASS} data-testid="invoice-payment-modal">
         <DialogHeader className={DETAIL_MODAL_HEADER_CLASS}>
           <DialogTitle className={DETAIL_MODAL_TITLE_CLASS}>{t("invoicePayment.title")}</DialogTitle>
-          <DialogDescription className="text-[#4B5563]">
+          <DialogDescription className="text-dash-text-muted">
             {invoice.number} · {t("invoicePayment.remaining")} {formatInvoiceAmount(amountDue, lang)}
           </DialogDescription>
         </DialogHeader>
@@ -136,7 +136,7 @@ export default function InvoicePaymentModal({ invoice, open, onOpenChange, onUpd
               </SelectContent>
             </Select>
           </div>
-          <p className="sm:col-span-2 text-[11px] text-[#9CA3AF]">{t("invoicePayment.partialHint")}</p>
+          <p className="sm:col-span-2 text-[11px] text-dash-text-subtle">{t("invoicePayment.partialHint")}</p>
         </div>
 
         <WorkflowModalFooter>

@@ -1,6 +1,13 @@
 import { apiFetch } from "@/lib/api";
 
-export async function submitBetaFeedback({ intent, blocker, suggestion, page }) {
+export async function submitBetaFeedback({
+  intent,
+  blocker,
+  suggestion,
+  page,
+  website = "",
+  formStartedAt,
+}) {
   const { res, data } = await apiFetch("/api/beta/feedback", {
     method: "POST",
     body: JSON.stringify({
@@ -8,6 +15,8 @@ export async function submitBetaFeedback({ intent, blocker, suggestion, page }) 
       blocker: blocker || "",
       suggestion: suggestion || "",
       page: page || undefined,
+      website: website || "",
+      formStartedAt,
     }),
   });
   if (!res.ok) {

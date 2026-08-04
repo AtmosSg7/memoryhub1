@@ -75,7 +75,7 @@ export default function CommunicationTimeline({
   return (
     <div className="overflow-x-auto" data-testid={testIdPrefix}>
       <div
-        className={`${ROW_GRID_CLASS} hidden sm:grid px-4 py-2 border-b border-[#F3F4F6] bg-[#FAFAFA] text-[10px] font-semibold uppercase tracking-[0.12em] text-[#9CA3AF]`}
+        className={`${ROW_GRID_CLASS} hidden sm:grid px-4 py-3 border-b border-dash-border bg-dash-surface-muted text-[10px] font-semibold uppercase tracking-[0.12em] text-dash-text-muted`}
         aria-hidden="true"
       >
         <span>{t("communications.col.type")}</span>
@@ -84,10 +84,11 @@ export default function CommunicationTimeline({
         <span className="text-right">{t("communications.col.date")}</span>
       </div>
 
-      <ul className="divide-y divide-[#F3F4F6]">
-        {items.map((item) => {
+      <ul className="divide-y divide-dash-border-soft">
+        {items.map((item, index) => {
           const { typeLabel, clientName, amount, date, route } = getActivityRowData(item, lang, t);
           const Tag = route ? "button" : "div";
+          const zebra = index % 2 === 1 ? "dark:bg-white/[0.035]" : "";
 
           return (
             <li key={item.id} data-testid={`${testIdPrefix}-item-${item.id}`}>
@@ -96,16 +97,17 @@ export default function CommunicationTimeline({
                 onClick={route ? () => navigate(route) : undefined}
                 className={[
                   ROW_GRID_CLASS,
-                  "w-full px-4 py-2.5 text-left transition-colors",
-                  route ? "hover:bg-[#FAFAFA] cursor-pointer" : "",
+                  "w-full px-4 py-3.5 text-left transition-colors",
+                  zebra,
+                  route ? "dash-row-hover cursor-pointer" : "",
                 ].join(" ")}
               >
-                <span className="text-[12px] font-medium text-[#374151] truncate">{typeLabel}</span>
-                <span className="text-[13px] font-medium text-[#111827] truncate">{clientName}</span>
-                <span className="text-[12px] font-semibold text-[#0A2540] tabular-nums sm:text-right">
-                  {amount || <span className="text-[#D1D5DB] font-normal">—</span>}
+                <span className="text-[12px] font-medium text-dash-text-muted truncate">{typeLabel}</span>
+                <span className="text-[13px] font-medium text-dash-text truncate">{clientName}</span>
+                <span className="text-[12px] font-semibold text-dash-accent tabular-nums sm:text-right">
+                  {amount || <span className="text-dash-text-subtle font-normal">—</span>}
                 </span>
-                <span className="text-[11px] text-[#9CA3AF] tabular-nums sm:text-right">{date}</span>
+                <span className="text-[11px] text-dash-text-subtle tabular-nums sm:text-right">{date}</span>
               </Tag>
             </li>
           );

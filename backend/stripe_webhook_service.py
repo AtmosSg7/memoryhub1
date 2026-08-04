@@ -350,6 +350,8 @@ async def process_stripe_webhook(db, payload: bytes, sig_header: Optional[str]) 
         raise StripeWebhookError("Missing Stripe signature.")
 
     settings = require_stripe_settings()
+    if not settings.webhook_secret:
+        raise StripeWebhookError("Stripe webhook secret is not configured.")
     backend = get_stripe_backend()
 
     try:

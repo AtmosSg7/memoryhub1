@@ -93,17 +93,17 @@ export default function DocumentPreviewModal({ document: doc, open, onOpenChange
         data-testid="document-preview-modal"
       >
         <DialogHeader className="space-y-1 pb-1">
-          <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-[#111827] truncate">
+          <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-dash-text truncate">
             {doc?.name}
           </DialogTitle>
-          <DialogDescription className="text-[#4B5563]">
+          <DialogDescription className="text-dash-text-muted">
             {doc?.clientName || t("documents.noClient")}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-[320px] max-h-[60vh] overflow-auto rounded-xl border border-[#E7E9EE] bg-[#FAFAFA] flex items-center justify-center">
+        <div className="flex-1 min-h-[320px] max-h-[60vh] overflow-auto rounded-xl border border-dash-border bg-dash-surface-muted flex items-center justify-center">
           {loading ? (
-            <div className="flex items-center text-sm text-[#6B7280]">
+            <div className="flex items-center text-sm text-dash-text-muted">
               <Loader2 className="w-5 h-5 animate-spin mr-2" />
               {t("documents.loadingPreview")}
             </div>
@@ -114,7 +114,7 @@ export default function DocumentPreviewModal({ document: doc, open, onOpenChange
               src={blobUrl}
               title={doc.name}
               sandbox=""
-              className="w-full h-[60vh] min-h-[320px] bg-white"
+              className="w-full h-[60vh] min-h-[320px] bg-dash-surface"
             />
           ) : blobUrl && isImage ? (
             <img
@@ -123,7 +123,7 @@ export default function DocumentPreviewModal({ document: doc, open, onOpenChange
               className="max-w-full max-h-[60vh] object-contain"
             />
           ) : (
-            <p className="text-sm text-[#6B7280] px-4 text-center">
+            <p className="text-sm text-dash-text-muted px-4 text-center">
               {t("documents.previewUnavailable")}
             </p>
           )}

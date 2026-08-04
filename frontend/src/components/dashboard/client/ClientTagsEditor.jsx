@@ -28,7 +28,7 @@ export default function ClientTagsEditor({ tags = [], onChange, saving = false, 
           tags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-[#F3F4F6] text-[#374151] border border-[#E5E7EB]"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-dash-surface-muted text-dash-text-muted border border-dash-border"
               data-testid={`client-tag-${tag}`}
             >
               {tag}
@@ -36,7 +36,7 @@ export default function ClientTagsEditor({ tags = [], onChange, saving = false, 
                 type="button"
                 onClick={() => handleRemove(tag)}
                 disabled={saving}
-                className="text-[#9CA3AF] hover:text-[#991B1B] transition-colors"
+                className="text-dash-text-subtle hover:text-[color:var(--dash-danger-text)] transition-colors"
                 aria-label={t("clientContacts.removeTag")}
               >
                 <X className="w-3.5 h-3.5" />
@@ -44,7 +44,7 @@ export default function ClientTagsEditor({ tags = [], onChange, saving = false, 
             </span>
           ))
         ) : (
-          <p className="text-xs text-[#9CA3AF]">{t("clientContacts.tagsEmpty")}</p>
+          <p className="text-xs text-dash-text-subtle">{t("clientContacts.tagsEmpty")}</p>
         )}
       </div>
 
@@ -59,7 +59,7 @@ export default function ClientTagsEditor({ tags = [], onChange, saving = false, 
             }
           }}
           placeholder={t("clientContacts.tagsPlaceholder")}
-          className="h-10 rounded-xl border-[#E7E9EE]"
+          className="h-10 rounded-xl border-dash-border"
           disabled={saving}
           data-testid="client-tag-input"
         />
@@ -75,7 +75,7 @@ export default function ClientTagsEditor({ tags = [], onChange, saving = false, 
           {t("clientContacts.addTag")}
         </ActionButton>
       </div>
-      <p className="text-[11px] text-[#9CA3AF]">{t("clientContacts.tagsHint")}</p>
+      <p className="text-[11px] text-dash-text-subtle">{t("clientContacts.tagsHint")}</p>
     </div>
   );
 }

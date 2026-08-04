@@ -213,6 +213,38 @@ def test_checkout_when_already_subscribed(client, fake_stripe):
     assert again.status_code == 409
 
 
+def test_local_trial_can_still_checkout(client, fake_stripe):
+    """App trial without Stripe subscription id must still open Checkout."""
+    _auth(client)
+    trial = client.post(
+        "/api/subscriptions/dev/start-trial",
+        json={"planId": "solo", "startWithTrial": True},
+    )
+    assert trial.status_code == 200
+
+    me = client.get("/api/billing/me")
+    assert me.status_code == 200
+    body = me.json()
+    assert body["subscriptionStatus"] == "trial"
+    assert body["actions"]["canCheckout"] is True
+    assert body["actions"]["canManage"] is False
+
+    checkout = client.post("/api/billing/checkout", json={"planId": "pro"})
+    assert checkout.status_code == 200
+    assert "checkout.stripe.test" in checkout.json()["checkoutUrl"]
+
+
+def test_stripe_settings_without_webhook_secret(monkeypatch):
+    """Checkout config must not require STRIPE_WEBHOOK_SECRET."""
+    from stripe_config import get_stripe_settings, stripe_webhook_configured
+
+    monkeypatch.delenv("STRIPE_WEBHOOK_SECRET", raising=False)
+    settings = get_stripe_settings()
+    assert settings is not None
+    assert settings.webhook_secret == ""
+    assert stripe_webhook_configured() is False
+
+
 def test_webhook_invalid_signature(client, fake_stripe):
     fake_stripe.construct_webhook_event = lambda *args, **kwargs: (_ for _ in ()).throw(Exception("bad sig"))
     res = client.post(
@@ -239,7 +271,7 @@ def test_webhook_checkout_completed_activates_subscription(client, fake_stripe):
     body = me.json()
     assert body["hasSubscription"] is True
     assert body["planId"] == "solo"
-    assert body["monthlyAnalysesRemaining"] == 20
+    assert body["monthlyAnalysesRemaining"] == 10
 
 
 def test_webhook_idempotent_replay(client, fake_stripe):
@@ -262,7 +294,7 @@ def test_webhook_idempotent_replay(client, fake_stripe):
     assert second.json()["status"] == "already_processed"
 
     balance = client.get("/api/credits/balance")
-    assert balance.json()["monthlyRemaining"] == 20
+    assert balance.json()["monthlyRemaining"] == 10
 
 
 def _activate_fake_subscription(fake_stripe: FakeStripeBackend) -> None:
@@ -298,7 +330,7 @@ def test_invoice_paid_renews_credits_once(client, fake_stripe):
     )
 
     user = client.get("/api/billing/me").json()
-    assert user["monthlyAnalysesRemaining"] == 20
+    assert user["monthlyAnalysesRemaining"] == 10
 
     invoice_event = _invoice_paid_event(fake_stripe, billing_reason="subscription_cycle")
     client.post(

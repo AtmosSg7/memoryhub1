@@ -1,25 +1,35 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { useIsShowcaseDemo } from "@/context/ShowcaseThemeIsolation";
 
 const AddQuoteContext = createContext(null);
 
 export function AddQuoteProvider({ children }) {
+  const isShowcase = useIsShowcaseDemo();
   const [isOpen, setIsOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState(null);
   const [prefillClient, setPrefillClient] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [pendingOpenQuote, setPendingOpenQuote] = useState(null);
 
-  const openAddQuote = useCallback((client = null) => {
-    setEditingQuote(null);
-    setPrefillClient(client);
-    setIsOpen(true);
-  }, []);
+  const openAddQuote = useCallback(
+    (client = null) => {
+      if (isShowcase) return;
+      setEditingQuote(null);
+      setPrefillClient(client);
+      setIsOpen(true);
+    },
+    [isShowcase]
+  );
 
-  const openEditQuote = useCallback((quote) => {
-    setEditingQuote(quote);
-    setPrefillClient(null);
-    setIsOpen(true);
-  }, []);
+  const openEditQuote = useCallback(
+    (quote) => {
+      if (isShowcase) return;
+      setEditingQuote(quote);
+      setPrefillClient(null);
+      setIsOpen(true);
+    },
+    [isShowcase]
+  );
 
   const closeAddQuote = useCallback(() => {
     setIsOpen(false);
@@ -41,8 +51,8 @@ export function AddQuoteProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      isOpen,
-      editingQuote,
+      isOpen: isShowcase ? false : isOpen,
+      editingQuote: isShowcase ? null : editingQuote,
       prefillClient,
       refreshKey,
       pendingOpenQuote,
@@ -54,6 +64,7 @@ export function AddQuoteProvider({ children }) {
       clearPendingOpenQuote,
     }),
     [
+      isShowcase,
       isOpen,
       editingQuote,
       prefillClient,

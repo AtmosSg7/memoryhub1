@@ -147,10 +147,10 @@ export default function AddInvoiceModal() {
     <Dialog open={isOpen} onOpenChange={(open) => !open && closeAddInvoice()}>
       <DialogContent overlayClassName={DETAIL_MODAL_OVERLAY_CLASS} className={DETAIL_MODAL_CONTENT_CLASS} data-testid="add-invoice-modal">
         <DialogHeader className="space-y-1 pb-1">
-          <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-[#111827]">
+          <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-dash-text">
             {isEdit ? t("invoiceForm.editTitle") : t("invoiceForm.addTitle")}
           </DialogTitle>
-          <DialogDescription className="text-[#4B5563]">
+          <DialogDescription className="text-dash-text-muted">
             {isEdit ? t("invoiceForm.editSubtitle") : t("invoiceForm.addSubtitle")}
           </DialogDescription>
         </DialogHeader>
@@ -171,7 +171,7 @@ export default function AddInvoiceModal() {
           <div className="space-y-2">
             <Label htmlFor="invoice-client" className={FORM_LABEL_CLASS}>{t("invoiceForm.client")} *</Label>
             {clientLocked ? (
-              <Input id="invoice-client" readOnly value={getDisplayCompany(prefillClient)} className={`${FORM_FIELD_CLASS} bg-[#F9FAFB] text-[#6B7280]`} />
+              <Input id="invoice-client" readOnly value={getDisplayCompany(prefillClient)} className={`${FORM_FIELD_CLASS} bg-dash-bg text-dash-text-muted`} />
             ) : (
               <Select value={form.clientId || "none"} onValueChange={(v) => setForm((p) => ({ ...p, clientId: v === "none" ? "" : v }))}>
                 <SelectTrigger data-testid="invoice-form-client" className={FORM_FIELD_CLASS}><SelectValue placeholder={t("invoiceForm.selectClient")} /></SelectTrigger>

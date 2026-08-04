@@ -13,7 +13,7 @@ function KpiInfoHint({ label, text, testId }) {
         <TooltipTrigger asChild>
           <button
             type="button"
-            className="inline-flex items-center justify-center rounded-md p-0.5 text-[#9CA3AF] hover:text-[#4B5563] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0A2540]/30"
+            className="inline-flex items-center justify-center rounded-md p-0.5 text-dash-text-subtle hover:text-dash-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dash-primary/30"
             aria-label={label || text}
             data-testid={testId}
             onClick={(e) => e.stopPropagation()}
@@ -24,7 +24,7 @@ function KpiInfoHint({ label, text, testId }) {
         </TooltipTrigger>
         <TooltipContent
           side="top"
-          className="max-w-[240px] bg-[#111827] text-white text-xs leading-snug px-3 py-2"
+          className="max-w-[240px] text-xs leading-snug px-3 py-2"
         >
           {text}
         </TooltipContent>

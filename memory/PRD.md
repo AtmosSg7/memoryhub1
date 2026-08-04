@@ -1,7 +1,7 @@
-# MemoryHub — Product Requirements Document (PRD)
+# Basera — Product Requirements Document (PRD)
 
 ## Original problem statement
-Create a modern SaaS landing page for **MemoryHub**, a client search platform for
+Create a modern SaaS landing page for **Basera**, a client search platform for
 French artisans, freelancers and small businesses. Promise: "Find every piece of
 information about a client in less than 5 seconds." Connects Gmail, Google Drive
 and Notion. Frontend only. Premium blue palette on white. Sections: Hero, "Your

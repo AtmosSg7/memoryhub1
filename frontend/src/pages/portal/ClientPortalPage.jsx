@@ -13,9 +13,9 @@ export default function ClientPortalPage() {
   const { data, loading, error, reload, patchQuote } = usePortal(token);
 
   useEffect(() => {
-    document.title = `${t("portal.pageTitle")} | MemoryHub`;
+    document.title = `${t("portal.pageTitle")} | Basera`;
     return () => {
-      document.title = "MemoryHub";
+      document.title = "Basera";
     };
   }, [t]);
 

@@ -167,10 +167,10 @@ export default function AddClientModal() {
         data-testid="add-client-modal"
       >
         <DialogHeader className="space-y-1 pb-1">
-          <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-[#111827]">
+          <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-dash-text">
             {isEdit ? t("clientForm.editTitle") : t("clientForm.addTitle")}
           </DialogTitle>
-          <DialogDescription className="text-[#4B5563]">
+          <DialogDescription className="text-dash-text-muted">
             {isEdit ? t("clientForm.editSubtitle") : t("clientForm.addSubtitle")}
           </DialogDescription>
         </DialogHeader>
@@ -219,14 +219,14 @@ export default function AddClientModal() {
                 onChange={setField("phone")}
                 className={FORM_FIELD_CLASS}
               />
-              <p className="text-[11px] text-[#9CA3AF]">{t("clientForm.contactsAdvancedHint")}</p>
+              <p className="text-[11px] text-dash-text-subtle">{t("clientForm.contactsAdvancedHint")}</p>
             </div>
 
             {!isEdit ? (
               <button
                 type="button"
                 onClick={() => setShowMore((v) => !v)}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-[#0A2540] hover:text-[#173A5E]"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-dash-primary hover:text-[#173A5E]"
                 data-testid="client-form-toggle-more"
               >
                 <ChevronDown

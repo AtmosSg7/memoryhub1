@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { HoneypotField, useFormAbuseGuard } from "@/components/auth/FormAbuseFields";
 
 const Register = () => {
   const { t } = useLang();
@@ -25,6 +26,8 @@ const Register = () => {
   const navigate = useNavigate();
   const [serverError, setServerError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [honeypot, setHoneypot] = useState("");
+  const { formStartedAt } = useFormAbuseGuard();
 
   const schema = z
     .object({
@@ -53,6 +56,7 @@ const Register = () => {
   });
 
   const onSubmit = async (values) => {
+    if (loading) return;
     setServerError("");
     setLoading(true);
     try {
@@ -62,6 +66,8 @@ const Register = () => {
         companyName: values.companyName.trim(),
         email: values.email.trim(),
         password: values.password,
+        website: honeypot,
+        formStartedAt,
       });
       navigate("/dashboard", { replace: true });
     } catch (err) {
@@ -76,7 +82,8 @@ const Register = () => {
   return (
     <AuthLayout title={t("auth.register.title")} subtitle={t("auth.register.subtitle")}>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="relative space-y-4">
+          <HoneypotField value={honeypot} onChange={(e) => setHoneypot(e.target.value)} />
           <div className="grid sm:grid-cols-2 gap-4">
             <FormField
               control={form.control}

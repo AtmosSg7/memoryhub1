@@ -49,7 +49,7 @@ export default function OnboardingWizard({
 
   const handleSource = async (id) => {
     if (id === "client") openAddClient();
-    if (id === "import") navigate("/dashboard/files?import=1");
+    if (id === "import") navigate("/dashboard/documents?import=1");
     if (id === "contacts" || id === "gmail") navigate("/dashboard/integrations");
     if (id === "demo") navigate("/dashboard");
     await go(2);
@@ -59,26 +59,26 @@ export default function OnboardingWizard({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#0A2540]/55 p-3 sm:p-6"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[var(--dash-nav-active-bg)]/55 p-3 sm:p-6"
       data-testid="onboarding-wizard"
       role="dialog"
       aria-modal="true"
       aria-labelledby="onboarding-wizard-title"
     >
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl border border-[#E5E7EB] overflow-hidden">
-        <div className="px-5 pt-5 pb-3 border-b border-[#F3F4F6] flex items-start justify-between gap-3">
+      <div className="w-full max-w-lg rounded-2xl bg-dash-surface shadow-xl border border-dash-border overflow-hidden">
+        <div className="px-5 pt-5 pb-3 border-b border-dash-border-soft flex items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6B7280]">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-dash-text-muted">
               {t("onboardingWizard.progress").replace("{step}", String(step + 1)).replace("{total}", "4")}
             </p>
-            <h2 id="onboarding-wizard-title" className="font-cabinet text-xl font-bold text-[#111827] mt-1">
+            <h2 id="onboarding-wizard-title" className="font-cabinet text-xl font-bold text-dash-text mt-1">
               {t(`onboardingWizard.steps.${step}.title`)}
             </h2>
           </div>
           <button
             type="button"
             onClick={onDismiss}
-            className="text-xs text-[#6B7280] hover:text-[#111827] px-2 py-1 rounded-md hover:bg-[#F3F4F6]"
+            className="text-xs text-dash-text-muted hover:text-dash-text px-2 py-1 rounded-md hover:bg-dash-surface-muted"
             data-testid="onboarding-wizard-skip"
           >
             {t("onboardingWizard.skip")}
@@ -88,11 +88,11 @@ export default function OnboardingWizard({
         <div className="px-5 py-5 space-y-4">
           {step === 0 ? (
             <>
-              <p className="text-sm text-[#374151] leading-relaxed">{t("onboardingWizard.welcome.message")}</p>
+              <p className="text-sm text-dash-text-muted leading-relaxed">{t("onboardingWizard.welcome.message")}</p>
               <ul className="space-y-2">
                 {BENEFITS.map((key) => (
-                  <li key={key} className="flex items-start gap-2 text-sm text-[#4B5563]">
-                    <CheckCircle2 className="w-4 h-4 text-[#0A2540] mt-0.5 shrink-0" />
+                  <li key={key} className="flex items-start gap-2 text-sm text-dash-text-muted">
+                    <CheckCircle2 className="w-4 h-4 text-dash-primary mt-0.5 shrink-0" />
                     <span>{t(`onboardingWizard.welcome.benefits.${key}`)}</span>
                   </li>
                 ))}
@@ -102,24 +102,24 @@ export default function OnboardingWizard({
 
           {step === 1 ? (
             <>
-              <p className="text-sm text-[#4B5563]">{t("onboardingWizard.source.subtitle")}</p>
+              <p className="text-sm text-dash-text-muted">{t("onboardingWizard.source.subtitle")}</p>
               <div className="grid gap-2">
                 {sources.map(({ id, icon: Icon }) => (
                   <button
                     key={id}
                     type="button"
                     onClick={() => handleSource(id)}
-                    className="flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] hover:bg-[#F3F4F6] px-3 py-3 text-left transition-colors"
+                    className="flex items-center gap-3 rounded-xl border border-dash-border bg-dash-surface-muted hover:bg-dash-surface-muted px-3 py-3 text-left transition-colors"
                     data-testid={`onboarding-source-${id}`}
                   >
-                    <span className="w-9 h-9 rounded-lg bg-white border border-[#E5E7EB] flex items-center justify-center shrink-0">
-                      <Icon className="w-4 h-4 text-[#0A2540]" />
+                    <span className="w-9 h-9 rounded-lg bg-dash-surface border border-dash-border flex items-center justify-center shrink-0">
+                      <Icon className="w-4 h-4 text-dash-primary" />
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-sm font-medium text-[#111827]">
+                      <span className="block text-sm font-medium text-dash-text">
                         {t(`onboardingWizard.source.options.${id}.title`)}
                       </span>
-                      <span className="block text-xs text-[#6B7280] mt-0.5">
+                      <span className="block text-xs text-dash-text-muted mt-0.5">
                         {t(`onboardingWizard.source.options.${id}.desc`)}
                       </span>
                     </span>
@@ -135,7 +135,7 @@ export default function OnboardingWizard({
                 <CheckCircle2 className="w-5 h-5" />
                 <p className="text-sm font-semibold">{t("onboardingWizard.firstWin.title")}</p>
               </div>
-              <p className="text-sm text-[#374151] leading-relaxed">{t("onboardingWizard.firstWin.body")}</p>
+              <p className="text-sm text-dash-text-muted leading-relaxed">{t("onboardingWizard.firstWin.body")}</p>
             </div>
           ) : null}
 
@@ -143,12 +143,12 @@ export default function OnboardingWizard({
             <ul className="space-y-3">
               {["kpis", "actions", "analytics", "search"].map((key) => (
                 <li key={key} className="flex items-start gap-2.5">
-                  <Search className="w-4 h-4 text-[#0A2540] mt-0.5 shrink-0" />
+                  <Search className="w-4 h-4 text-dash-primary mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-[#111827]">
+                    <p className="text-sm font-medium text-dash-text">
                       {t(`onboardingWizard.dashboard.${key}.title`)}
                     </p>
-                    <p className="text-xs text-[#6B7280] mt-0.5">
+                    <p className="text-xs text-dash-text-muted mt-0.5">
                       {t(`onboardingWizard.dashboard.${key}.desc`)}
                     </p>
                   </div>
@@ -158,12 +158,12 @@ export default function OnboardingWizard({
           ) : null}
         </div>
 
-        <div className="px-5 py-4 border-t border-[#F3F4F6] flex items-center justify-between gap-3">
+        <div className="px-5 py-4 border-t border-dash-border-soft flex items-center justify-between gap-3">
           {step > 0 ? (
             <button
               type="button"
               onClick={() => go(step - 1)}
-              className="text-sm text-[#6B7280] hover:text-[#111827]"
+              className="text-sm text-dash-text-muted hover:text-dash-text"
             >
               {t("onboardingWizard.back")}
             </button>

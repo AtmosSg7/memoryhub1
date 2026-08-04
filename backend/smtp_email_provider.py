@@ -20,7 +20,7 @@ class SmtpEmailProvider:
         from_email = (
             os.environ.get("SMTP_FROM_EMAIL") or os.environ.get("SMTP_FROM") or ""
         ).strip()
-        from_name = os.environ.get("SMTP_FROM_NAME", "MemoryHub").strip()
+        from_name = os.environ.get("SMTP_FROM_NAME", "Basera").strip()
         if from_name:
             return f"{from_name} <{from_email}>"
         return from_email

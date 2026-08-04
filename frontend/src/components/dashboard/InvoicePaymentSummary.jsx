@@ -4,8 +4,8 @@ export default function InvoicePaymentSummary({ invoice, lang, t, compact = fals
   const summary = getInvoicePaymentSummary(invoice);
   if (summary.isUnpaid && summary.total === summary.due) {
     return compact ? null : (
-      <div className="text-sm text-[#6B7280]">
-        {t("invoicePayment.due")} : <span className="font-semibold text-[#111827]">{formatInvoiceAmount(summary.due, lang)}</span>
+      <div className="text-sm text-dash-text-muted">
+        {t("invoicePayment.due")} : <span className="font-semibold text-dash-text">{formatInvoiceAmount(summary.due, lang)}</span>
       </div>
     );
   }

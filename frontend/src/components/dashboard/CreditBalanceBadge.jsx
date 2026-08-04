@@ -1,46 +1,52 @@
 import { Link } from "react-router-dom";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Upload, Loader2 } from "lucide-react";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
-import { useCredits } from "@/hooks/useCredits";
+import { useBillingSummary } from "@/hooks/useBillingSummary";
+import { computeImportUsage } from "@/utils/importUsage";
 
 export default function CreditBalanceBadge({
   className = "",
   linkTo = "/dashboard/billing",
   compact = false,
   showLabel = true,
+  planId: planIdProp,
+  monthlyRemaining: monthlyRemainingProp,
 }) {
   const { t } = useDashboardLang();
-  const { totalRemaining, loading } = useCredits();
+  const { planId: billingPlanId, monthlyRemaining, loading } = useBillingSummary();
+
+  const planId = planIdProp ?? billingPlanId ?? "solo";
+  const remaining = monthlyRemainingProp ?? monthlyRemaining;
+  const { used, limit } = computeImportUsage({ planId, monthlyRemaining: remaining });
 
   const content = (
     <>
       {loading ? (
-        <Loader2 className="w-3.5 h-3.5 animate-spin text-[#6B7280]" aria-hidden />
+        <Loader2 className="w-3.5 h-3.5 animate-spin text-dash-text-muted" aria-hidden />
       ) : (
-        <Sparkles className="w-3.5 h-3.5 text-[#0A2540]" aria-hidden />
+        <Upload className="w-3.5 h-3.5 text-dash-primary" aria-hidden />
       )}
       {showLabel && !compact ? (
-        <span className="hidden sm:inline text-[#6B7280]">{t("credits.badgeLabel")}</span>
+        <span className="hidden sm:inline text-dash-text-muted">{t("imports.label")}</span>
       ) : null}
-      <span className="font-semibold tabular-nums text-[#111827]">
-        {loading ? "…" : totalRemaining ?? "—"}
+      <span className="font-semibold tabular-nums text-dash-text" data-testid="import-usage-badge-value">
+        {loading
+          ? "…"
+          : t("imports.usageCompact").replace("{used}", String(used)).replace("{limit}", String(limit))}
       </span>
-      {!compact ? (
-        <span className="text-[#9CA3AF] text-[11px]">{t("credits.short")}</span>
-      ) : null}
     </>
   );
 
   const baseClass =
-    "inline-flex items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-white px-2.5 py-1 text-xs transition-colors hover:border-[#0A2540]/20 hover:bg-[#EFF6FF]";
+    "inline-flex items-center gap-1.5 rounded-full border border-dash-border bg-dash-surface px-2.5 py-1 text-xs transition-colors hover:border-dash-primary/20 hover:bg-dash-accent-soft";
 
   if (linkTo) {
     return (
       <Link
         to={linkTo}
         className={`${baseClass} ${className}`}
-        data-testid="analysis-balance-badge"
-        title={t("credits.badgeTitle")}
+        data-testid="import-usage-badge"
+        title={t("imports.badgeTitle")}
       >
         {content}
       </Link>
@@ -48,7 +54,7 @@ export default function CreditBalanceBadge({
   }
 
   return (
-    <span className={`${baseClass} ${className}`} data-testid="analysis-balance-badge">
+    <span className={`${baseClass} ${className}`} data-testid="import-usage-badge">
       {content}
     </span>
   );

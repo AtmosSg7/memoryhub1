@@ -6,7 +6,7 @@ export default function AiCreditsEstimate({ loading, estimate, error }) {
 
   if (loading) {
     return (
-      <p className="text-sm text-[#6B7280] flex items-center gap-2">
+      <p className="text-sm text-dash-text-muted flex items-center gap-2">
         <Loader2 className="w-4 h-4 animate-spin" />
         {t("credits.estimateLoading")}
       </p>
@@ -22,10 +22,10 @@ export default function AiCreditsEstimate({ loading, estimate, error }) {
   }
 
   return (
-    <div className="rounded-lg border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-2.5 space-y-1">
-      <p className="text-sm font-medium text-[#111827]">{t("credits.estimateTitle")}</p>
+    <div className="rounded-lg border border-dash-border bg-dash-bg px-3 py-2.5 space-y-1">
+      <p className="text-sm font-medium text-dash-text">{t("credits.estimateTitle")}</p>
       <p className="text-sm text-[#4F46E5] font-semibold">{t("credits.estimateValue")}</p>
-      <p className="text-xs text-[#6B7280]">
+      <p className="text-xs text-dash-text-muted">
         {t("credits.estimateHint")
           .replace("{tier}", t(`credits.tiers.${estimate.tierKey}`))
           .replace("{pages}", String(estimate.pageCountEstimate ?? "—"))}

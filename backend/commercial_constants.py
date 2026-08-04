@@ -2,28 +2,35 @@
 
 from __future__ import annotations
 
+from analysis_constants import CREDITS_PER_ANALYSIS
+
 TRIAL_DAYS = 14
+
+# User-facing imports/month → internal credits (1 import = CREDITS_PER_ANALYSIS credits).
+_STARTER_IMPORTS = 10
+_PRO_IMPORTS = 20
+_BUSINESS_IMPORTS = 50
 
 PLAN_CATALOG = (
     {
         "id": "solo",
-        "name": "Solo",
-        "monthlyPriceEur": 19,
-        "monthlyCredits": 1000,
+        "name": "Starter",
+        "monthlyPriceEur": 4.9,
+        "monthlyCredits": _STARTER_IMPORTS * CREDITS_PER_ANALYSIS,
         "sortOrder": 1,
     },
     {
         "id": "pro",
         "name": "Pro",
-        "monthlyPriceEur": 49,
-        "monthlyCredits": 4000,
+        "monthlyPriceEur": 9.9,
+        "monthlyCredits": _PRO_IMPORTS * CREDITS_PER_ANALYSIS,
         "sortOrder": 2,
     },
     {
         "id": "team",
-        "name": "Team",
-        "monthlyPriceEur": 99,
-        "monthlyCredits": 10000,
+        "name": "Business",
+        "monthlyPriceEur": 19.9,
+        "monthlyCredits": _BUSINESS_IMPORTS * CREDITS_PER_ANALYSIS,
         "sortOrder": 3,
     },
 )

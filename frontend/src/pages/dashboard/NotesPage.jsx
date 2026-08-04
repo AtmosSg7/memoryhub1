@@ -199,7 +199,7 @@ export default function NotesPage() {
                 onClick={() => openEditNote(note)}
                 data-testid={`note-card-${note.id}`}
                 aria-label={note.title || t("page.notes.title")}
-                className="bg-white border border-[#E5E7EB] rounded-xl p-5 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-16px_rgba(10,37,64,0.2)] transition-all cursor-pointer w-full text-left"
+                className="bg-dash-surface border border-dash-border rounded-xl p-5 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-16px_rgba(10,37,64,0.2)] transition-all cursor-pointer w-full text-left"
               >
 
                 <div className="flex items-center justify-between mb-3 gap-2">
@@ -218,7 +218,7 @@ export default function NotesPage() {
 
                     {note.clientName && (
 
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#EFF6FF] text-[#0A2540] text-[10px] font-semibold truncate max-w-[140px]">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-dash-accent-soft text-dash-primary text-[10px] font-semibold truncate max-w-[140px]">
 
                         {note.clientName}
 
@@ -228,7 +228,7 @@ export default function NotesPage() {
 
                   </div>
 
-                  <span className="text-[11px] text-[#9CA3AF] shrink-0">
+                  <span className="text-[11px] text-dash-text-subtle shrink-0">
 
                     {formatNoteDate(getNoteDate(note), lang)}
 
@@ -238,7 +238,7 @@ export default function NotesPage() {
 
 
 
-                <h3 className="font-cabinet text-base font-semibold text-[#111827] tracking-tight mb-2 truncate">
+                <h3 className="font-cabinet text-base font-semibold text-dash-text tracking-tight mb-2 truncate">
 
                   {note.title}
 
@@ -246,7 +246,7 @@ export default function NotesPage() {
 
 
 
-                <p className="text-[13px] text-[#4B5563] leading-relaxed line-clamp-3">
+                <p className="text-[13px] text-dash-text-muted leading-relaxed line-clamp-3">
 
                   {truncateContent(note.content)}
 
@@ -256,7 +256,7 @@ export default function NotesPage() {
 
                 <div
 
-                  className="flex items-center justify-end pt-3 mt-3 border-t border-[#F3F4F6]"
+                  className="flex items-center justify-end pt-3 mt-3 border-t border-dash-border-soft"
 
                   onClick={(e) => e.stopPropagation()}
 

@@ -52,14 +52,14 @@ export default function ClientInsightsCard({ clientId, t }) {
     <SectionPanel title={t("intelligence.clientCardTitle")} testId="client-insights-card">
       <div className="space-y-3">
         {primary ? (
-          <p className="text-base font-semibold text-[#111827]" data-testid="client-insights-primary">
+          <p className="text-base font-semibold text-dash-text" data-testid="client-insights-primary">
             {primary.title}
           </p>
         ) : (
-          <p className="text-sm text-[#6B7280]">{t("intelligence.clientNoInsight")}</p>
+          <p className="text-sm text-dash-text-muted">{t("intelligence.clientNoInsight")}</p>
         )}
 
-        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-[#374151]">
+        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-dash-text-muted">
           <li>
             {t("intelligence.exchangesCount").replace("{count}", String(facts.exchangesTotal ?? 0))}
           </li>
@@ -76,7 +76,7 @@ export default function ClientInsightsCard({ clientId, t }) {
           {insights.map((insight) => (
             <span
               key={insight.id}
-              className="inline-flex text-[11px] font-medium rounded-md bg-[#F3F4F6] text-[#374151] px-2 py-1"
+              className="inline-flex text-[11px] font-medium rounded-md bg-dash-surface-muted text-dash-text-muted px-2 py-1"
               data-testid={`client-insight-chip-${insight.ruleId}`}
             >
               {insight.title}
@@ -84,7 +84,7 @@ export default function ClientInsightsCard({ clientId, t }) {
           ))}
         </div>
 
-        <div className="text-xs text-[#6B7280] space-y-1">
+        <div className="text-xs text-dash-text-muted space-y-1">
           <p>
             Google —{" "}
             {data.integrations?.googleContacts?.connected
@@ -98,7 +98,7 @@ export default function ClientInsightsCard({ clientId, t }) {
               : t("integrations.shared.statusDisconnected")}
           </p>
           {data.followUpInDays != null ? (
-            <p className="font-medium text-[#0A2540]">
+            <p className="font-medium text-dash-primary">
               {t("intelligence.followUpIn").replace("{count}", String(data.followUpInDays))}
             </p>
           ) : null}

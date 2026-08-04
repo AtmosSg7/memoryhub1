@@ -66,10 +66,10 @@ export default function SearchResultsList({
         data-testid={`${testId}-empty`}
         className={compact ? "px-3 py-4 text-center" : "py-10 text-center max-w-sm mx-auto"}
       >
-        <p className={compact ? "text-[12px] font-medium text-[#374151]" : "text-sm font-medium text-[#374151]"}>
+        <p className={compact ? "text-[12px] font-medium text-dash-text-muted" : "text-sm font-medium text-dash-text-muted"}>
           {t("search.noResults").replace("{query}", query || "")}
         </p>
-        <p className={compact ? "text-[11px] text-[#6B7280] mt-1" : "text-[13px] text-[#6B7280] mt-1.5 leading-relaxed"}>
+        <p className={compact ? "text-[11px] text-dash-text-muted mt-1" : "text-[13px] text-dash-text-muted mt-1.5 leading-relaxed"}>
           {t("search.noResultsHint")}
         </p>
       </div>
@@ -79,7 +79,7 @@ export default function SearchResultsList({
   return (
     <div data-testid={testId} className={compact ? "" : "space-y-5"}>
       {showSummary && !compact && (
-        <p className="text-[13px] text-[#6B7280]">
+        <p className="text-[13px] text-dash-text-muted">
           {t("search.resultsCount")
             .replace("{count}", String(total))
             .replace("{query}", query || "")}
@@ -97,12 +97,12 @@ export default function SearchResultsList({
             <div
               className={[
                 "flex items-center justify-between gap-2",
-                compact ? "px-3 py-2 bg-[#F9FAFB] border-b border-[#F3F4F6]" : "mb-2",
+                compact ? "px-3 py-2 bg-dash-bg border-b border-dash-border-soft" : "mb-2",
               ].join(" ")}
             >
               <h4
                 className={[
-                  "font-semibold uppercase tracking-widest text-[#6B7280]",
+                  "font-semibold uppercase tracking-widest text-dash-text-muted",
                   compact ? "text-[10px]" : "text-[11px]",
                 ].join(" ")}
               >
@@ -111,19 +111,19 @@ export default function SearchResultsList({
               {hasMore && listPath ? (
                 <ActionButton
                   variant="ghost"
-                  className="h-auto py-0 px-1 text-[10px] font-medium text-[#0A2540] hover:underline"
+                  className="h-auto py-0 px-1 text-[10px] font-medium text-dash-primary hover:underline"
                   onClick={() => navigate(listPath)}
                   data-testid={`${testId}-group-${groupKey}-view-all`}
                 >
                   {t("search.showAllInGroup").replace("{count}", String(group.total))}
                 </ActionButton>
               ) : hasMore ? (
-                <span className="text-[10px] text-[#9CA3AF]">
+                <span className="text-[10px] text-dash-text-subtle">
                   {t("search.moreResults").replace("{count}", String(group.total - group.items.length))}
                 </span>
               ) : null}
             </div>
-            <div className={compact ? "divide-y divide-[#F3F4F6]" : "bg-white border border-[#E5E7EB] rounded-xl overflow-hidden divide-y divide-[#F3F4F6]"}>
+            <div className={compact ? "divide-y divide-dash-border-soft" : "bg-dash-surface border border-dash-border rounded-xl overflow-hidden divide-y divide-dash-border-soft"}>
               {group.items.map((item) => (
                 <SearchResultItem
                   key={`${item.type}-${item.id}`}

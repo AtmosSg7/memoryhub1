@@ -71,8 +71,8 @@ export default function CommunicationsPage() {
 
       {emailIntegrationReady === false ? <EmailIntegrationBanner /> : null}
 
-      <div className="bg-white border border-[#E5E7EB] rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-[#F3F4F6] space-y-3">
+      <div className="bg-dash-surface border border-dash-border rounded-xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-dash-border-soft space-y-3">
           <div className="flex flex-wrap gap-1.5" data-testid="communication-link-scopes">
             {LINK_SCOPES.map(({ key }) => {
               const active = scope === key;
@@ -117,7 +117,7 @@ export default function CommunicationsPage() {
           ) : null}
 
           {!showEmailInbox ? (
-            <p className="text-[11px] text-[#9CA3AF]">
+            <p className="text-[11px] text-dash-text-subtle">
               {t("communications.count")
                 .replace("{count}", String(items.length))
                 .replace("{total}", String(total))}
@@ -125,7 +125,7 @@ export default function CommunicationsPage() {
           ) : null}
 
           {unlinkedCount > 0 && scope === "activity" ? (
-            <div className="rounded-lg border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-2 text-xs text-[#0A2540] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="rounded-lg border border-[color:var(--dash-info-border)] bg-dash-accent-soft px-3 py-2 text-xs text-dash-primary flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <span>
                 {t("unlinkedEmails.banner").replace("{count}", String(unlinkedCount))}
               </span>
@@ -141,7 +141,7 @@ export default function CommunicationsPage() {
           ) : null}
 
           {isTruncated ? (
-            <div className="rounded-lg border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 text-xs text-[#92400E] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="rounded-lg border border-[color:var(--dash-warning-border)] bg-[color:var(--dash-warning-bg)] px-3 py-2 text-xs text-[color:var(--dash-warning-text)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <span>{t("communications.truncatedHint")}</span>
               {!clientId ? (
                 <ActionButton

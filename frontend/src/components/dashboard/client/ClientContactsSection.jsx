@@ -57,8 +57,8 @@ function ContactBadge({ children, primary = false }) {
       className={[
         "inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border",
         primary
-          ? "bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]"
-          : "bg-[#F9FAFB] text-[#6B7280] border-[#E5E7EB]",
+          ? "bg-dash-accent-soft text-[#1D4ED8] border-[#BFDBFE]"
+          : "bg-dash-bg text-dash-text-muted border-dash-border",
       ].join(" ")}
     >
       {children}
@@ -69,7 +69,7 @@ function ContactBadge({ children, primary = false }) {
 function PhoneEmailForm({ kind, draft, setDraft, onCancel, onSave, saving, t }) {
   const valueId = `${kind}-value`;
   return (
-    <div className="rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] p-3 space-y-3" data-testid={`${kind}-form`}>
+    <div className="rounded-xl border border-dash-border bg-dash-surface-muted p-3 space-y-3" data-testid={`${kind}-form`}>
       <div className="space-y-2">
         <Label htmlFor={valueId} className={FORM_LABEL_CLASS}>
           {kind === "phone" ? t("clientForm.phone") : t("clientForm.email")}
@@ -93,7 +93,7 @@ function PhoneEmailForm({ kind, draft, setDraft, onCancel, onSave, saving, t }) 
           testId={`${kind}-form-label`}
         />
       </div>
-      <label className="inline-flex items-center gap-2 text-sm text-[#374151]">
+      <label className="inline-flex items-center gap-2 text-sm text-dash-text-muted">
         <input
           type="checkbox"
           checked={Boolean(draft.isPrimary)}
@@ -122,7 +122,7 @@ function PhoneEmailForm({ kind, draft, setDraft, onCancel, onSave, saving, t }) 
 
 function AddressForm({ draft, setDraft, onCancel, onSave, saving, t }) {
   return (
-    <div className="rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] p-3 space-y-3" data-testid="address-form">
+    <div className="rounded-xl border border-dash-border bg-dash-surface-muted p-3 space-y-3" data-testid="address-form">
       <div className="space-y-2">
         <Label className={FORM_LABEL_CLASS}>{t("clientContacts.addressLine")}</Label>
         <Input
@@ -162,7 +162,7 @@ function AddressForm({ draft, setDraft, onCancel, onSave, saving, t }) {
           testId="address-form-label"
         />
       </div>
-      <label className="inline-flex items-center gap-2 text-sm text-[#374151]">
+      <label className="inline-flex items-center gap-2 text-sm text-dash-text-muted">
         <input
           type="checkbox"
           checked={Boolean(draft.isPrimary)}
@@ -274,8 +274,8 @@ function ContactChannel({
   return (
     <div className="space-y-3" data-testid={`client-contact-channel-${kind}`}>
       <div className="flex items-center justify-between gap-2">
-        <h4 className="text-sm font-semibold text-[#111827] inline-flex items-center gap-2">
-          <Icon className="w-4 h-4 text-[#0A2540]" />
+        <h4 className="text-sm font-semibold text-dash-text inline-flex items-center gap-2">
+          <Icon className="w-4 h-4 text-dash-primary" />
           {title}
         </h4>
         {mode === null ? (
@@ -328,7 +328,7 @@ function ContactChannel({
           return (
             <li
               key={item.id}
-              className="rounded-xl border border-[#E5E7EB] bg-white px-3 py-2.5"
+              className="rounded-xl border border-dash-border bg-dash-surface px-3 py-2.5"
               data-testid={`${kind}-item-${item.id}`}
             >
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:justify-between">
@@ -357,7 +357,7 @@ function ContactChannel({
                       </ContactBadge>
                     ) : null}
                   </div>
-                  <p className="text-sm font-medium text-[#111827] break-words">{display || "—"}</p>
+                  <p className="text-sm font-medium text-dash-text break-words">{display || "—"}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5 shrink-0">
                   {!item.isPrimary ? (
@@ -401,7 +401,7 @@ function ContactChannel({
       </ul>
 
       {!items.length && mode === null ? (
-        <p className="text-xs text-[#9CA3AF]">{t(`clientContacts.empty.${kind}`)}</p>
+        <p className="text-xs text-dash-text-subtle">{t(`clientContacts.empty.${kind}`)}</p>
       ) : null}
 
       {mode === "add" && draft ? (
@@ -451,7 +451,7 @@ export default function ClientContactsSection({ client, onSaveContacts, onSaveTa
             t={t}
             onCommit={(phones) => onSaveContacts({ phones })}
           />
-          <div className="border-t border-[#F3F4F6]" />
+          <div className="border-t border-dash-border-soft" />
           <ContactChannel
             kind="email"
             icon={Mail}
@@ -461,7 +461,7 @@ export default function ClientContactsSection({ client, onSaveContacts, onSaveTa
             t={t}
             onCommit={(emails) => onSaveContacts({ emails })}
           />
-          <div className="border-t border-[#F3F4F6]" />
+          <div className="border-t border-dash-border-soft" />
           <ContactChannel
             kind="address"
             icon={MapPin}

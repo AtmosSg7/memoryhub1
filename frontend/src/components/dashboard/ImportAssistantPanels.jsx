@@ -44,7 +44,7 @@ function CheckItem({ children, variant = "success" }) {
   const iconClass =
     variant === "warning" ? "text-[#D97706]" : "text-[#059669]";
   return (
-    <li className="flex items-start gap-2.5 text-sm text-[#111827]">
+    <li className="flex items-start gap-2.5 text-sm text-dash-text">
       <Icon className={`w-4 h-4 shrink-0 mt-0.5 ${iconClass}`} />
       <span>{children}</span>
     </li>
@@ -59,18 +59,18 @@ export function AssistantSummaryPanel({ session, form, t, lang }) {
 
   return (
     <div
-      className="rounded-2xl border border-[#BFDBFE] bg-gradient-to-br from-[#EFF6FF] to-white p-5 sm:p-6"
+      className="rounded-2xl border border-[#BFDBFE] bg-gradient-to-br from-dash-accent-soft to-white p-5 sm:p-6"
       data-testid="import-assistant-summary"
     >
       <div className="flex items-center gap-2 mb-4">
-        <div className="w-9 h-9 rounded-xl bg-[#0A2540] flex items-center justify-center">
+        <div className="w-9 h-9 rounded-xl bg-[var(--dash-nav-active-bg)] flex items-center justify-center">
           <Sparkles className="w-4 h-4 text-white" />
         </div>
         <div>
-          <h3 className="font-cabinet text-base font-bold text-[#0A2540]">
+          <h3 className="font-cabinet text-base font-bold text-dash-primary">
             {t("importWizard.assistant.title")}
           </h3>
-          <p className="text-xs text-[#6B7280]">{t("importWizard.assistant.subtitle")}</p>
+          <p className="text-xs text-dash-text-muted">{t("importWizard.assistant.subtitle")}</p>
         </div>
       </div>
 
@@ -140,13 +140,13 @@ export function LineItemsCards({ session, t }) {
   if (lineItems.length === 0) return null;
 
   return (
-    <div className="rounded-2xl border border-[#E7E9EE] bg-[#FAFAFA] p-4 sm:p-5">
+    <div className="rounded-2xl border border-dash-border bg-dash-surface-muted p-4 sm:p-5">
       <div className="flex items-center gap-2 mb-4">
         <FileText className="w-4 h-4 text-[#0066FF]" />
-        <h3 className="font-cabinet text-sm font-bold text-[#111827]">
+        <h3 className="font-cabinet text-sm font-bold text-dash-text">
           {t("importWizard.lineItems.title")}
         </h3>
-        <span className="ml-auto text-xs font-medium text-[#6B7280] bg-white border border-[#E7E9EE] rounded-full px-2 py-0.5">
+        <span className="ml-auto text-xs font-medium text-dash-text-muted bg-dash-surface border border-dash-border rounded-full px-2 py-0.5">
           {lineItems.length}
         </span>
       </div>
@@ -154,12 +154,12 @@ export function LineItemsCards({ session, t }) {
         {lineItems.map((item, index) => (
           <div
             key={`${item.label}-${index}`}
-            className="rounded-xl border border-[#E7E9EE] bg-white p-3.5"
+            className="rounded-xl border border-dash-border bg-dash-surface p-3.5"
           >
-            <p className="text-sm font-medium text-[#111827] leading-snug">
+            <p className="text-sm font-medium text-dash-text leading-snug">
               {item.label || item.description || "—"}
             </p>
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#6B7280]">
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-dash-text-muted">
               <span>
                 {t("importWizard.lineItems.quantity")}: {formatLineItemQuantity(item.quantity)}
               </span>
@@ -190,18 +190,18 @@ export function ClientAttachmentBanner({
       className={[
         "rounded-2xl border px-4 py-3.5 flex items-start gap-3",
         creatingNew
-          ? "border-[#E7E9EE] bg-[#FAFAFA]"
-          : "border-[#BFDBFE] bg-[#EFF6FF]",
+          ? "border-dash-border bg-dash-surface-muted"
+          : "border-[#BFDBFE] bg-dash-accent-soft",
       ].join(" ")}
       data-testid="import-client-attachment"
     >
       {creatingNew ? (
-        <UserPlus className="w-5 h-5 text-[#4B5563] shrink-0 mt-0.5" />
+        <UserPlus className="w-5 h-5 text-dash-text-muted shrink-0 mt-0.5" />
       ) : (
-        <UserCheck className="w-5 h-5 text-[#0A2540] shrink-0 mt-0.5" />
+        <UserCheck className="w-5 h-5 text-dash-primary shrink-0 mt-0.5" />
       )}
       <div>
-        <p className="text-sm font-medium text-[#111827]">
+        <p className="text-sm font-medium text-dash-text">
           {creatingNew
             ? t("importWizard.assistant.newClientWillBeCreated")
             : t("importWizard.assistant.willAttachToClient").replace(
@@ -210,7 +210,7 @@ export function ClientAttachmentBanner({
               )}
         </p>
         {!creatingNew && clientName ? (
-          <p className="text-xs text-[#6B7280] mt-1">{clientName}</p>
+          <p className="text-xs text-dash-text-muted mt-1">{clientName}</p>
         ) : null}
       </div>
     </div>
@@ -221,18 +221,18 @@ export function AdjustFieldsPanel({ session, form, updateForm, t, defaultVatRate
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="rounded-2xl border border-[#E7E9EE] bg-white overflow-hidden">
+    <div className="rounded-2xl border border-dash-border bg-dash-surface overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-[#374151] hover:bg-[#FAFAFA] transition-colors"
+        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-dash-text-muted hover:bg-dash-surface-muted transition-colors"
         data-testid="import-adjust-toggle"
       >
         <span>{t("importWizard.editDetected")}</span>
         {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
       </button>
       {open ? (
-        <div className="px-4 pb-4 pt-1 grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-[#F3F4F6]">
+        <div className="px-4 pb-4 pt-1 grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-dash-border-soft">
           <div className="space-y-2 sm:col-span-2">
             <Label className={FORM_LABEL_CLASS}>{t("importWizard.fields.kind")}</Label>
             <Select value={form.targetKind} onValueChange={(value) => updateForm({ targetKind: value })}>
@@ -334,7 +334,7 @@ export function PremiumReadyPanel({
 
   return (
     <div className="space-y-4" data-testid="import-premium-ready">
-      <div className="rounded-2xl border border-[#E7E9EE] overflow-hidden">
+      <div className="rounded-2xl border border-dash-border overflow-hidden">
         <div className="bg-gradient-to-r from-[#0A2540] to-[#173A5E] px-5 py-5 text-white">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5" />
@@ -343,9 +343,9 @@ export function PremiumReadyPanel({
           <p className="text-sm text-white/80 mt-1">{session?.file?.name}</p>
         </div>
 
-        <div className="p-5 bg-white space-y-4">
+        <div className="p-5 bg-dash-surface space-y-4">
           <div>
-            <p className="text-sm font-semibold text-[#111827] mb-3">
+            <p className="text-sm font-semibold text-dash-text mb-3">
               {t("importWizard.ready.operationsTitle")}
             </p>
             <ul className="space-y-2">
@@ -361,18 +361,18 @@ export function PremiumReadyPanel({
             </ul>
           </div>
 
-          <div className="rounded-xl bg-[#FAFAFA] border border-[#E7E9EE] p-3 grid grid-cols-2 gap-3 text-sm">
+          <div className="rounded-xl bg-dash-surface-muted border border-dash-border p-3 grid grid-cols-2 gap-3 text-sm">
             <div>
-              <span className="text-[#9CA3AF] text-xs uppercase tracking-wide">{t("importWizard.fields.kind")}</span>
-              <p className="font-medium text-[#111827] mt-0.5">{docLabel}</p>
+              <span className="text-dash-text-subtle text-xs uppercase tracking-wide">{t("importWizard.fields.kind")}</span>
+              <p className="font-medium text-dash-text mt-0.5">{docLabel}</p>
             </div>
             <div>
-              <span className="text-[#9CA3AF] text-xs uppercase tracking-wide">{t("importWizard.fields.amountTTC")}</span>
-              <p className="font-medium text-[#111827] mt-0.5">{formatQuoteAmount(form.amountTTC, lang)}</p>
+              <span className="text-dash-text-subtle text-xs uppercase tracking-wide">{t("importWizard.fields.amountTTC")}</span>
+              <p className="font-medium text-dash-text mt-0.5">{formatQuoteAmount(form.amountTTC, lang)}</p>
             </div>
             <div className="col-span-2">
-              <span className="text-[#9CA3AF] text-xs uppercase tracking-wide">{t("importWizard.summary.client")}</span>
-              <p className="font-medium text-[#111827] mt-0.5">{clientName || "—"}</p>
+              <span className="text-dash-text-subtle text-xs uppercase tracking-wide">{t("importWizard.summary.client")}</span>
+              <p className="font-medium text-dash-text mt-0.5">{clientName || "—"}</p>
             </div>
           </div>
         </div>
@@ -387,8 +387,8 @@ export function PremiumReadyPanel({
       />
 
       {(session?.clientMatches?.length > 0 || clients.length > 0) && (
-        <div className="rounded-2xl border border-[#E7E9EE] bg-white p-4 space-y-3">
-          <p className="text-sm font-medium text-[#111827]">{t("importWizard.ready.changeClient")}</p>
+        <div className="rounded-2xl border border-dash-border bg-dash-surface p-4 space-y-3">
+          <p className="text-sm font-medium text-dash-text">{t("importWizard.ready.changeClient")}</p>
           {session?.clientMatches?.length > 0 && (
             <div className="space-y-2">
               {session.clientMatches.slice(0, 2).map((match) => (
@@ -402,8 +402,8 @@ export function PremiumReadyPanel({
                   className={[
                     "w-full text-left rounded-xl border px-3 py-2.5 text-sm transition-colors",
                     selectedClientId === match.clientId && clientAction === "use_existing"
-                      ? "border-[#0A2540] bg-[#EFF6FF]"
-                      : "border-[#E7E9EE] hover:bg-[#FAFAFA]",
+                      ? "border-dash-primary bg-dash-accent-soft"
+                      : "border-dash-border hover:bg-dash-surface-muted",
                   ].join(" ")}
                 >
                   {match.clientName}
@@ -430,8 +430,8 @@ export function PremiumReadyPanel({
             className={[
               "w-full rounded-xl border px-3 py-2.5 text-sm text-left transition-colors",
               clientAction === "create_new"
-                ? "border-[#0A2540] bg-[#EFF6FF]"
-                : "border-[#E7E9EE] hover:bg-[#FAFAFA]",
+                ? "border-dash-primary bg-dash-accent-soft"
+                : "border-dash-border hover:bg-dash-surface-muted",
             ].join(" ")}
           >
             {t("importWizard.createClient")}
@@ -440,7 +440,7 @@ export function PremiumReadyPanel({
       )}
 
       {clientAction === "create_new" && (
-        <div className="rounded-2xl border border-[#E7E9EE] bg-white p-4">
+        <div className="rounded-2xl border border-dash-border bg-dash-surface p-4">
           <Label className={FORM_LABEL_CLASS}>{t("importWizard.fields.clientName")}</Label>
           <Input
             className={`${FORM_FIELD_CLASS} mt-2`}

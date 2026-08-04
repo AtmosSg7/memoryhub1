@@ -34,18 +34,18 @@ export default function StatCard({
       className={[
         "group relative rounded-xl transition-all duration-300",
         muted
-          ? "bg-[#FAFAFA] border border-[#F3F4F6] p-2.5 md:p-3"
+          ? "bg-dash-surface-muted border border-dash-border-soft p-2.5 md:p-3"
           : secondary
-            ? "bg-white border border-[#E5E7EB] p-3 md:p-4"
-            : "bg-white border border-[#E5E7EB] p-5 hover:-translate-y-[2px] hover:shadow-[0_8px_24px_-12px_rgba(10,37,64,0.15)] hover:border-[#0A2540]/20",
-        interactive ? "cursor-pointer hover:border-[#0A2540]/20" : "",
+            ? "bg-dash-surface border border-dash-border p-3 md:p-4"
+            : "bg-dash-surface border border-dash-border p-5 hover:-translate-y-[2px] hover:shadow-[var(--dash-panel-shadow)] hover:border-dash-primary/20",
+        interactive ? "cursor-pointer hover:border-dash-primary/20" : "",
       ].join(" ")}
     >
       <div className={["flex items-center justify-between gap-2", muted ? "mb-1" : compact ? "mb-2" : "mb-6"].join(" ")}>
         <span
           className={[
             "font-medium truncate",
-            muted ? "text-[10px] text-[#9CA3AF]" : compact ? "text-[11px] text-[#4B5563]" : "text-[13px] text-[#4B5563]",
+            muted ? "text-[10px] text-dash-text-subtle" : compact ? "text-[11px] text-dash-text-muted" : "text-[13px] text-dash-text-muted",
           ].join(" ")}
         >
           {label}
@@ -56,8 +56,8 @@ export default function StatCard({
               "rounded-lg flex items-center justify-center transition-colors shrink-0",
               compact ? "w-6 h-6" : "w-8 h-8",
               accent
-                ? "bg-[#0A2540] text-white"
-                : "bg-[#F3F4F6] text-[#4B5563] group-hover:bg-[#EFF6FF] group-hover:text-[#0A2540]",
+                ? "bg-[var(--dash-nav-active-bg)] text-white"
+                : "bg-dash-surface-muted text-dash-text-muted group-hover:bg-dash-accent-soft group-hover:text-dash-primary",
             ].join(" ")}
           >
             <Icon className={compact ? "w-3 h-3" : "w-4 h-4"} strokeWidth={1.75} />
@@ -69,7 +69,7 @@ export default function StatCard({
         <span
           className={[
             "font-cabinet font-bold tracking-tight leading-none",
-            muted ? "text-lg text-[#4B5563]" : compact ? "text-xl md:text-2xl text-[#111827]" : "text-3xl md:text-[34px] text-[#111827]",
+            muted ? "text-lg text-dash-text-muted" : compact ? "text-xl md:text-2xl text-dash-text" : "text-3xl md:text-[34px] text-dash-text",
           ].join(" ")}
         >
           {value}
@@ -84,7 +84,7 @@ export default function StatCard({
               {trend}
             </span>
           )}
-          {helper && <span className="text-[#6B7280]">{helper}</span>}
+          {helper && <span className="text-dash-text-muted">{helper}</span>}
         </div>
       )}
     </div>

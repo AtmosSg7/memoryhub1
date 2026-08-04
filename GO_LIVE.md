@@ -1,4 +1,4 @@
-# MemoryHub V1 — Go Live
+# Basera V1 — Go Live
 
 Guide opérationnel pour le **premier déploiement production** et les mises à jour suivantes.
 
@@ -17,12 +17,12 @@ Guide opérationnel pour le **premier déploiement production** et les mises à 
    ENV=production $(grep -v '^#' deploy/.env | xargs) \
      python3 -c "from env_validation import validate_production_env; validate_production_env()"
    ```
-4. **DNS** : enregistrement A `app.votredomaine.fr` → IP du VPS
+4. **DNS** : enregistrement A `basera.fr` (et `www` si besoin) → IP du VPS — **uniquement après stack validée**
 5. **Certificats TLS** : Let's Encrypt ou certificats fournis dans `deploy/certs/`
 6. **Stripe Production** :
    - Clés live (`sk_live_`, `whsec_`)
-   - Prix Solo / Pro / Team créés
-   - Webhook `https://app.votredomaine.fr/api/stripe/webhook` (événements : checkout, invoice, subscription)
+   - Prix Solo / Pro / Team créés (Price IDs dans `deploy/.env`)
+   - Webhook `https://basera.fr/api/stripe/webhook` (à configurer **après** mise en ligne HTTPS ; événements : checkout, invoice, subscription)
 7. **SMTP** : SPF/DKIM configurés, email test envoyé
 8. **Sentry** : `SENTRY_DSN` + `SENTRY_USER_SALT` uniques
 9. **Backup test** : restaurer un dump sur instance isolée (voir `docs/BACKUPS.md`)
@@ -43,18 +43,18 @@ git checkout v1.0.0-rc1   # ou commit SHA validé
 export IMAGE_TAG=$(git rev-parse --short HEAD)
 
 # 4. Build images
-docker compose -f docker-compose.yml -f docker-compose.prod.yml build
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env build
 
 # 5. Démarrer la stack
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env up -d
 
 # 6. Indexes MongoDB
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec backend \
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env exec backend \
   python scripts/migrate_indexes.py
 
 # 7. Premier admin
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec backend \
-  python scripts/promote_admin.py founder@votredomaine.fr
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env exec backend \
+  python scripts/promote_admin.py founder@basera.fr
 
 # 8. Cron backups (une fois)
 sudo ./deploy/scripts/install-cron.sh /opt/memoryhub
@@ -64,13 +64,13 @@ sudo ./deploy/scripts/install-cron.sh /opt/memoryhub
 
 ```bash
 # Santé infrastructure
-curl -fsS https://app.votredomaine.fr/health
-curl -fsS https://app.votredomaine.fr/health/backend/ready
-curl -fsS https://app.votredomaine.fr/api/health
-curl -fsS https://app.votredomaine.fr/api/ready
+curl -fsS https://basera.fr/health
+curl -fsS https://basera.fr/health/backend/ready
+curl -fsS https://basera.fr/api/health
+curl -fsS https://basera.fr/api/ready
 
 # Logs (aucune erreur FATAL)
-docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=100 backend
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env logs --tail=100 backend
 ```
 
 ### Phase D — Smoke manuel artisan (T+30 min)
@@ -105,8 +105,8 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=100 
 cd /opt/memoryhub
 export IMAGE_TAG=<commit-sha-stable>
 git checkout <commit-sha-stable>
-docker compose -f docker-compose.yml -f docker-compose.prod.yml build
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env build
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env up -d
 docker compose exec backend python scripts/migrate_indexes.py
 ```
 

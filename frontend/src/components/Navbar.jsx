@@ -44,7 +44,7 @@ export const Navbar = ({ onJoin, standalone = false }) => {
               <Sparkles className="w-4 h-4 text-white" strokeWidth={2.4} />
             </div>
             <span className="font-display text-[17px] font-bold tracking-tight text-[#0A0A0B]">
-              MemoryHub
+              Basera
             </span>
           </Link>
         ) : (
@@ -53,7 +53,7 @@ export const Navbar = ({ onJoin, standalone = false }) => {
               <Sparkles className="w-4 h-4 text-white" strokeWidth={2.4} />
             </div>
             <span className="font-display text-[17px] font-bold tracking-tight text-[#0A0A0B]">
-              MemoryHub
+              Basera
             </span>
           </a>
         )}

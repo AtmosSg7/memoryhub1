@@ -135,7 +135,7 @@ export default function PersonalReminderRowActions({ reminder, onChanged, disabl
       </div>
 
       <Dialog open={snoozeOpen} onOpenChange={setSnoozeOpen}>
-        <DialogContent className="max-w-sm" data-testid="personal-reminder-snooze-dialog">
+        <DialogContent className="max-w-sm bg-[var(--dash-modal-bg,#FFFFFF)] backdrop-blur-none" data-testid="personal-reminder-snooze-dialog">
           <DialogHeader>
             <DialogTitle>{t("personalReminder.snoozeTitle")}</DialogTitle>
           </DialogHeader>
@@ -154,7 +154,7 @@ export default function PersonalReminderRowActions({ reminder, onChanged, disabl
             >
               {t("personalReminder.snooze.tomorrowMorning")}
             </ActionButton>
-            <div className="space-y-2 pt-2 border-t border-[#F3F4F6]">
+            <div className="space-y-2 pt-2 border-t border-dash-border-soft">
               <Label className={FORM_LABEL_CLASS}>{t("personalReminder.snooze.pickDate")}</Label>
               <div className="grid grid-cols-2 gap-2">
                 <Input

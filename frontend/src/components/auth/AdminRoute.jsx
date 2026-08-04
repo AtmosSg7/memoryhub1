@@ -25,7 +25,7 @@ export const AdminRoute = ({ children }) => {
         <div className="max-w-md text-center space-y-3">
           <ShieldAlert className="w-10 h-10 mx-auto text-amber-400" />
           <h1 className="text-xl font-semibold">Accès refusé</h1>
-          <p className="text-sm text-slate-400">Cet espace est réservé aux administrateurs MemoryHub.</p>
+          <p className="text-sm text-slate-400">Cet espace est réservé aux administrateurs Basera.</p>
         </div>
       </div>
     );

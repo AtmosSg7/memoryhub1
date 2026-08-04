@@ -47,7 +47,7 @@ USERS = {
         "password": "E2eAdminPass1!",
         "firstName": "Founder",
         "lastName": "Admin",
-        "companyName": "MemoryHub Ops",
+        "companyName": "Basera Ops",
         "role": USER_ROLE_ADMIN,
     },
 }

@@ -10,6 +10,8 @@ from typing import Optional
 from fastapi import HTTPException
 
 from beta_feedback_models import BetaFeedbackCreate, BetaFeedbackResponse
+from email_utils import support_email
+from form_abuse import assert_human_submission
 from observability import log_event
 from security_config import IS_DEPLOYED
 
@@ -36,15 +38,64 @@ def _sanitize_page(page: Optional[str]) -> Optional[str]:
     return cleaned[:200]
 
 
+def _notify_support_of_feedback(doc: dict, *, user_email: Optional[str] = None) -> None:
+    """Best-effort notify — persistence already succeeded; never fail the request."""
+    try:
+        from email_provider import get_email_provider
+
+        to = support_email()
+        subject = f"[Basera feedback] {(doc.get('intent') or '')[:80]}"
+        lines = [
+            f"Feedback id: {doc.get('id')}",
+            f"User id: {doc.get('userId')}",
+            f"User email: {user_email or '(unknown)'}",
+            f"Page: {doc.get('page') or '-'}",
+            f"Env: {doc.get('env')}",
+            f"Created: {doc.get('createdAt')}",
+            "",
+            "Intent:",
+            doc.get("intent") or "",
+            "",
+            "Blocker:",
+            doc.get("blocker") or "(none)",
+            "",
+            "Suggestion:",
+            doc.get("suggestion") or "(none)",
+        ]
+        text_body = "\n".join(lines)
+        html_body = "<pre style=\"font-family:sans-serif;white-space:pre-wrap\">" + (
+            text_body.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        ) + "</pre>"
+        get_email_provider().send(
+            to=to,
+            subject=subject,
+            text_body=text_body,
+            html_body=html_body,
+        )
+    except Exception:
+        log_event(
+            "beta_feedback.notify_failed",
+            user_id=doc.get("userId"),
+            result="error",
+        )
+
+
 async def create_beta_feedback(
     db,
     user_id: str,
     body: BetaFeedbackCreate,
     *,
     user_agent: Optional[str] = None,
+    user_email: Optional[str] = None,
 ) -> BetaFeedbackResponse:
     if not beta_feedback_enabled():
         raise HTTPException(status_code=404, detail={"message": "Not found."})
+
+    assert_human_submission(
+        website=body.website,
+        form_started_at=body.formStartedAt,
+        route="beta.feedback",
+    )
 
     since = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
     recent = await db.beta_feedback.count_documents(
@@ -75,6 +126,7 @@ async def create_beta_feedback(
         result="ok",
         page=doc["page"],
     )
+    _notify_support_of_feedback(doc, user_email=user_email)
     return BetaFeedbackResponse(
         id=doc["id"],
         message="Merci pour votre retour.",

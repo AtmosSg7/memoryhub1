@@ -1,6 +1,6 @@
-# MemoryHub — Production Deployment
+# Basera — Production Deployment
 
-Guide complet pour déployer MemoryHub sur un VPS Linux avec Docker Compose.
+Guide complet pour déployer Basera sur un VPS Linux avec Docker Compose.
 
 ## Architecture
 
@@ -19,7 +19,8 @@ scheduler → retries emails (compose prod)
 | Fichier | Usage |
 |---------|-------|
 | `docker-compose.yml` | Stack de base |
-| `docker-compose.prod.yml` | Production : MongoDB auth, scheduler, limites mémoire |
+| `docker-compose.production.yml` | Production (OVH) : MongoDB auth, scheduler, limites mémoire |
+| `docker-compose.prod.yml` | Alias de `docker-compose.production.yml` |
 | `docker-compose.staging.yml` | Staging : HTTP 8080, DB séparée |
 | `docker-compose.local-prod.yml` | Test local avec TLS auto-signé + 8080 |
 
@@ -47,21 +48,21 @@ nano deploy/.env   # voir deploy/SECRETS_CHECKLIST.md
 
 # Certificats TLS (staging local)
 chmod +x deploy/scripts/generate-self-signed-certs.sh
-./deploy/scripts/generate-self-signed-certs.sh app.example.com
+./deploy/scripts/generate-self-signed-certs.sh basera.fr
 
-# Production Let's Encrypt (sur le VPS, arrêter nginx si port 80 occupé)
-# sudo certbot certonly --standalone -d app.example.com
-# sudo cp /etc/letsencrypt/live/app.example.com/fullchain.pem deploy/certs/
-# sudo cp /etc/letsencrypt/live/app.example.com/privkey.pem deploy/certs/
+# Production Let's Encrypt — seulement après DNS (voir deploy/scripts/issue-letsencrypt.sh)
+# sudo ./deploy/scripts/issue-letsencrypt.sh basera.fr www.basera.fr
 
-docker compose -f docker-compose.yml -f docker-compose.prod.yml build
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env build
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env up -d
 
 # Vérifications
-curl -fsS http://localhost/health
-curl -fsS http://localhost/health/backend/ready
-docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+curl -kfsS https://127.0.0.1/health
+curl -kfsS https://127.0.0.1/health/backend/ready
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env ps
 ```
+
+Guide OVH : `deploy/OVH_VPS_DEPLOY.md`.
 
 ## Variables obligatoires
 
@@ -75,9 +76,9 @@ Le backend **refuse de démarrer** si `ENV=production` et qu'une variable critiq
 cd /opt/memoryhub
 git pull
 export IMAGE_TAG=$(git rev-parse --short HEAD)
-docker compose -f docker-compose.yml -f docker-compose.prod.yml build
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec backend python scripts/migrate_indexes.py
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env build
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env up -d
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env exec backend python scripts/migrate_indexes.py
 ```
 
 ## Health & readiness

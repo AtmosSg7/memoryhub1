@@ -48,20 +48,20 @@ export default function ClientFollowUpList({ items, loading, error, emptyLabel, 
               data-testid={`${testIdPrefix}-item-${item.id}`}
             >
               <div className="flex items-center gap-2 mb-0.5">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white border border-[#FDE68A] text-[#92400E]">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-dash-surface border border-[#FDE68A] text-[#92400E]">
                   <Send className="w-3 h-3" />
                   {t("followUpHistory.badge")}
                 </span>
                 <span className="text-[11px] font-medium text-[#92400E]">{item.documentNumber}</span>
-                <span className="ml-auto text-[11px] text-[#9CA3AF] tabular-nums">
+                <span className="ml-auto text-[11px] text-dash-text-subtle tabular-nums">
                   {formatEventTime(item.recordedAt, lang)}
                 </span>
               </div>
               {item.subject ? (
-                <p className="text-xs font-medium text-[#111827] truncate">{item.subject}</p>
+                <p className="text-xs font-medium text-dash-text truncate">{item.subject}</p>
               ) : null}
               {item.excerpt ? (
-                <p className="text-xs text-[#6B7280] mt-0.5 truncate">{item.excerpt}</p>
+                <p className="text-xs text-dash-text-muted mt-0.5 truncate">{item.excerpt}</p>
               ) : null}
             </button>
           </li>

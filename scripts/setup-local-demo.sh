@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prepare a local MemoryHub demo account: create dev user, seed demo_v2, print login.
+# Prepare a local Basera demo account: create dev user, seed demo_v2, print login.
 # Blocked when ENV=production (scripts themselves enforce this).
 set -euo pipefail
 

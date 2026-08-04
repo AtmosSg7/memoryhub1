@@ -1,19 +1,20 @@
-import { ChevronDown, Plus, Upload } from "lucide-react";
+import { ChevronDown, FilePlus, Plus, Upload } from "lucide-react";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { ActionButton } from "@/components/dashboard/ActionButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 export default function CommercialDocumentsHeaderActions({
   hasClients,
+  onImportDocument,
   onCreateQuote,
   onCreateInvoice,
-  onImportQuote,
-  onImportInvoice,
+  onCreateBlank,
   onNeedClient,
 }) {
   const { t } = useDashboardLang();
@@ -27,38 +28,49 @@ export default function CommercialDocumentsHeaderActions({
     <div className="flex items-center gap-2" data-testid="commercial-documents-header-actions">
       <ActionButton
         variant="primary"
-        onClick={() => guardClient(onCreateQuote)}
-        data-testid="commercial-documents-create-quote"
+        onClick={() => guardClient(onImportDocument)}
+        data-testid="commercial-documents-import"
       >
-        <Plus className="w-4 h-4" />
-        {t("actions.createQuote")}
+        <Upload className="w-4 h-4" />
+        {t("documentActions.importDocument")}
       </ActionButton>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <ActionButton variant="secondary" data-testid="commercial-documents-more-actions">
-            {t("actions.moreActions")}
+          <ActionButton variant="secondary" data-testid="commercial-documents-add-menu">
+            {t("documentActions.add")}
             <ChevronDown className="w-4 h-4" />
           </ActionButton>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuItem
+            onClick={() => guardClient(onCreateQuote)}
+            data-testid="commercial-documents-create-quote"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            {t("documentActions.addProposal")}
+          </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => guardClient(onCreateInvoice)}
             data-testid="commercial-documents-create-invoice"
           >
             <Plus className="w-4 h-4 mr-2" />
-            {t("actions.createInvoice")}
+            {t("documentActions.addTrackingInvoice")}
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => guardClient(onImportQuote)} data-testid="commercial-documents-import-quote">
-            <Upload className="w-4 h-4 mr-2" />
-            {t("actions.importQuote")}
-          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={() => guardClient(onImportInvoice)}
-            data-testid="commercial-documents-import-invoice"
+            onClick={() => guardClient(onImportDocument)}
+            data-testid="commercial-documents-import-multiple"
           >
             <Upload className="w-4 h-4 mr-2" />
-            {t("actions.importInvoice")}
+            {t("documentActions.importMultiple")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => guardClient(onCreateBlank)}
+            data-testid="commercial-documents-create-blank"
+          >
+            <FilePlus className="w-4 h-4 mr-2" />
+            {t("documentActions.createBlankAdvanced")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

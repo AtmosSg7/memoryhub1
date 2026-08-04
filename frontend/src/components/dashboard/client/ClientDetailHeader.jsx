@@ -1,5 +1,22 @@
 import { useState } from "react";
-import { ArrowLeft, ChevronLeft, ChevronRight, Mail, MapPin, Phone, Pencil, Trash2, FileText, Receipt, Loader2, StickyNote, Star } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Loader2,
+  Mail,
+  MapPin,
+  Pencil,
+  Phone,
+  Plus,
+  Receipt,
+  Star,
+  StickyNote,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { ActionButton } from "@/components/dashboard/ActionButton";
 import StatusBadge from "@/components/dashboard/StatusBadge";
 import {
@@ -26,6 +43,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   DELETE_MODAL_CONTENT_CLASS,
   DELETE_MODAL_OVERLAY_CLASS,
 } from "@/components/dashboard/DeleteConfirmDialog";
@@ -41,6 +64,7 @@ export default function ClientDetailHeader({
   nextClientLabel,
   onEdit,
   onDelete,
+  onImportDocument,
   onCreateQuote,
   onCreateInvoice,
   onCreateNote,
@@ -76,7 +100,7 @@ export default function ClientDetailHeader({
           type="button"
           onClick={onBack}
           data-testid="client-detail-back"
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#4B5563] hover:text-[#111827] transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-dash-text-muted hover:text-dash-text transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           {t("clientDetail.back")}
@@ -88,7 +112,7 @@ export default function ClientDetailHeader({
             disabled={!onPrevClient}
             title={prevClientLabel}
             data-testid="client-detail-prev"
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-[#4B5563] hover:bg-[#F3F4F6] disabled:opacity-40 disabled:pointer-events-none"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-dash-text-muted hover:bg-dash-surface-muted disabled:opacity-40 disabled:pointer-events-none"
           >
             <ChevronLeft className="w-4 h-4" />
             <span className="hidden sm:inline max-w-[120px] truncate">{prevClientLabel || "—"}</span>
@@ -99,7 +123,7 @@ export default function ClientDetailHeader({
             disabled={!onNextClient}
             title={nextClientLabel}
             data-testid="client-detail-next"
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-[#4B5563] hover:bg-[#F3F4F6] disabled:opacity-40 disabled:pointer-events-none"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-dash-text-muted hover:bg-dash-surface-muted disabled:opacity-40 disabled:pointer-events-none"
           >
             <span className="hidden sm:inline max-w-[120px] truncate">{nextClientLabel || "—"}</span>
             <ChevronRight className="w-4 h-4" />
@@ -107,7 +131,7 @@ export default function ClientDetailHeader({
         </div>
       </div>
 
-      <div className="bg-white border border-[#E5E7EB] rounded-xl p-5 md:p-6">
+      <div className="bg-dash-surface border border-dash-border rounded-xl p-5 md:p-6">
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
           <div className="flex items-start gap-4 min-w-0 flex-1">
             <div
@@ -118,7 +142,7 @@ export default function ClientDetailHeader({
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h1 className="font-cabinet text-2xl font-bold text-[#111827] tracking-tight truncate">
+                <h1 className="font-cabinet text-2xl font-bold text-dash-text tracking-tight truncate">
                   {company}
                 </h1>
                 {onToggleFavorite ? (
@@ -133,7 +157,7 @@ export default function ClientDetailHeader({
                       "inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-semibold border transition-colors",
                       favorite
                         ? "bg-[#FFFBEB] text-[#B45309] border-[#FDE68A] hover:bg-[#FEF3C7]"
-                        : "bg-white text-[#6B7280] border-[#E5E7EB] hover:bg-[#F9FAFB] hover:text-[#111827]",
+                        : "bg-dash-surface text-dash-text-muted border-dash-border hover:bg-dash-bg hover:text-dash-text",
                     ].join(" ")}
                   >
                     <Star className={`w-3.5 h-3.5 ${favorite ? "fill-current" : ""}`} />
@@ -150,14 +174,14 @@ export default function ClientDetailHeader({
                 ) : null}
                 <StatusBadge kind="client" status={client.status} size="sm" />
               </div>
-              <p className="text-sm text-[#4B5563]">
+              <p className="text-sm text-dash-text-muted">
                 {contactName}
                 {client.activity ? ` · ${client.activity}` : ""}
               </p>
-              <p className="text-[11px] text-[#9CA3AF] mt-1">
+              <p className="text-[11px] text-dash-text-subtle mt-1">
                 {t("clientDetail.lastActivity")} · {formatLastInteraction(client.updatedAt, lang)}
               </p>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs text-[#4B5563]">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs text-dash-text-muted">
                 {email ? (
                   <span className="inline-flex items-center gap-1.5" data-testid="client-header-email">
                     <Mail className="w-3.5 h-3.5 shrink-0" />
@@ -182,7 +206,7 @@ export default function ClientDetailHeader({
                   {tags.map((tag) => (
                     <span
                       key={tag}
-                      className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide bg-[#F3F4F6] text-[#4B5563] border border-[#E5E7EB]"
+                      className="inline-flex px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide bg-dash-surface-muted text-dash-text-muted border border-dash-border"
                     >
                       {tag}
                     </span>
@@ -190,7 +214,7 @@ export default function ClientDetailHeader({
                 </div>
               ) : null}
               {client.notes ? (
-                <p className="mt-3 text-sm text-[#4B5563] border-t border-[#F3F4F6] pt-3 line-clamp-2">
+                <p className="mt-3 text-sm text-dash-text-muted border-t border-dash-border-soft pt-3 line-clamp-2">
                   {client.notes}
                 </p>
               ) : null}
@@ -198,18 +222,33 @@ export default function ClientDetailHeader({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <ActionButton variant="primary" onClick={onCreateQuote} className="gap-1.5" data-testid="client-create-quote">
-              <FileText className="w-4 h-4" />
-              {t("actions.createQuote")}
-            </ActionButton>
-            <ActionButton variant="secondary" onClick={onCreateInvoice} className="gap-1.5" data-testid="client-create-invoice">
-              <Receipt className="w-4 h-4" />
-              {t("actions.createInvoice")}
+            <ActionButton variant="primary" onClick={onImportDocument} className="gap-1.5" data-testid="client-import-document">
+              <Upload className="w-4 h-4" />
+              {t("documentActions.importDocument")}
             </ActionButton>
             <ActionButton variant="secondary" onClick={onCreateNote} className="gap-1.5" data-testid="client-create-note">
               <StickyNote className="w-4 h-4" />
               {t("actions.createNote")}
             </ActionButton>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <ActionButton variant="secondary" className="gap-1.5" data-testid="client-add-menu">
+                  <Plus className="w-4 h-4" />
+                  {t("documentActions.add")}
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </ActionButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={onCreateQuote} data-testid="client-create-quote">
+                  <FileText className="w-4 h-4 mr-2" />
+                  {t("documentActions.addProposal")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onCreateInvoice} data-testid="client-create-invoice">
+                  <Receipt className="w-4 h-4 mr-2" />
+                  {t("documentActions.addTrackingInvoice")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <ActionButton variant="secondary" onClick={onEdit} className="gap-1.5" data-testid="client-detail-edit">
               <Pencil className="w-3.5 h-3.5" />
               {t("clientDetail.edit")}
@@ -227,17 +266,17 @@ export default function ClientDetailHeader({
                 data-testid="client-delete-dialog"
               >
                 <AlertDialogHeader>
-                  <AlertDialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-[#111827]">
+                  <AlertDialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-dash-text">
                     {t("clientDetail.deleteTitle")}
                   </AlertDialogTitle>
-                  <AlertDialogDescription className="text-[#4B5563]">
+                  <AlertDialogDescription className="text-dash-text-muted">
                     {t("clientDetail.deleteDesc")}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="gap-2 sm:gap-0 pt-2">
                   <AlertDialogCancel
                     disabled={deleting}
-                    className="rounded-xl border-[#E5E7EB] bg-white text-[#374151] hover:bg-[#F9FAFB]"
+                    className="rounded-xl border-dash-border bg-dash-surface text-dash-text-muted hover:bg-dash-bg"
                   >
                     {t("clientForm.cancel")}
                   </AlertDialogCancel>
@@ -245,7 +284,7 @@ export default function ClientDetailHeader({
                     onClick={handleDelete}
                     disabled={deleting}
                     data-testid="client-delete-dialog-confirm"
-                    className="rounded-xl bg-[#991B1B] text-white hover:bg-[#7F1D1D]"
+                    className="rounded-xl bg-[color:var(--dash-danger-text)] text-white hover:opacity-90"
                   >
                     {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : t("clientDetail.confirmDelete")}
                   </AlertDialogAction>

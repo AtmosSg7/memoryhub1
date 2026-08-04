@@ -6,9 +6,9 @@ export function usePageTitle(titleKey) {
 
   useEffect(() => {
     if (!titleKey) return undefined;
-    document.title = `${t(titleKey)} | MemoryHub`;
+    document.title = `${t(titleKey)} | Basera`;
     return () => {
-      document.title = "MemoryHub";
+      document.title = "Basera";
     };
   }, [t, titleKey]);
 }

@@ -83,7 +83,7 @@ def test_create_trial_subscription():
     assert sub.trialEndsAt is not None
 
     balance = _run(get_balance(_db, user_id))
-    assert balance.monthlyRemaining == 1000
+    assert balance.monthlyRemaining == 500
     assert balance.planId == "solo"
 
 
@@ -96,7 +96,7 @@ def test_create_active_subscription_without_trial():
     assert sub.activatedAt is not None
 
     balance = _run(get_balance(_db, user_id))
-    assert balance.monthlyRemaining == 4000
+    assert balance.monthlyRemaining == 1000
 
 
 def test_activate_trial_to_active():
@@ -109,7 +109,7 @@ def test_activate_trial_to_active():
     assert sub.trialEndsAt is None
 
     balance = _run(get_balance(_db, user_id))
-    assert balance.monthlyRemaining == 1000
+    assert balance.monthlyRemaining == 500
 
 
 def test_renew_subscription_grants_new_period():
@@ -123,7 +123,7 @@ def test_renew_subscription_grants_new_period():
     assert sub.status == "active"
 
     balance = _run(get_balance(_db, user_id))
-    assert balance.monthlyRemaining == 1000
+    assert balance.monthlyRemaining == 500
 
     items, _ = _run(list_history(_db, user_id))
     events = [item.event for item in items]
@@ -150,7 +150,7 @@ def test_upgrade_plan():
     assert sub.planId == "pro"
 
     balance = _run(get_balance(_db, user_id))
-    assert balance.monthlyRemaining == 4000
+    assert balance.monthlyRemaining == 1000
 
     items, _ = _run(list_history(_db, user_id))
     assert any(item.event == "upgraded" for item in items)
@@ -165,7 +165,7 @@ def test_downgrade_plan():
     assert sub.planId == "solo"
 
     balance = _run(get_balance(_db, user_id))
-    assert balance.monthlyRemaining == 1000
+    assert balance.monthlyRemaining == 500
 
 
 def test_downgrade_invalid_raises():
@@ -233,7 +233,7 @@ def test_past_due_status():
     assert sub.pastDueAt is not None
 
     balance = _run(get_balance(_db, user_id))
-    assert balance.monthlyRemaining == 1000
+    assert balance.monthlyRemaining == 500
 
 
 def test_suspend_and_resume():
@@ -250,7 +250,7 @@ def test_suspend_and_resume():
     resumed = _run(resume_subscription(_db, user_id))
     assert resumed.status == "active"
     balance = _run(get_balance(_db, user_id))
-    assert balance.monthlyRemaining == 4000
+    assert balance.monthlyRemaining == 1000
 
 
 def test_reactivate_expired():
@@ -264,7 +264,7 @@ def test_reactivate_expired():
     assert sub.planId == "pro"
 
     balance = _run(get_balance(_db, user_id))
-    assert balance.monthlyRemaining == 4000
+    assert balance.monthlyRemaining == 1000
 
 
 def test_duplicate_active_subscription_raises():
@@ -314,7 +314,7 @@ def test_billing_service_activate_delegates():
     _run(_cleanup_user(user_id))
 
     balance = _run(billing_activate(_db, user_id, "solo"))
-    assert balance.monthlyRemaining == 1000
+    assert balance.monthlyRemaining == 500
     sub = _run(get_subscription(_db, user_id))
     assert sub.status == "active"
     assert sub.planId == "solo"
@@ -361,4 +361,4 @@ def test_consume_uses_subscription_credits():
     assert result.monthlyDebited == 5
 
     balance = _run(get_balance(_db, user_id))
-    assert balance.monthlyRemaining == 995
+    assert balance.monthlyRemaining == 495

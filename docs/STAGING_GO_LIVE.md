@@ -1,4 +1,4 @@
-# MemoryHub — Staging Go-Live V1
+# Basera — Staging Go-Live V1
 
 Guide opérationnel pour mettre en ligne l'environnement **staging** exploitable.
 
@@ -25,11 +25,11 @@ Guide opérationnel pour mettre en ligne l'environnement **staging** exploitable
 
 ## Plans commerciaux (source unique)
 
-| Plan | Prix | Crédits/mois |
-|------|------|--------------|
-| Solo | 19 € | 1 000 |
-| Pro  | 49 € | 5 000 |
-| Team | 99 € | 15 000 |
+| Plan (API id) | Prix | Imports/mois (catalogue) |
+|---------------|------|--------------------------|
+| Starter (`solo`) | 4,90 € | 10 |
+| Pro (`pro`) | 9,90 € | 20 |
+| Business (`team`) | 19,90 € | 50 |
 
 Essai : **14 jours**
 
@@ -79,4 +79,4 @@ Voir `docs/ROLLBACK.md` — repoint image tag précédent, restaurer backup Mong
 
 - **Mentions légales** : placeholders `[À RENSEIGNER]` dans `legalConfig.js` — à compléter avant production publique
 - **Landing SearchDemo** : animation marketing (données fictives Didier Martin) — intentionnel pour la démo
-- **Intégrations Gmail/Drive/Notion** : page Intégrations en attente — copy landing à ajuster si besoin avant prod
+- **Intégrations Google** : prêtes côté code ; nécessitent credentials Google Cloud + variables `GOOGLE_*` (voir `backend/.env.example` et `deploy/SECRETS_CHECKLIST.md`). Sans credentials, le mode mock fonctionne en local uniquement.

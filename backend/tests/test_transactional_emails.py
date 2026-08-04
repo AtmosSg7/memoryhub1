@@ -37,7 +37,7 @@ def test_render_all_templates_fr_en():
             assert rendered.subject
             assert rendered.text_body
             assert "<html" in rendered.html_body.lower()
-            assert "MemoryHub" in rendered.html_body
+            assert "Basera" in rendered.html_body
 
 
 def test_normalize_email_and_header_injection():

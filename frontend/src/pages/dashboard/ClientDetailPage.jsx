@@ -42,7 +42,6 @@ import InvoiceStatusBadge from "@/components/dashboard/InvoiceStatusBadge";
 import { ActionButton } from "@/components/dashboard/ActionButton";
 import { PageLoader, InlineLoader, PageError } from "@/components/dashboard/PageFeedback";
 import ClientDetailHeader from "@/components/dashboard/client/ClientDetailHeader";
-import ClientPortalAccess from "@/components/dashboard/client/ClientPortalAccess";
 import ClientDocumentHighlight from "@/components/dashboard/client/ClientDocumentHighlight";
 import ClientTimelineList from "@/components/dashboard/client/ClientTimelineList";
 import ClientFollowUpList from "@/components/dashboard/client/ClientFollowUpList";
@@ -472,7 +471,7 @@ export default function ClientDetailPage() {
           type="button"
           onClick={() => navigate("/dashboard/clients")}
           data-testid="client-detail-back"
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#4B5563] hover:text-[#111827] transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-dash-text-muted hover:text-dash-text transition-colors"
         >
           {t("clientDetail.back")}
         </button>
@@ -505,6 +504,7 @@ export default function ClientDetailPage() {
         onCreateQuote={() => openAddQuote(client)}
         onCreateInvoice={() => openAddInvoice(client)}
         onCreateNote={() => openAddNote(client)}
+        onImportDocument={() => navigate("/dashboard/documents?import=1")}
         onToggleFavorite={handleToggleFavorite}
         favoriteSaving={favoriteSaving}
       />
@@ -524,14 +524,6 @@ export default function ClientDetailPage() {
           />
 
           <ClientInsightsCard clientId={client.id} t={t} />
-
-          <SectionPanel
-            title={t("clientPortal.title")}
-            subtitle={t("clientPortal.description")}
-            testId="client-portal-section"
-          >
-            <ClientPortalAccess clientId={client.id} t={t} embedded />
-          </SectionPanel>
 
           <SectionPanel id="client-overview-follow-ups" title={t("followUpHistory.title")} testId="client-overview-follow-ups">
             <ClientFollowUpList
@@ -555,8 +547,8 @@ export default function ClientDetailPage() {
               type="quote"
               document={stats.lastQuote}
               emptyLabel={t("clientDetail.noQuotes")}
-              emptyActionLabel={t("actions.createQuote")}
-              onEmptyAction={() => openAddQuote(client)}
+              emptyActionLabel={t("documentActions.importDocument")}
+              onEmptyAction={() => navigate("/dashboard/documents?import=1")}
               lang={lang}
               t={t}
               onClick={setViewingQuote}
@@ -565,8 +557,8 @@ export default function ClientDetailPage() {
               type="invoice"
               document={stats.lastInvoice}
               emptyLabel={t("clientDetail.noInvoices")}
-              emptyActionLabel={t("actions.createInvoice")}
-              onEmptyAction={() => openAddInvoice(client)}
+              emptyActionLabel={t("documentActions.importDocument")}
+              onEmptyAction={() => navigate("/dashboard/documents?import=1")}
               lang={lang}
               t={t}
               onClick={setViewingInvoice}
@@ -603,9 +595,9 @@ export default function ClientDetailPage() {
                             <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${typeStyle.bg} ${typeStyle.text}`}>
                               {t(`noteType.${typeKey}`)}
                             </span>
-                            <span className="text-[11px] text-[#9CA3AF]">{formatNoteDate(getNoteDate(n), lang)}</span>
+                            <span className="text-[11px] text-dash-text-subtle">{formatNoteDate(getNoteDate(n), lang)}</span>
                           </div>
-                          <div className="font-medium text-sm text-[#111827] truncate">{n.title}</div>
+                          <div className="font-medium text-sm text-dash-text truncate">{n.title}</div>
                         </button>
                       </li>
                     );
@@ -673,8 +665,8 @@ export default function ClientDetailPage() {
           title={t("nav.quotes")}
           testId="client-section-quotes"
           action={
-            <ClientSectionAction icon={FileText} onClick={() => openAddQuote(client)}>
-              {t("actions.createQuote")}
+            <ClientSectionAction icon={FileText} onClick={() => navigate("/dashboard/documents?import=1")}>
+              {t("documentActions.importDocument")}
             </ClientSectionAction>
           }
         >
@@ -691,18 +683,18 @@ export default function ClientDetailPage() {
               {pagedQuotes.map((q) => (
                 <li
                   key={q.id}
-                  className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm cursor-pointer hover:bg-[#FAFAFA] -mx-2 px-2 rounded-lg transition-colors"
+                  className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm cursor-pointer hover:bg-dash-surface-muted -mx-2 px-2 rounded-lg transition-colors"
                   onClick={() => setViewingQuote(q)}
                   data-testid={`client-quote-${q.id}`}
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium text-[#111827]">{q.number} · {q.title}</div>
-                    <div className="text-[#6B7280] text-xs mt-0.5">{formatQuoteDate(getQuoteDate(q), lang)}</div>
+                    <div className="font-medium text-dash-text">{q.number} · {q.title}</div>
+                    <div className="text-dash-text-muted text-xs mt-0.5">{formatQuoteDate(getQuoteDate(q), lang)}</div>
                     <FollowUpLastHint last={getQuoteFollowUp(q.id)} className="mt-0.5" />
                   </div>
                   <div className="flex items-center justify-between gap-2 sm:justify-end shrink-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-[#111827] tabular-nums">
+                      <span className="font-medium text-dash-text tabular-nums">
                         {formatQuoteAmount(q.amountTTC, lang)}
                       </span>
                       <StatusBadge kind="quote" status={q.status} size="sm" />
@@ -710,6 +702,9 @@ export default function ClientDetailPage() {
                     <CommercialDocumentRowActions
                       kind="quote"
                       document={q}
+                      onView={() => setViewingQuote(q)}
+                      onEdit={(doc) => openEditQuote(doc)}
+                      onImportFinalInvoice={() => navigate("/dashboard/documents?import=1")}
                       onDelete={() => setDeletingQuote(q)}
                     />
                   </div>
@@ -735,8 +730,8 @@ export default function ClientDetailPage() {
               filteredTitle={t("quotes.empty.filteredTitle")}
               filteredDesc={t("quotes.empty.filteredDesc")}
               title={t("clientDetail.noQuotes")}
-              cta={t("actions.createQuote")}
-              onCta={() => openAddQuote(client)}
+              cta={t("documentActions.importDocument")}
+              onCta={() => navigate("/dashboard/documents?import=1")}
               testId="client-quotes-empty"
             />
           )}
@@ -749,8 +744,8 @@ export default function ClientDetailPage() {
           title={t("nav.invoices")}
           testId="client-section-invoices"
           action={
-            <ClientSectionAction icon={Receipt} onClick={() => openAddInvoice(client)}>
-              {t("actions.createInvoice")}
+            <ClientSectionAction icon={Receipt} onClick={() => navigate("/dashboard/documents?import=1")}>
+              {t("documentActions.importDocument")}
             </ClientSectionAction>
           }
         >
@@ -767,18 +762,18 @@ export default function ClientDetailPage() {
               {pagedInvoices.map((inv) => (
                 <li
                   key={inv.id}
-                  className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm cursor-pointer hover:bg-[#FAFAFA] -mx-2 px-2 rounded-lg transition-colors"
+                  className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm cursor-pointer hover:bg-dash-surface-muted -mx-2 px-2 rounded-lg transition-colors"
                   onClick={() => setViewingInvoice(inv)}
                   data-testid={`client-invoice-${inv.id}`}
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium text-[#111827]">{inv.number} · {inv.title}</div>
-                    <div className="text-[#6B7280] text-xs mt-0.5">{formatInvoiceDate(getInvoiceDate(inv), lang)}</div>
+                    <div className="font-medium text-dash-text">{inv.number} · {inv.title}</div>
+                    <div className="text-dash-text-muted text-xs mt-0.5">{formatInvoiceDate(getInvoiceDate(inv), lang)}</div>
                     <FollowUpLastHint last={getInvoiceFollowUp(inv.id)} className="mt-0.5" />
                   </div>
                   <div className="flex items-center justify-between gap-2 sm:justify-end shrink-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-[#111827] tabular-nums">
+                      <span className="font-medium text-dash-text tabular-nums">
                         {formatInvoiceAmount(inv.amountTTC, lang)}
                       </span>
                       <InvoiceStatusBadge invoice={inv} size="sm" />
@@ -786,6 +781,9 @@ export default function ClientDetailPage() {
                     <CommercialDocumentRowActions
                       kind="invoice"
                       document={inv}
+                      onView={() => setViewingInvoice(inv)}
+                      onEdit={(doc) => openEditInvoice(doc)}
+                      onImportFinalInvoice={() => navigate("/dashboard/documents?import=1")}
                       onDelete={() => setDeletingInvoice(inv)}
                     />
                   </div>
@@ -811,8 +809,8 @@ export default function ClientDetailPage() {
               filteredTitle={t("invoices.empty.filteredTitle")}
               filteredDesc={t("invoices.empty.filteredDesc")}
               title={t("clientDetail.noInvoices")}
-              cta={t("actions.createInvoice")}
-              onCta={() => openAddInvoice(client)}
+              cta={t("documentActions.importDocument")}
+              onCta={() => navigate("/dashboard/documents?import=1")}
               testId="client-invoices-empty"
             />
           )}
@@ -846,7 +844,7 @@ export default function ClientDetailPage() {
                 return (
                   <li
                     key={n.id}
-                    className="rounded-lg border border-[#E5E7EB] bg-[#FAFAFA] p-3 cursor-pointer hover:border-[#0A2540]/20 transition-colors"
+                    className="rounded-lg border border-dash-border bg-dash-surface-muted p-3 cursor-pointer hover:border-dash-primary/20 transition-colors"
                     onClick={() => openEditNote(n)}
                     data-testid={`client-note-${n.id}`}
                   >
@@ -856,10 +854,10 @@ export default function ClientDetailPage() {
                           <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${typeStyle.bg} ${typeStyle.text}`}>
                             {t(`noteType.${typeKey}`)}
                           </span>
-                          <span className="text-[11px] text-[#9CA3AF]">{formatNoteDate(getNoteDate(n), lang)}</span>
+                          <span className="text-[11px] text-dash-text-subtle">{formatNoteDate(getNoteDate(n), lang)}</span>
                         </div>
-                        <div className="font-medium text-sm text-[#111827]">{n.title}</div>
-                        <p className="text-xs text-[#4B5563] mt-1 line-clamp-3 whitespace-pre-wrap">{n.content}</p>
+                        <div className="font-medium text-sm text-dash-text">{n.title}</div>
+                        <p className="text-xs text-dash-text-muted mt-1 line-clamp-3 whitespace-pre-wrap">{n.content}</p>
                       </div>
                       <ActionButton
                         variant="dangerIcon"
@@ -916,12 +914,12 @@ export default function ClientDetailPage() {
                   return (
                     <li key={doc.id} className={CLIENT_LIST_ROW_STATIC_CLASS} data-testid={`client-document-${doc.id}`}>
                       <div className="min-w-0 flex-1">
-                        <div className="font-medium text-[#111827] truncate">{doc.name}</div>
+                        <div className="font-medium text-dash-text truncate">{doc.name}</div>
                         <div className="flex items-center gap-2 mt-1">
                           <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${typeStyle.bg} ${typeStyle.text}`}>
                             {typeStyle.label}
                           </span>
-                          <span className="text-[11px] text-[#9CA3AF]">{formatFileSize(doc.sizeBytes, lang)}</span>
+                          <span className="text-[11px] text-dash-text-subtle">{formatFileSize(doc.sizeBytes, lang)}</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">

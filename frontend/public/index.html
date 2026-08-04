@@ -6,19 +6,19 @@
         <meta name="theme-color" content="#0A2540" />
         <meta
             name="description"
-            content="MemoryHub centralise clients, devis, factures, notes et documents pour les artisans et indépendants. Retrouvez toute l'histoire client en quelques secondes."
+            content="Basera centralise clients, devis, factures, notes et documents pour les artisans et indépendants. Retrouvez toute l'histoire client en quelques secondes."
         />
-        <meta name="application-name" content="MemoryHub" />
+        <meta name="application-name" content="Basera" />
         <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="MemoryHub" />
-        <meta property="og:title" content="MemoryHub — Mémoire client pour artisans" />
+        <meta property="og:site_name" content="Basera" />
+        <meta property="og:title" content="Basera — Mémoire client pour artisans" />
         <meta
             property="og:description"
             content="Centralisez devis, factures, notes et documents. Retrouvez chaque client en quelques secondes."
         />
         <meta property="og:locale" content="fr_FR" />
         <meta name="twitter:card" content="summary" />
-        <meta name="twitter:title" content="MemoryHub — Mémoire client pour artisans" />
+        <meta name="twitter:title" content="Basera — Mémoire client pour artisans" />
         <meta
             name="twitter:description"
             content="Centralisez devis, factures, notes et documents. Retrouvez chaque client en quelques secondes."
@@ -28,11 +28,24 @@
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap" rel="stylesheet" />
-        <title>MemoryHub — Mémoire client pour artisans</title>
+        <title>Basera — Mémoire client pour artisans</title>
         <script>window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);</script>
+        <script>
+            (function () {
+                try {
+                    if (location.pathname.indexOf("/dashboard") !== 0) return;
+                    var theme = localStorage.getItem("memoryhub-dashboard-theme") || "system";
+                    var dark =
+                        theme === "dark" ||
+                        (theme === "system" &&
+                            window.matchMedia("(prefers-color-scheme: dark)").matches);
+                    document.documentElement.dataset.dashboardTheme = dark ? "dark" : "light";
+                } catch (e) {}
+            })();
+        </script>
     </head>
     <body>
-        <noscript>Vous devez activer JavaScript pour utiliser MemoryHub.</noscript>
+        <noscript>Vous devez activer JavaScript pour utiliser Basera.</noscript>
         <div id="root"></div>
         <script>
             !(function (t, e) {

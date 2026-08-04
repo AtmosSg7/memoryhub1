@@ -1,8 +1,8 @@
-# Script de démonstration artisan — MemoryHub pré-bêta
+# Script de démonstration artisan — Basera pré-bêta
 
 Durée cible : **15 à 20 minutes**.
 
-Objectif : observer si un artisan comprend MemoryHub sans accompagnement technique.  
+Objectif : observer si un artisan comprend Basera sans accompagnement technique.  
 Ce n’est pas un argumentaire commercial.
 
 Préparer avant la session :
@@ -74,7 +74,7 @@ Préparer avant la session :
 **Montrer :** import PDF (mock IA en local).
 
 **Dire :**  
-« Vous déposez un devis ou une facture existante — MemoryHub propose les informations à vérifier. »
+« Vous déposez un devis ou une facture existante — Basera propose les informations à vérifier. »
 
 **Faire :** lancer un import mock, montrer la vérification, confirmer.
 
@@ -102,7 +102,7 @@ Préparer avant la session :
 **Montrer :** actions du jour (maximum 4 visibles).
 
 **Dire :**  
-« MemoryHub propose des actions concrètes — pas une liste d’alertes. »
+« Basera propose des actions concrètes — pas une liste d’alertes. »
 
 **Faire :** cliquer une action et arriver sur la résolution.
 

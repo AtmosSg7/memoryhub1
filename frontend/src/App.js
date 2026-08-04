@@ -16,13 +16,14 @@ import { Navbar } from "@/components/Navbar";
 
 import { Hero } from "@/components/Hero";
 
-import { SearchDemo } from "@/components/SearchDemo";
+import { ProductShowcase } from "@/showcase/ProductShowcase";
 
 import { Features } from "@/components/Features";
 
 import { HowItWorks } from "@/components/HowItWorks";
 
 import { Pricing } from "@/components/Pricing";
+import { PricingComparison } from "@/components/PricingComparison";
 
 import { Faq } from "@/components/Faq";
 
@@ -116,10 +117,11 @@ const Landing = () => {
     <div className="App">
       <Navbar onJoin={goRegister} />
       <Hero onJoin={goRegister} onDemo={goDemo} />
-      <SearchDemo />
+      <ProductShowcase />
       <Features />
       <HowItWorks />
       <Pricing onJoin={goRegister} />
+      <PricingComparison onJoin={goRegister} />
       <Faq />
       <FinalCta onJoin={goRegister} />
       <Footer />

@@ -26,7 +26,7 @@ from onboarding_models import (
 
 CHECKLIST_ITEMS = (
     ("create_client", "checklist.createClient", "/dashboard/clients"),
-    ("add_note_or_document", "checklist.addNoteOrDocument", "/dashboard/files?import=1"),
+    ("add_note_or_document", "checklist.importCommercialDoc", "/dashboard/documents?import=1"),
     ("connect_google_contacts", "checklist.connectContacts", "/dashboard/integrations"),
     ("connect_gmail", "checklist.connectGmail", "/dashboard/integrations"),
     ("view_client_360", "checklist.viewClient360", "/dashboard/clients"),

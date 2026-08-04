@@ -29,7 +29,7 @@ def test_subscriptions_dev_lifecycle(client):
 
     balance = client.get("/api/credits/balance")
     assert balance.status_code == 200
-    assert balance.json()["monthlyRemaining"] == 20
+    assert balance.json()["monthlyRemaining"] == 10
 
     activate = client.post("/api/subscriptions/dev/activate")
     assert activate.status_code == 200
@@ -40,7 +40,7 @@ def test_subscriptions_dev_lifecycle(client):
     assert upgrade.json()["planId"] == "pro"
 
     balance2 = client.get("/api/credits/balance")
-    assert balance2.json()["monthlyRemaining"] == 80
+    assert balance2.json()["monthlyRemaining"] == 20
 
     history = client.get("/api/subscriptions/history")
     assert history.status_code == 200
@@ -57,7 +57,7 @@ def test_subscriptions_dev_activate_paid(client):
 
     assign = client.post("/api/credits/dev/assign-plan", params={"planId": "solo"})
     assert assign.status_code == 200
-    assert assign.json()["monthlyRemaining"] == 20
+    assert assign.json()["monthlyRemaining"] == 10
 
 
 def test_subscriptions_me_requires_auth(client):

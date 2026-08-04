@@ -42,7 +42,7 @@ export default function SearchDropdown({ query, open, onClose, onNavigate }) {
     <div
       ref={ref}
       data-testid="search-dropdown"
-      className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white border border-[#E5E7EB] rounded-xl shadow-[0_12px_40px_-12px_rgba(10,37,64,0.25)] overflow-hidden"
+      className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-dash-surface border border-dash-border rounded-xl shadow-[0_12px_40px_-12px_rgba(10,37,64,0.25)] overflow-hidden"
     >
       <SearchResultsList
         groups={data?.groups}
@@ -59,12 +59,12 @@ export default function SearchDropdown({ query, open, onClose, onNavigate }) {
         testId="search-dropdown-results"
       />
 
-      <div className="border-t border-[#F3F4F6] px-3 py-2 bg-[#FAFAFA]">
+      <div className="border-t border-dash-border-soft px-3 py-2 bg-dash-surface-muted">
         <button
           type="button"
           onClick={handleViewAll}
           data-testid="search-dropdown-view-all"
-          className="w-full flex items-center justify-center gap-2 text-[12px] font-medium text-[#0A2540] hover:text-[#173A5E] py-1.5 transition-colors"
+          className="w-full flex items-center justify-center gap-2 text-[12px] font-medium text-dash-primary hover:text-[#173A5E] py-1.5 transition-colors"
         >
           <Search className="w-3.5 h-3.5" />
           {t("search.viewAll")}

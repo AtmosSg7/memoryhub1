@@ -35,7 +35,7 @@ export default function DashboardSummary({
       <div
         data-testid="dashboard-summary"
         className={[
-          "rounded-xl border border-[#E5E7EB] bg-[#FAFAFA] animate-pulse",
+          "rounded-xl border border-dash-border bg-dash-surface-muted animate-pulse",
           compact ? "h-12" : "h-[72px]",
         ].join(" ")}
       />
@@ -83,7 +83,7 @@ export default function DashboardSummary({
           data-testid="dashboard-summary-cta"
           className={[
             "ml-auto shrink-0 inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium",
-            "bg-white/80 hover:bg-white border border-black/5 transition-colors",
+            "bg-dash-surface/80 hover:bg-dash-surface border border-black/5 transition-colors",
             config.text,
           ].join(" ")}
         >
