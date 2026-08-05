@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
-import { useBillingSummary } from "@/hooks/useBillingSummary";
+import { resolveSubscriptionPlanLabel, useBillingSummary } from "@/hooks/useBillingSummary";
 import { useIsShowcaseDemo } from "@/context/ShowcaseThemeIsolation";
 import { getSidebarItems } from "@/components/dashboard/sidebarNav";
 import ImportUsageMeter from "@/components/dashboard/ImportUsageMeter";
@@ -10,12 +10,10 @@ export default function Sidebar() {
   const { t } = useDashboardLang();
   const navigate = useNavigate();
   const isShowcase = useIsShowcaseDemo();
-  const { planId, hasSubscription, monthlyRemaining, monthlyAllocated, loading } = useBillingSummary();
+  const { billing, planId, monthlyRemaining, monthlyAllocated, loading } = useBillingSummary();
 
   const displayPlanId = planId || "solo";
-  const planLabel = hasSubscription
-    ? t(`billingPage.plans.${displayPlanId}`)
-    : t("sidebar.subscription.trial");
+  const planLabel = resolveSubscriptionPlanLabel(billing, t);
 
   return (
     <aside

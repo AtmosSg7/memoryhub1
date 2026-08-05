@@ -23,6 +23,7 @@ jest.mock("@/lib/billingApi", () => ({
 }));
 
 jest.mock("@/hooks/useBillingSummary", () => ({
+  setBillingCache: jest.fn(),
   invalidateBillingCache: jest.fn(),
 }));
 

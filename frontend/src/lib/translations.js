@@ -2353,6 +2353,7 @@ export const translations = {
           title: "Votre abonnement",
           cta: "Voir mon abonnement",
           trial: "Essai gratuit",
+          none: "Aucun abonnement",
         },
       },
       imports: {
@@ -5191,6 +5192,7 @@ export const translations = {
           title: "Your subscription",
           cta: "View subscription",
           trial: "Free trial",
+          none: "No subscription",
         },
       },
       imports: {

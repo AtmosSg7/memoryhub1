@@ -16,7 +16,7 @@ import {
   openBillingPortal,
   startCheckout,
 } from "@/lib/billingApi";
-import { invalidateBillingCache } from "@/hooks/useBillingSummary";
+import { setBillingCache } from "@/hooks/useBillingSummary";
 import { invalidateCreditsCache } from "@/hooks/useCredits";
 import { PLAN_CATALOG, PLAN_ORDER } from "@/constants/planConfig";
 
@@ -41,7 +41,8 @@ export default function BillingPage() {
     try {
       const billingData = await fetchBillingMe();
       setBilling(billingData);
-      invalidateBillingCache();
+      // Keep dashboard widgets (sidebar, badges) on the same /billing/me snapshot.
+      setBillingCache(billingData);
     } catch (err) {
       setError(err.message || t("billingPage.loadError"));
     } finally {
