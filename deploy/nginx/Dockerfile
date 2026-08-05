@@ -2,15 +2,13 @@
 
 FROM nginx:1.27-alpine
 
-RUN apk add --no-cache curl openssl \
-    && apk add --no-cache nginx-mod-http-brotli || true
+# curl/openssl only — do NOT install Alpine nginx-mod-http-brotli.
+# That package targets Alpine's nginx build and is ABI-incompatible with
+# the official nginx image (module version mismatch → crash loop).
+RUN apk add --no-cache curl openssl
 
-RUN touch /etc/nginx/modules-brotli.conf \
-    && if [ -f /usr/lib/nginx/modules/ngx_http_brotli_filter_module.so ]; then \
-         printf 'load_module modules/ngx_http_brotli_filter_module.so;\nload_module modules/ngx_http_brotli_static_module.so;\n' > /etc/nginx/modules-brotli.conf; \
-       else \
-         printf '# Brotli not available in this image\n' > /etc/nginx/snippets/brotli.conf; \
-       fi
+# Placeholder: keep include path in nginx.conf stable; no dynamic modules loaded.
+RUN printf '# No third-party modules (Brotli optional / disabled)\n' > /etc/nginx/modules-brotli.conf
 
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY conf.d/ /etc/nginx/conf.d/
