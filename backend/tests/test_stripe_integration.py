@@ -51,6 +51,21 @@ class FakeStripeBackend:
         self.customers[cid] = obj
         return obj
 
+    def retrieve_customer(self, customer_id):
+        if customer_id not in self.customers:
+            exc = Exception(f"No such customer: '{customer_id}'")
+            exc.code = "resource_missing"
+            exc.http_status = 404
+            raise exc
+        return self.customers[customer_id]
+
+    def _require_customer(self, customer_id):
+        if customer_id not in self.customers:
+            exc = Exception(f"No such customer: '{customer_id}'")
+            exc.code = "resource_missing"
+            exc.http_status = 404
+            raise exc
+
     def create_checkout_session(
         self,
         *,
@@ -62,6 +77,7 @@ class FakeStripeBackend:
         trial_period_days=None,
         mode="subscription",
     ):
+        self._require_customer(customer_id)
         if mode == "payment":
             return self.create_payment_checkout_session(
                 customer_id=customer_id,
@@ -93,6 +109,7 @@ class FakeStripeBackend:
         cancel_url,
         metadata,
     ):
+        self._require_customer(customer_id)
         sid = f"cs_{uuid.uuid4().hex[:12]}"
         obj = FakeStripeObject(
             id=sid,
@@ -107,6 +124,7 @@ class FakeStripeBackend:
         return obj
 
     def create_portal_session(self, *, customer_id, return_url):
+        self._require_customer(customer_id)
         pid = f"bps_{uuid.uuid4().hex[:12]}"
         obj = FakeStripeObject(id=pid, url=f"https://billing.stripe.test/{pid}")
         self.portal_sessions[pid] = obj
@@ -194,6 +212,33 @@ def test_checkout_creates_session(client, fake_stripe):
     assert res.status_code == 200
     assert "checkout.stripe.test" in res.json()["checkoutUrl"]
     assert len(fake_stripe.checkout_sessions) == 1
+
+
+def test_checkout_recreates_customer_when_stripe_customer_deleted(client, fake_stripe):
+    """Manual Stripe Customer deletion must not break Checkout permanently."""
+    _auth(client)
+    first = client.post("/api/billing/checkout", json={"planId": "solo"})
+    assert first.status_code == 200
+    assert len(fake_stripe.customers) == 1
+    stale_id = next(iter(fake_stripe.customers))
+
+    # Simulate dashboard deletion of the Customer in Stripe.
+    del fake_stripe.customers[stale_id]
+
+    second = client.post("/api/billing/checkout", json={"planId": "solo"})
+    assert second.status_code == 200
+    assert "checkout.stripe.test" in second.json()["checkoutUrl"]
+    assert len(fake_stripe.customers) == 1
+    new_id = next(iter(fake_stripe.customers))
+    assert new_id != stale_id
+    latest_session = list(fake_stripe.checkout_sessions.values())[-1]
+    assert latest_session["customer"] == new_id
+
+    # Stored id must stay valid for subsequent checkouts.
+    third = client.post("/api/billing/checkout", json={"planId": "solo"})
+    assert third.status_code == 200
+    assert len(fake_stripe.customers) == 1
+    assert next(iter(fake_stripe.customers)) == new_id
 
 
 def test_checkout_invalid_plan(client):

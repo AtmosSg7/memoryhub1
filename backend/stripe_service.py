@@ -6,12 +6,15 @@ No MemoryHub business logic here. Injectable backend for tests.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Protocol
 
 from stripe_config import StripeSettings, plan_to_price_id, require_stripe_settings
 from stripe_exceptions import StripeCheckoutError, StripeCustomerError
 from subscription_constants import TRIAL_DAYS
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -33,6 +36,8 @@ class StripeBackend(Protocol):
         name: str,
         metadata: Dict[str, str],
     ) -> Any: ...
+
+    def retrieve_customer(self, customer_id: str) -> Any: ...
 
     def create_checkout_session(
         self,
@@ -101,6 +106,9 @@ class LiveStripeBackend:
 
     def create_customer(self, *, email: str, name: str, metadata: Dict[str, str]) -> Any:
         return self._stripe.Customer.create(email=email, name=name, metadata=metadata)
+
+    def retrieve_customer(self, customer_id: str) -> Any:
+        return self._stripe.Customer.retrieve(customer_id)
 
     def create_checkout_session(
         self,
@@ -224,18 +232,57 @@ def set_stripe_backend(backend: Optional[StripeBackend]) -> None:
     _backend = backend
 
 
-async def get_or_create_customer_id(
+def _is_missing_customer_error(exc: BaseException) -> bool:
+    """True when Stripe reports the Customer id no longer exists."""
+    code = getattr(exc, "code", None)
+    if code == "resource_missing":
+        return True
+    http_status = getattr(exc, "http_status", None)
+    if http_status == 404:
+        param = getattr(exc, "param", None)
+        if param in {None, "id", "customer"}:
+            msg = str(exc).lower()
+            if "customer" in msg or "no such" in msg:
+                return True
+    json_body = getattr(exc, "json_body", None) or {}
+    if isinstance(json_body, dict):
+        error = json_body.get("error") or {}
+        if isinstance(error, dict) and error.get("code") == "resource_missing":
+            return True
+    msg = str(exc).lower()
+    return "no such customer" in msg or "resource_missing" in msg
+
+
+def _now_iso() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).isoformat()
+
+
+async def _clear_stale_stripe_customer_id(db, user: dict, stale_id: str) -> None:
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$unset": {"stripeCustomerId": ""}, "$set": {"updatedAt": _now_iso()}},
+    )
+    if user.get("stripeCustomerId") == stale_id:
+        user.pop("stripeCustomerId", None)
+    logger.warning(
+        "Cleared stale stripeCustomerId=%s for user=%s (missing in Stripe)",
+        stale_id,
+        user.get("id"),
+    )
+
+
+async def _create_and_store_customer(
     db,
     user: dict,
     *,
-    backend: Optional[StripeBackend] = None,
+    backend: StripeBackend,
 ) -> str:
-    existing = user.get("stripeCustomerId")
-    if existing:
-        return existing
-
-    backend = backend or get_stripe_backend()
-    name = f"{user.get('firstName', '')} {user.get('lastName', '')}".strip() or user.get("companyName", "Basera user")
+    name = (
+        f"{user.get('firstName', '')} {user.get('lastName', '')}".strip()
+        or user.get("companyName", "Basera user")
+    )
     try:
         customer = backend.create_customer(
             email=user["email"],
@@ -254,10 +301,44 @@ async def get_or_create_customer_id(
     return customer_id
 
 
-def _now_iso() -> str:
-    from datetime import datetime, timezone
+async def get_or_create_customer_id(
+    db,
+    user: dict,
+    *,
+    backend: Optional[StripeBackend] = None,
+) -> str:
+    """Return a valid Stripe customer id, recreating it if the stored one was deleted."""
+    backend = backend or get_stripe_backend()
+    existing = user.get("stripeCustomerId")
+    if existing:
+        try:
+            backend.retrieve_customer(existing)
+            return existing
+        except Exception as exc:
+            if not _is_missing_customer_error(exc):
+                raise StripeCustomerError("Unable to verify Stripe customer.") from exc
+            await _clear_stale_stripe_customer_id(db, user, existing)
 
-    return datetime.now(timezone.utc).isoformat()
+    return await _create_and_store_customer(db, user, backend=backend)
+
+
+async def _checkout_with_valid_customer(
+    db,
+    user: dict,
+    *,
+    backend: StripeBackend,
+    create_session,
+) -> Any:
+    """Create a Checkout session; recreate Customer once if Stripe says it is missing."""
+    customer_id = await get_or_create_customer_id(db, user, backend=backend)
+    try:
+        return create_session(customer_id)
+    except Exception as exc:
+        if not _is_missing_customer_error(exc):
+            raise
+        await _clear_stale_stripe_customer_id(db, user, customer_id)
+        customer_id = await get_or_create_customer_id(db, user, backend=backend)
+        return create_session(customer_id)
 
 
 async def create_subscription_checkout(
@@ -271,20 +352,26 @@ async def create_subscription_checkout(
     settings = require_stripe_settings()
     backend = backend or get_stripe_backend()
     price_id = plan_to_price_id(plan_id)
-    customer_id = await get_or_create_customer_id(db, user, backend=backend)
 
     metadata = {"userId": user["id"], "planId": plan_id}
     trial_days = TRIAL_DAYS if include_trial else None
 
     try:
-        session = backend.create_checkout_session(
-            customer_id=customer_id,
-            price_id=price_id,
-            success_url=settings.success_url,
-            cancel_url=settings.cancel_url,
-            metadata=metadata,
-            trial_period_days=trial_days,
+        session = await _checkout_with_valid_customer(
+            db,
+            user,
+            backend=backend,
+            create_session=lambda customer_id: backend.create_checkout_session(
+                customer_id=customer_id,
+                price_id=price_id,
+                success_url=settings.success_url,
+                cancel_url=settings.cancel_url,
+                metadata=metadata,
+                trial_period_days=trial_days,
+            ),
         )
+    except StripeCustomerError:
+        raise
     except Exception as exc:
         raise StripeCheckoutError("Unable to create Stripe Checkout session.") from exc
 
@@ -313,7 +400,6 @@ async def create_credit_pack_checkout(
     if not price_id:
         raise StripeCheckoutError("Stripe price is not configured for this credit pack.")
 
-    customer_id = await get_or_create_customer_id(db, user, backend=backend)
     metadata = {
         "userId": user["id"],
         "packKey": pack_key,
@@ -331,13 +417,20 @@ async def create_credit_pack_checkout(
         cancel_url = f"{cancel_url}{sep}credits=cancel"
 
     try:
-        session = backend.create_payment_checkout_session(
-            customer_id=customer_id,
-            price_id=price_id,
-            success_url=success_url,
-            cancel_url=cancel_url,
-            metadata=metadata,
+        session = await _checkout_with_valid_customer(
+            db,
+            user,
+            backend=backend,
+            create_session=lambda customer_id: backend.create_payment_checkout_session(
+                customer_id=customer_id,
+                price_id=price_id,
+                success_url=success_url,
+                cancel_url=cancel_url,
+                metadata=metadata,
+            ),
         )
+    except StripeCustomerError:
+        raise
     except Exception as exc:
         raise StripeCheckoutError("Unable to create Stripe Checkout session for credits.") from exc
 
@@ -357,15 +450,22 @@ async def create_customer_portal(
 ) -> StripePortalResult:
     settings = require_stripe_settings()
     backend = backend or get_stripe_backend()
-    customer_id = user.get("stripeCustomerId")
-    if not customer_id:
-        customer_id = await get_or_create_customer_id(db, user, backend=backend)
+    # Always validate / recreate — stored customer may have been deleted in Stripe.
+    customer_id = await get_or_create_customer_id(db, user, backend=backend)
 
     url = return_url or settings.success_url.rsplit("?", 1)[0]
     try:
         session = backend.create_portal_session(customer_id=customer_id, return_url=url)
     except Exception as exc:
-        raise StripeCheckoutError("Unable to open Stripe Customer Portal.") from exc
+        if _is_missing_customer_error(exc):
+            await _clear_stale_stripe_customer_id(db, user, customer_id)
+            customer_id = await get_or_create_customer_id(db, user, backend=backend)
+            try:
+                session = backend.create_portal_session(customer_id=customer_id, return_url=url)
+            except Exception as retry_exc:
+                raise StripeCheckoutError("Unable to open Stripe Customer Portal.") from retry_exc
+        else:
+            raise StripeCheckoutError("Unable to open Stripe Customer Portal.") from exc
 
     portal_url = session.url if hasattr(session, "url") else session["url"]
     return StripePortalResult(url=portal_url)
