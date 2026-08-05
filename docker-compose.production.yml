@@ -42,8 +42,14 @@ services:
           memory: 256M
 
   nginx:
-    # Production publishes only 80/443 (from base compose). Port 8080 stays
-    # inside the container for the nginx image healthcheck — not exposed.
+    # Production publishes only 80/443 (from base compose). Healthcheck uses
+    # internal :8080 /health (no TLS), not the public HTTPS listener.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     deploy:
       resources:
         limits:
@@ -68,6 +74,19 @@ services:
     networks:
       - internal
     command: ["python", "scripts/run_scheduled_tasks.py", "--loop", "--interval", "300"]
+    # Override image HEALTHCHECK (backend HTTP :8000) — scheduler has no HTTP server.
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "from pathlib import Path; import sys; sys.exit(0 if b'run_scheduled_tasks' in Path('/proc/1/cmdline').read_bytes() else 1)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     deploy:
       resources:
         limits:
