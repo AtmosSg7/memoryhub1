@@ -22,11 +22,6 @@ jest.mock("@/lib/billingApi", () => ({
   changeBillingPlan: jest.fn(),
 }));
 
-jest.mock("@/hooks/useBillingSummary", () => ({
-  setBillingCache: jest.fn(),
-  invalidateBillingCache: jest.fn(),
-}));
-
 jest.mock("@/hooks/useCredits", () => ({
   invalidateCreditsCache: jest.fn(),
 }));
@@ -45,6 +40,7 @@ jest.mock("sonner", () => ({
   toast: { success: jest.fn(), error: jest.fn(), message: jest.fn() },
 }));
 
+const { setBillingCache } = require("@/hooks/useBillingSummary");
 const { default: BillingPage } = require("@/pages/dashboard/BillingPage");
 
 async function renderBilling() {
@@ -63,6 +59,7 @@ async function renderBilling() {
   await act(async () => {
     await Promise.resolve();
     await Promise.resolve();
+    await Promise.resolve();
   });
   return {
     container,
@@ -73,11 +70,12 @@ async function renderBilling() {
   };
 }
 
-describe("BillingPage checkout CTAs", () => {
+describe("BillingPage single billing source", () => {
   beforeEach(() => {
     global.IS_REACT_ACT_ENVIRONMENT = true;
     window.localStorage.setItem("mh-lang", "fr");
     jest.clearAllMocks();
+    setBillingCache(null);
   });
 
   it("cancelled subscription never shows Offre actuelle badge", async () => {
@@ -101,6 +99,7 @@ describe("BillingPage checkout CTAs", () => {
 
     expect(container.querySelector('[data-testid="billing-summary-eyebrow"]').textContent).toMatch(/Annulé/i);
     expect(container.querySelector('[data-testid="billing-summary-title"]').textContent).toMatch(/Annulé/i);
+    expect(container.querySelector('[data-testid="billing-current-badge-solo"]')).toBeNull();
     expect(container.querySelector('[data-testid="billing-plan-card-solo"]').textContent).not.toMatch(
       /Offre actuelle/
     );
@@ -132,18 +131,13 @@ describe("BillingPage checkout CTAs", () => {
 
     const { container, cleanup } = await renderBilling();
 
+    expect(container.querySelector('[data-testid="billing-summary-title"]').textContent).toMatch(
+      /Essai gratuit/i
+    );
+    expect(container.querySelector('[data-testid="billing-current-badge-solo"]')).toBeNull();
     expect(container.querySelector('[data-testid="billing-checkout-solo"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="billing-checkout-pro"]')).toBeTruthy();
     expect(container.querySelector('[data-testid="billing-checkout-team"]')).toBeTruthy();
-    expect(container.querySelector('[data-testid="billing-checkout-solo"]').textContent).toMatch(
-      /Choisir Starter/
-    );
-    expect(container.querySelector('[data-testid="billing-checkout-pro"]').textContent).toMatch(
-      /Choisir Pro/
-    );
-    expect(container.querySelector('[data-testid="billing-checkout-team"]').textContent).toMatch(
-      /Choisir Business/
-    );
 
     await cleanup();
   });

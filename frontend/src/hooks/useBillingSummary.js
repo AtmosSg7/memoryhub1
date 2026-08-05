@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchBillingMe } from "@/lib/billingApi";
-import { resolveSubscriptionPlanLabel } from "@/lib/billingPresentation";
+import { buildBillingViewModel } from "@/lib/billingPresentation";
+import { useDashboardLang } from "@/hooks/useDashboardLang";
 
 let sharedBilling = null;
+let sharedError = null;
 let sharedListeners = new Set();
 let inflight = null;
 
 function notifyListeners() {
-  sharedListeners.forEach((listener) => listener(sharedBilling));
+  sharedListeners.forEach((listener) => listener({ billing: sharedBilling, error: sharedError }));
 }
 
 async function loadSharedBilling() {
@@ -15,13 +17,19 @@ async function loadSharedBilling() {
   inflight = fetchBillingMe()
     .then((data) => {
       sharedBilling = data;
+      sharedError = null;
       notifyListeners();
       return data;
     })
-    .catch(() => {
-      sharedBilling = null;
-      notifyListeners();
-      return null;
+    .catch((err) => {
+      sharedError = err?.message || "Failed to load billing";
+      // Keep last good snapshot if we already had one; otherwise stay null.
+      if (!sharedBilling) {
+        notifyListeners();
+      } else {
+        notifyListeners();
+      }
+      throw err;
     })
     .finally(() => {
       inflight = null;
@@ -29,26 +37,32 @@ async function loadSharedBilling() {
   return inflight;
 }
 
-/** Publish billing data as the shared source of truth for all dashboard consumers. */
+/** Publish a /billing/me payload (e.g. after checkout return). Prefer refresh(). */
 export function setBillingCache(data) {
   sharedBilling = data ?? null;
+  sharedError = null;
   notifyListeners();
 }
 
 /** Clear cache and reload if any consumer is still mounted. */
 export function invalidateBillingCache() {
   sharedBilling = null;
+  sharedError = null;
   inflight = null;
   notifyListeners();
   if (sharedListeners.size > 0) {
-    void loadSharedBilling();
+    void loadSharedBilling().catch(() => {});
   }
 }
 
-export { resolveSubscriptionPlanLabel };
-
+/**
+ * Sole React entry-point for subscription UI state.
+ * Sidebar, BillingPage, badges — all must use this hook (same module cache).
+ */
 export function useBillingSummary({ enabled = true } = {}) {
+  const { t, lang } = useDashboardLang();
   const [billing, setBilling] = useState(sharedBilling);
+  const [error, setError] = useState(sharedError);
   const [loading, setLoading] = useState(enabled && !sharedBilling);
 
   const refresh = useCallback(async () => {
@@ -56,7 +70,11 @@ export function useBillingSummary({ enabled = true } = {}) {
     try {
       const data = await loadSharedBilling();
       setBilling(data);
+      setError(null);
       return data;
+    } catch (err) {
+      setError(err?.message || sharedError || "Failed to load billing");
+      return sharedBilling;
     } finally {
       setLoading(false);
     }
@@ -65,13 +83,15 @@ export function useBillingSummary({ enabled = true } = {}) {
   useEffect(() => {
     if (!enabled) return undefined;
 
-    const listener = (next) => {
+    const listener = ({ billing: next, error: nextError }) => {
       setBilling(next);
+      setError(nextError);
       if (next) setLoading(false);
     };
     sharedListeners.add(listener);
     if (sharedBilling) {
       setBilling(sharedBilling);
+      setError(sharedError);
       setLoading(false);
     } else {
       refresh();
@@ -82,14 +102,13 @@ export function useBillingSummary({ enabled = true } = {}) {
     };
   }, [enabled, refresh]);
 
+  const view = useMemo(() => buildBillingViewModel(billing, t, lang), [billing, t, lang]);
+
   return {
     billing,
-    planId: billing?.planId || null,
-    subscriptionStatus: billing?.subscriptionStatus || null,
-    cancelAtPeriodEnd: Boolean(billing?.cancelAtPeriodEnd),
-    monthlyRemaining: billing?.monthlyAnalysesRemaining ?? null,
-    monthlyAllocated: billing?.monthlyAnalysesAllocated ?? null,
+    view,
     loading,
+    error,
     refresh,
   };
 }

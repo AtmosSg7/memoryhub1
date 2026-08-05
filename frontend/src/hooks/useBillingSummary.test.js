@@ -7,51 +7,88 @@ jest.mock("@/lib/billingApi", () => ({
 }));
 
 const { fetchBillingMe } = require("@/lib/billingApi");
-const { setBillingCache, invalidateBillingCache } = require("@/hooks/useBillingSummary");
+const { setBillingCache, invalidateBillingCache, useBillingSummary } = require("@/hooks/useBillingSummary");
+const { LanguageProvider } = require("@/context/LanguageContext");
+const React = require("react");
+const { act } = require("react");
+const { createRoot } = require("react-dom/client");
 
-describe("billing shared cache", () => {
+async function mountHookConsumer() {
+  let latest = null;
+  function Probe() {
+    latest = useBillingSummary();
+    return null;
+  }
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(React.createElement(LanguageProvider, null, React.createElement(Probe)));
+  });
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+  return {
+    get latest() {
+      return latest;
+    },
+    async cleanup() {
+      await act(async () => root.unmount());
+      container.remove();
+    },
+  };
+}
+
+describe("useBillingSummary shared cache", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     setBillingCache(null);
+    global.IS_REACT_ACT_ENVIRONMENT = true;
+    window.localStorage.setItem("mh-lang", "fr");
   });
 
-  it("invalidateBillingCache reloads when listeners are registered", async () => {
+  it("two consumers share the same view model from one fetch", async () => {
+    fetchBillingMe.mockResolvedValue({
+      hasSubscription: true,
+      planId: "solo",
+      subscriptionStatus: "cancelled",
+      cancelAtPeriodEnd: false,
+      monthlyAnalysesRemaining: 0,
+      monthlyAnalysesAllocated: 10,
+      actions: {},
+    });
+
+    const a = await mountHookConsumer();
+    const b = await mountHookConsumer();
+
+    expect(fetchBillingMe).toHaveBeenCalledTimes(1);
+    expect(a.latest.view.widgetLabel).toMatch(/Annulé/i);
+    expect(b.latest.view.summaryTitle).toMatch(/Annulé/i);
+    expect(a.latest.view.widgetLabel).toBe(b.latest.view.summaryTitle);
+    expect(a.latest.view.isCurrentOfferPlan("solo")).toBe(false);
+
+    await a.cleanup();
+    await b.cleanup();
+  });
+
+  it("invalidateBillingCache reloads for mounted listeners", async () => {
     fetchBillingMe.mockResolvedValue({
       hasSubscription: true,
       planId: "team",
       subscriptionStatus: "active",
+      actions: {},
     });
 
-    let latest = null;
-    const { useBillingSummary } = require("@/hooks/useBillingSummary");
-    const React = require("react");
-    const { act } = require("react");
-    const { createRoot } = require("react-dom/client");
-
-    function Probe() {
-      latest = useBillingSummary();
-      return null;
-    }
-
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
-    global.IS_REACT_ACT_ENVIRONMENT = true;
-
-    await act(async () => {
-      root.render(React.createElement(Probe));
-    });
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(latest.planId).toBe("team");
+    const probe = await mountHookConsumer();
+    expect(probe.latest.view.summaryTitle).toMatch(/Business|team/i);
 
     fetchBillingMe.mockResolvedValue({
       hasSubscription: true,
       planId: "pro",
       subscriptionStatus: "active",
+      actions: {},
     });
 
     await act(async () => {
@@ -60,10 +97,7 @@ describe("billing shared cache", () => {
       await Promise.resolve();
     });
 
-    expect(latest.planId).toBe("pro");
-    expect(fetchBillingMe.mock.calls.length).toBeGreaterThanOrEqual(2);
-
-    await act(async () => root.unmount());
-    container.remove();
+    expect(probe.latest.view.planId).toBe("pro");
+    await probe.cleanup();
   });
 });

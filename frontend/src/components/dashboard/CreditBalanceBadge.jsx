@@ -13,10 +13,10 @@ export default function CreditBalanceBadge({
   monthlyRemaining: monthlyRemainingProp,
 }) {
   const { t } = useDashboardLang();
-  const { planId: billingPlanId, monthlyRemaining, loading } = useBillingSummary();
+  const { view, loading } = useBillingSummary();
 
-  const planId = planIdProp ?? billingPlanId ?? "solo";
-  const remaining = monthlyRemainingProp ?? monthlyRemaining;
+  const planId = planIdProp ?? view.usagePlanId ?? "solo";
+  const remaining = monthlyRemainingProp ?? view.monthlyAnalysesRemaining;
   const { used, limit } = computeImportUsage({ planId, monthlyRemaining: remaining });
 
   const content = (

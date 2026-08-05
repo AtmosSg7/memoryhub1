@@ -1,20 +1,18 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { useBillingSummary } from "@/hooks/useBillingSummary";
-import { resolveSubscriptionPlanLabel } from "@/lib/billingPresentation";
 import { useIsShowcaseDemo } from "@/context/ShowcaseThemeIsolation";
 import { getSidebarItems } from "@/components/dashboard/sidebarNav";
 import ImportUsageMeter from "@/components/dashboard/ImportUsageMeter";
 import { PLAN_CATALOG } from "@/constants/planConfig";
 
 export default function Sidebar() {
-  const { t, lang } = useDashboardLang();
+  const { t } = useDashboardLang();
   const navigate = useNavigate();
   const isShowcase = useIsShowcaseDemo();
-  const { billing, planId, monthlyRemaining, monthlyAllocated, loading } = useBillingSummary();
+  const { view, loading } = useBillingSummary();
 
-  const displayPlanId = planId || "solo";
-  const planLabel = resolveSubscriptionPlanLabel(billing, t, { lang });
+  const usagePlanId = view.usagePlanId || "solo";
 
   return (
     <aside
@@ -72,16 +70,20 @@ export default function Sidebar() {
           data-testid="sidebar-upgrade-card"
         >
           <p className="dash-label">{t("sidebar.subscription.title")}</p>
-          <p className="font-cabinet text-sm font-bold text-dash-text mt-1.5 truncate">
-            {loading ? "…" : planLabel}
+          <p
+            className="font-cabinet text-sm font-bold text-dash-text mt-1.5 truncate"
+            data-testid="sidebar-subscription-label"
+          >
+            {loading ? "…" : view.widgetLabel}
           </p>
           {!loading ? (
             <div className="mt-3">
               <ImportUsageMeter
-                planId={displayPlanId}
-                monthlyRemaining={monthlyRemaining}
+                planId={usagePlanId}
+                monthlyRemaining={view.monthlyAnalysesRemaining}
                 monthlyAllocated={
-                  monthlyAllocated ?? PLAN_CATALOG.find((p) => p.id === displayPlanId)?.monthlyImports
+                  view.monthlyAnalysesAllocated ??
+                  PLAN_CATALOG.find((p) => p.id === usagePlanId)?.monthlyImports
                 }
                 compact
               />

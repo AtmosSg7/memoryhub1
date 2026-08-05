@@ -45,7 +45,12 @@ export default function SubscriptionPlanCard({
           {t(`billingPage.plans.${planId}`)}
         </p>
         {isCurrent ? (
-          <p className="text-xs font-medium text-dash-primary mt-1">{t("billingPage.currentBadge")}</p>
+          <p
+            className="text-xs font-medium text-dash-primary mt-1"
+            data-testid={`billing-current-badge-${planId}`}
+          >
+            {t("billingPage.currentBadge")}
+          </p>
         ) : null}
         <div className="mt-3 flex items-baseline gap-1">
           <span className="font-cabinet text-4xl font-bold text-dash-text tabular-nums">{price}€</span>

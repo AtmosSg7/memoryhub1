@@ -1,6 +1,8 @@
 /**
  * Single presentation layer for /api/billing/me.
- * UI must key off subscriptionStatus (+ cancelAtPeriodEnd), not hasSubscription.
+ *
+ * Every dashboard surface (Sidebar, BillingPage, plan cards, badges) must render
+ * from buildBillingViewModel() — never from hasSubscription or ad-hoc planId checks.
  */
 
 const ACTIVE_LIKE_STATUSES = new Set(["active", "past_due", "suspended"]);
@@ -16,12 +18,10 @@ export function getSubscriptionStatus(billing) {
   return normalizeSubscriptionStatus(billing?.subscriptionStatus);
 }
 
-/** Local/app trial (no paid Stripe period). */
 export function isTrialStatus(billing) {
   return getSubscriptionStatus(billing) === "trial";
 }
 
-/** Actively entitled subscription (still billed / usable). */
 export function isActiveLikeStatus(billing) {
   return ACTIVE_LIKE_STATUSES.has(getSubscriptionStatus(billing));
 }
@@ -30,14 +30,12 @@ export function isEndedStatus(billing) {
   return ENDED_STATUSES.has(getSubscriptionStatus(billing));
 }
 
-/** Scheduled cancellation while status is still active-like. */
 export function isCancelAtPeriodEnd(billing) {
   return Boolean(billing?.cancelAtPeriodEnd) && isActiveLikeStatus(billing);
 }
 
 /**
- * "Offre actuelle" badge — only for an active-like plan that is not ending.
- * Never for trial / cancelled / expired / cancel_at_period_end.
+ * "Offre actuelle" on a plan card — active-like only, never trial / ended / CAPE.
  */
 export function isCurrentOfferPlan(billing, planId) {
   if (!planId || !billing?.planId || billing.planId !== planId) return false;
@@ -54,36 +52,24 @@ function formatBillingDate(iso, lang) {
   }
 }
 
-/**
- * Primary label for sidebar / compact widgets.
- * - trial → Essai gratuit
- * - active-like → plan name (or Expire le… if cancel_at_period_end)
- * - cancelled/expired → Annulé / Expiré
- */
-export function resolveSubscriptionPlanLabel(billing, t, { lang } = {}) {
+function resolveWidgetLabel(billing, t, lang) {
   const status = getSubscriptionStatus(billing);
   if (!status) return t("sidebar.subscription.none");
-
   if (status === "trial") return t("sidebar.subscription.trial");
-
   if (isCancelAtPeriodEnd(billing)) {
     const date = formatBillingDate(billing.currentPeriodEnd, lang);
     if (date) return t("sidebar.subscription.expiresOn").replace("{date}", date);
     return t("billingPage.cancelScheduled");
   }
-
   if (status === "cancelled") return t("billingPage.status.cancelled");
   if (status === "expired") return t("billingPage.status.expired");
-
   if (isActiveLikeStatus(billing) && billing.planId) {
     return t(`billingPage.plans.${billing.planId}`);
   }
-
   return t(`billingPage.status.${status}`) || t("sidebar.subscription.none");
 }
 
-/** Eyebrow above the billing summary title (not derived from hasSubscription). */
-export function resolveBillingSummaryEyebrow(billing, t) {
+function resolveSummaryEyebrow(billing, t) {
   const status = getSubscriptionStatus(billing);
   if (!status) return t("billingPage.noSubscription");
   if (status === "trial") return t("billingPage.status.trial");
@@ -93,8 +79,7 @@ export function resolveBillingSummaryEyebrow(billing, t) {
   return t("billingPage.noSubscription");
 }
 
-/** Main title in the billing summary card. */
-export function resolveBillingSummaryTitle(billing, t) {
+function resolveSummaryTitle(billing, t) {
   const status = getSubscriptionStatus(billing);
   if (!status) return t("billingPage.choosePlan");
   if (status === "trial") return t("billingPage.status.trial");
@@ -105,6 +90,63 @@ export function resolveBillingSummaryTitle(billing, t) {
   return t("billingPage.choosePlan");
 }
 
+/**
+ * Canonical UI snapshot derived from one /api/billing/me payload.
+ * Components must read from this object only.
+ */
+export function buildBillingViewModel(billing, t, lang = "fr") {
+  const status = getSubscriptionStatus(billing);
+  const planId = billing?.planId || null;
+  const periodEndLabel = formatBillingDate(billing?.currentPeriodEnd, lang);
+  const trialEndsLabel = formatBillingDate(billing?.trialEndsAt, lang);
+  const cape = isCancelAtPeriodEnd(billing);
+  const ended = isEndedStatus(billing);
+  const trial = status === "trial";
+  const activeLike = isActiveLikeStatus(billing);
+
+  return {
+    raw: billing,
+    status,
+    planId,
+    widgetLabel: resolveWidgetLabel(billing, t, lang),
+    summaryEyebrow: resolveSummaryEyebrow(billing, t),
+    summaryTitle: resolveSummaryTitle(billing, t),
+    statusLabel: t(status ? `billingPage.status.${status}` : "billingPage.status.none"),
+    isTrial: trial,
+    isActiveLike: activeLike,
+    isEnded: ended,
+    isCancelAtPeriodEnd: cape,
+    trialEndsLabel: trial ? trialEndsLabel : null,
+    periodEndLabel: activeLike || ended ? periodEndLabel : null,
+    periodEndKind: cape ? "expires" : activeLike ? "renewal" : ended ? "ended" : null,
+    /** Meter / quota plan — API planId only, no silent "solo" fallback for labels. */
+    usagePlanId: planId,
+    stripeConfigured: Boolean(billing?.stripeConfigured),
+    stripeTestMode: Boolean(billing?.stripeTestMode),
+    actions: billing?.actions || {},
+    availablePlans: billing?.availablePlans || [],
+    monthlyAnalysesRemaining: billing?.monthlyAnalysesRemaining ?? null,
+    monthlyAnalysesAllocated: billing?.monthlyAnalysesAllocated ?? null,
+    isCurrentOfferPlan: (candidatePlanId) => isCurrentOfferPlan(billing, candidatePlanId),
+  };
+}
+
+/** @deprecated use buildBillingViewModel().widgetLabel */
+export function resolveSubscriptionPlanLabel(billing, t, { lang } = {}) {
+  return buildBillingViewModel(billing, t, lang).widgetLabel;
+}
+
+/** @deprecated use buildBillingViewModel().summaryEyebrow */
+export function resolveBillingSummaryEyebrow(billing, t) {
+  return buildBillingViewModel(billing, t).summaryEyebrow;
+}
+
+/** @deprecated use buildBillingViewModel().summaryTitle */
+export function resolveBillingSummaryTitle(billing, t) {
+  return buildBillingViewModel(billing, t).summaryTitle;
+}
+
+/** @deprecated use buildBillingViewModel().statusLabel */
 export function resolveBillingStatusLabelKey(billing) {
   const status = getSubscriptionStatus(billing);
   if (!status) return "billingPage.status.none";

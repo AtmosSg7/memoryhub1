@@ -2,12 +2,7 @@
  * @jest-environment node
  */
 
-const {
-  isCurrentOfferPlan,
-  resolveBillingSummaryEyebrow,
-  resolveBillingSummaryTitle,
-  resolveSubscriptionPlanLabel,
-} = require("@/lib/billingPresentation");
+const { buildBillingViewModel, isCurrentOfferPlan } = require("@/lib/billingPresentation");
 
 function t(key) {
   const map = {
@@ -20,75 +15,99 @@ function t(key) {
     "billingPage.noSubscription": "Aucun abonnement actif",
     "billingPage.choosePlan": "Choisissez une offre",
     "billingPage.cancelScheduled": "Annulation programmée",
+    "billingPage.status.none": "Aucun abonnement",
     "billingPage.status.trial": "Essai gratuit",
     "billingPage.status.cancelled": "Annulé",
     "billingPage.status.expired": "Expiré",
     "billingPage.status.active": "Actif",
+    "billingPage.status.past_due": "Paiement en retard",
   };
   return map[key] || key;
 }
 
-describe("billingPresentation from /api/billing/me", () => {
-  it("trial → Essai gratuit, never Offre actuelle badge", () => {
-    const billing = {
+function viewFor(billing) {
+  return buildBillingViewModel(billing, t, "fr");
+}
+
+describe("buildBillingViewModel — single source of truth", () => {
+  it("trial → Essai gratuit everywhere, no current-offer badge", () => {
+    const view = viewFor({
       hasSubscription: true,
       planId: "solo",
       subscriptionStatus: "trial",
       cancelAtPeriodEnd: false,
-    };
-    expect(resolveSubscriptionPlanLabel(billing, t)).toBe("Essai gratuit");
-    expect(resolveBillingSummaryEyebrow(billing, t)).toBe("Essai gratuit");
-    expect(resolveBillingSummaryTitle(billing, t)).toBe("Essai gratuit");
-    expect(isCurrentOfferPlan(billing, "solo")).toBe(false);
+    });
+    expect(view.widgetLabel).toBe("Essai gratuit");
+    expect(view.summaryEyebrow).toBe("Essai gratuit");
+    expect(view.summaryTitle).toBe("Essai gratuit");
+    expect(view.statusLabel).toBe("Essai gratuit");
+    expect(view.isCurrentOfferPlan("solo")).toBe(false);
   });
 
-  it("active → plan name + Offre actuelle on matching plan", () => {
-    const billing = {
+  it("active → same plan label in widget + summary, Offre actuelle badge", () => {
+    const view = viewFor({
       hasSubscription: true,
       planId: "solo",
       subscriptionStatus: "active",
       cancelAtPeriodEnd: false,
-    };
-    expect(resolveSubscriptionPlanLabel(billing, t)).toBe("Starter");
-    expect(resolveBillingSummaryEyebrow(billing, t)).toBe("Offre actuelle");
-    expect(resolveBillingSummaryTitle(billing, t)).toBe("Starter");
-    expect(isCurrentOfferPlan(billing, "solo")).toBe(true);
-    expect(isCurrentOfferPlan(billing, "pro")).toBe(false);
+    });
+    expect(view.widgetLabel).toBe("Starter");
+    expect(view.summaryEyebrow).toBe("Offre actuelle");
+    expect(view.summaryTitle).toBe("Starter");
+    expect(view.statusLabel).toBe("Actif");
+    expect(view.isCurrentOfferPlan("solo")).toBe(true);
+    expect(view.isCurrentOfferPlan("pro")).toBe(false);
   });
 
-  it("cancelled → Annulé, never Essai gratuit nor Offre actuelle", () => {
-    const billing = {
+  it("cancelled → Annulé everywhere, never Essai gratuit nor Offre actuelle", () => {
+    const view = viewFor({
       hasSubscription: true,
       planId: "solo",
       subscriptionStatus: "cancelled",
       cancelAtPeriodEnd: false,
-    };
-    expect(resolveSubscriptionPlanLabel(billing, t)).toBe("Annulé");
-    expect(resolveBillingSummaryEyebrow(billing, t)).toBe("Annulé");
-    expect(resolveBillingSummaryTitle(billing, t)).toBe("Annulé");
-    expect(isCurrentOfferPlan(billing, "solo")).toBe(false);
+    });
+    expect(view.widgetLabel).toBe("Annulé");
+    expect(view.summaryEyebrow).toBe("Annulé");
+    expect(view.summaryTitle).toBe("Annulé");
+    expect(view.statusLabel).toBe("Annulé");
+    expect(view.isCurrentOfferPlan("solo")).toBe(false);
+    expect(isCurrentOfferPlan(view.raw, "solo")).toBe(false);
   });
 
-  it("active + cancelAtPeriodEnd → Expire le…, no Offre actuelle badge", () => {
-    const billing = {
+  it("expired → Expiré, no current-offer badge", () => {
+    const view = viewFor({
+      hasSubscription: true,
+      planId: "pro",
+      subscriptionStatus: "expired",
+    });
+    expect(view.widgetLabel).toBe("Expiré");
+    expect(view.summaryTitle).toBe("Expiré");
+    expect(view.isCurrentOfferPlan("pro")).toBe(false);
+  });
+
+  it("active + cancelAtPeriodEnd → Expire le…, no Offre actuelle", () => {
+    const view = viewFor({
       hasSubscription: true,
       planId: "solo",
       subscriptionStatus: "active",
       cancelAtPeriodEnd: true,
       currentPeriodEnd: "2026-09-01T00:00:00.000Z",
-    };
-    expect(resolveSubscriptionPlanLabel(billing, t, { lang: "fr" })).toMatch(/^Expire le /);
-    expect(resolveBillingSummaryEyebrow(billing, t)).toBe("Annulation programmée");
-    expect(isCurrentOfferPlan(billing, "solo")).toBe(false);
+    });
+    expect(view.widgetLabel).toMatch(/^Expire le /);
+    expect(view.summaryEyebrow).toBe("Annulation programmée");
+    expect(view.summaryTitle).toBe("Starter");
+    expect(view.periodEndKind).toBe("expires");
+    expect(view.isCurrentOfferPlan("solo")).toBe(false);
   });
 
-  it("ignores hasSubscription when deriving labels", () => {
-    const billing = {
+  it("ignores hasSubscription entirely for labels and badges", () => {
+    const view = viewFor({
       hasSubscription: false,
       planId: "solo",
       subscriptionStatus: "cancelled",
-    };
-    expect(resolveSubscriptionPlanLabel(billing, t)).toBe("Annulé");
-    expect(isCurrentOfferPlan(billing, "solo")).toBe(false);
+    });
+    expect(view.widgetLabel).toBe("Annulé");
+    expect(view.summaryTitle).toBe("Annulé");
+    expect(view.isCurrentOfferPlan("solo")).toBe(false);
   });
 });

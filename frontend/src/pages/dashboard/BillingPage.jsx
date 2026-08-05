@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowUpRight, Info, Loader2, CreditCard } from "lucide-react";
 import { toast } from "sonner";
@@ -10,55 +10,19 @@ import { PageError, PageLoader } from "@/components/dashboard/PageFeedback";
 import { ActionButton } from "@/components/dashboard/ActionButton";
 import ImportUsageMeter from "@/components/dashboard/ImportUsageMeter";
 import SubscriptionPlanCard from "@/components/dashboard/SubscriptionPlanCard";
-import {
-  changeBillingPlan,
-  fetchBillingMe,
-  openBillingPortal,
-  startCheckout,
-} from "@/lib/billingApi";
-import { setBillingCache } from "@/hooks/useBillingSummary";
+import { changeBillingPlan, openBillingPortal, startCheckout } from "@/lib/billingApi";
+import { useBillingSummary } from "@/hooks/useBillingSummary";
 import { invalidateCreditsCache } from "@/hooks/useCredits";
 import { PLAN_CATALOG, PLAN_ORDER } from "@/constants/planConfig";
-import {
-  getSubscriptionStatus,
-  isActiveLikeStatus,
-  isCancelAtPeriodEnd,
-  isCurrentOfferPlan,
-  isEndedStatus,
-  isTrialStatus,
-  resolveBillingStatusLabelKey,
-  resolveBillingSummaryEyebrow,
-  resolveBillingSummaryTitle,
-} from "@/lib/billingPresentation";
 
 export default function BillingPage() {
-  const { t, lang } = useDashboardLang();
+  const { t } = useDashboardLang();
   usePageTitle("page.billing.title");
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [billing, setBilling] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { view, loading, error, refresh } = useBillingSummary();
   const [actionLoading, setActionLoading] = useState(null);
-
-  const loadBilling = useCallback(async () => {
-    setError("");
-    try {
-      const billingData = await fetchBillingMe();
-      setBilling(billingData);
-      // Keep dashboard widgets (sidebar, badges) on the same /billing/me snapshot.
-      setBillingCache(billingData);
-    } catch (err) {
-      setError(err.message || t("billingPage.loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    loadBilling();
-  }, [loadBilling]);
 
   useEffect(() => {
     const checkout = searchParams.get("checkout");
@@ -66,18 +30,18 @@ export default function BillingPage() {
       toast.success(t("billingPage.checkoutSuccess"));
       searchParams.delete("checkout");
       setSearchParams(searchParams, { replace: true });
-      loadBilling();
+      refresh();
       invalidateCreditsCache();
     } else if (checkout === "cancel") {
       toast.message(t("billingPage.checkoutCancel"));
       searchParams.delete("checkout");
       setSearchParams(searchParams, { replace: true });
     }
-  }, [searchParams, setSearchParams, t, loadBilling]);
+  }, [searchParams, setSearchParams, t, refresh]);
 
   const handleCheckout = async (planId) => {
     if (actionLoading) return;
-    if (!billing?.stripeConfigured) {
+    if (!view.stripeConfigured) {
       toast.error(t("billingPage.stripeNotConfigured"));
       return;
     }
@@ -112,7 +76,7 @@ export default function BillingPage() {
     try {
       const result = await changeBillingPlan(planId);
       toast.success(result.message || t("billingPage.planChangeSubmitted"));
-      await loadBilling();
+      await refresh();
       invalidateCreditsCache();
     } catch (err) {
       toast.error(err.message || t("billingPage.planChangeError"));
@@ -121,17 +85,12 @@ export default function BillingPage() {
     }
   };
 
-  const status = getSubscriptionStatus(billing);
-  const summaryEyebrow = resolveBillingSummaryEyebrow(billing, t);
-  const summaryTitle = resolveBillingSummaryTitle(billing, t);
-  const showStatusDetails = Boolean(status);
-
   const plansToShow = useMemo(() => {
-    const available = billing?.availablePlans?.length ? billing.availablePlans : PLAN_ORDER;
+    const available = view.availablePlans?.length ? view.availablePlans : PLAN_ORDER;
     return PLAN_CATALOG.filter((plan) => available.includes(plan.id));
-  }, [billing?.availablePlans]);
+  }, [view.availablePlans]);
 
-  if (loading) {
+  if (loading && !view.status) {
     return (
       <div className="space-y-6" data-testid="billing-page">
         <PageHeader
@@ -154,7 +113,7 @@ export default function BillingPage() {
 
       {error ? <PageError message={error} testId="billing-error" /> : null}
 
-      {!billing?.stripeConfigured && (
+      {!view.stripeConfigured && (
         <section
           className="rounded-xl border border-[#BFDBFE] bg-dash-accent-soft px-4 py-3 flex items-start gap-3"
           data-testid="billing-stripe-unconfigured"
@@ -164,7 +123,7 @@ export default function BillingPage() {
         </section>
       )}
 
-      {billing?.stripeConfigured && billing?.stripeTestMode && (
+      {view.stripeConfigured && view.stripeTestMode && (
         <section className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           {t("billingPage.stripeTestMode")}
         </section>
@@ -180,53 +139,50 @@ export default function BillingPage() {
               className="text-[11px] uppercase tracking-widest text-dash-text-subtle font-semibold"
               data-testid="billing-summary-eyebrow"
             >
-              {summaryEyebrow}
+              {view.summaryEyebrow}
             </p>
             <h2
               className="font-cabinet text-2xl font-bold text-dash-text tracking-tight mt-1"
               data-testid="billing-summary-title"
             >
-              {summaryTitle}
+              {view.summaryTitle}
             </h2>
-            {showStatusDetails && (
+            {view.status ? (
               <p className="text-sm text-dash-text-muted mt-1" data-testid="billing-summary-status">
-                {t(resolveBillingStatusLabelKey(billing))}
-                {isTrialStatus(billing) && billing.trialEndsAt && (
+                {view.statusLabel}
+                {view.isTrial && view.trialEndsLabel ? (
                   <span className="block text-xs text-dash-text-subtle mt-1">
-                    {t("billingPage.trialEnds")}:{" "}
-                    {new Date(billing.trialEndsAt).toLocaleDateString(lang === "en" ? "en-GB" : "fr-FR")}
+                    {t("billingPage.trialEnds")}: {view.trialEndsLabel}
                   </span>
-                )}
-                {isActiveLikeStatus(billing) && billing.currentPeriodEnd && !isTrialStatus(billing) && (
+                ) : null}
+                {view.periodEndLabel && view.periodEndKind === "expires" ? (
                   <span className="block text-xs text-dash-text-subtle mt-1">
-                    {isCancelAtPeriodEnd(billing)
-                      ? `${t("billingPage.expiresOn")}: ${new Date(billing.currentPeriodEnd).toLocaleDateString(
-                          lang === "en" ? "en-GB" : "fr-FR"
-                        )}`
-                      : `${t("billingPage.renewal")}: ${new Date(billing.currentPeriodEnd).toLocaleDateString(
-                          lang === "en" ? "en-GB" : "fr-FR"
-                        )}`}
+                    {t("billingPage.expiresOn")}: {view.periodEndLabel}
                   </span>
-                )}
-                {isEndedStatus(billing) && billing.currentPeriodEnd && (
+                ) : null}
+                {view.periodEndLabel && view.periodEndKind === "renewal" ? (
                   <span className="block text-xs text-dash-text-subtle mt-1">
-                    {t("billingPage.endedOn")}:{" "}
-                    {new Date(billing.currentPeriodEnd).toLocaleDateString(lang === "en" ? "en-GB" : "fr-FR")}
+                    {t("billingPage.renewal")}: {view.periodEndLabel}
                   </span>
-                )}
+                ) : null}
+                {view.periodEndLabel && view.periodEndKind === "ended" ? (
+                  <span className="block text-xs text-dash-text-subtle mt-1">
+                    {t("billingPage.endedOn")}: {view.periodEndLabel}
+                  </span>
+                ) : null}
               </p>
-            )}
+            ) : null}
             <p className="text-sm text-dash-text-muted mt-2 truncate">{user?.companyName || user?.email || "—"}</p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 shrink-0">
             <ImportUsageMeter
-              planId={billing?.planId || "solo"}
-              monthlyRemaining={billing?.monthlyAnalysesRemaining}
-              monthlyAllocated={billing?.monthlyAnalysesAllocated}
+              planId={view.usagePlanId || "solo"}
+              monthlyRemaining={view.monthlyAnalysesRemaining}
+              monthlyAllocated={view.monthlyAnalysesAllocated}
               className="min-w-[220px]"
             />
-            {billing?.actions?.canManage ? (
+            {view.actions?.canManage ? (
               <ActionButton
                 variant="primary"
                 className="shrink-0 self-start"
@@ -265,18 +221,17 @@ export default function BillingPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
           {plansToShow.map((plan) => {
-            const isCurrentOffer = isCurrentOfferPlan(billing, plan.id);
-            const onLocalTrial = isTrialStatus(billing) && !billing?.actions?.canManage;
-            // Trial without Stripe can pick any plan (including current) to open Checkout.
+            const isCurrentOffer = view.isCurrentOfferPlan(plan.id);
+            const onLocalTrial = view.isTrial && !view.actions?.canManage;
             const canCheckout =
-              Boolean(billing?.stripeConfigured) &&
-              Boolean(billing?.actions?.canCheckout) &&
+              Boolean(view.stripeConfigured) &&
+              Boolean(view.actions?.canCheckout) &&
               (!isCurrentOffer || onLocalTrial);
             const canChange =
-              Boolean(billing?.stripeConfigured) &&
-              Boolean(billing?.actions?.canChangePlan) &&
+              Boolean(view.stripeConfigured) &&
+              Boolean(view.actions?.canChangePlan) &&
               !isCurrentOffer &&
-              Boolean(billing?.actions?.canManage);
+              Boolean(view.actions?.canManage);
 
             return (
               <SubscriptionPlanCard
