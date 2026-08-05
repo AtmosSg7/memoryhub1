@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchBillingMe } from "@/lib/billingApi";
+import { resolveSubscriptionPlanLabel } from "@/lib/billingPresentation";
 
 let sharedBilling = null;
 let sharedListeners = new Set();
@@ -44,16 +45,7 @@ export function invalidateBillingCache() {
   }
 }
 
-/**
- * Plan label for UI widgets — always prefer the real plan name from /billing/me.
- * Never map "no shared cache / no subscription" to "Essai gratuit".
- */
-export function resolveSubscriptionPlanLabel(billing, t) {
-  const planId = billing?.planId;
-  if (planId) return t(`billingPage.plans.${planId}`);
-  if (billing?.subscriptionStatus === "trial") return t("sidebar.subscription.trial");
-  return t("sidebar.subscription.none");
-}
+export { resolveSubscriptionPlanLabel };
 
 export function useBillingSummary({ enabled = true } = {}) {
   const [billing, setBilling] = useState(sharedBilling);
@@ -93,8 +85,8 @@ export function useBillingSummary({ enabled = true } = {}) {
   return {
     billing,
     planId: billing?.planId || null,
-    hasSubscription: Boolean(billing?.hasSubscription),
     subscriptionStatus: billing?.subscriptionStatus || null,
+    cancelAtPeriodEnd: Boolean(billing?.cancelAtPeriodEnd),
     monthlyRemaining: billing?.monthlyAnalysesRemaining ?? null,
     monthlyAllocated: billing?.monthlyAnalysesAllocated ?? null,
     loading,

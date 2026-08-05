@@ -80,6 +80,35 @@ describe("BillingPage checkout CTAs", () => {
     jest.clearAllMocks();
   });
 
+  it("cancelled subscription never shows Offre actuelle badge", async () => {
+    mockFetchBillingMe.mockResolvedValue({
+      hasSubscription: true,
+      planId: "solo",
+      subscriptionStatus: "cancelled",
+      cancelAtPeriodEnd: false,
+      stripeConfigured: true,
+      availablePlans: ["solo", "pro", "team"],
+      monthlyAnalysesRemaining: 0,
+      monthlyAnalysesAllocated: 10,
+      actions: {
+        canCheckout: true,
+        canManage: false,
+        canChangePlan: false,
+      },
+    });
+
+    const { container, cleanup } = await renderBilling();
+
+    expect(container.querySelector('[data-testid="billing-summary-eyebrow"]').textContent).toMatch(/Annulé/i);
+    expect(container.querySelector('[data-testid="billing-summary-title"]').textContent).toMatch(/Annulé/i);
+    expect(container.querySelector('[data-testid="billing-plan-card-solo"]').textContent).not.toMatch(
+      /Offre actuelle/
+    );
+    expect(container.querySelector('[data-testid="billing-checkout-solo"]')).toBeTruthy();
+
+    await cleanup();
+  });
+
   it("shows choose buttons for each plan during a local trial", async () => {
     mockFetchBillingMe.mockResolvedValue({
       hasSubscription: true,

@@ -19,14 +19,20 @@ import {
 import { setBillingCache } from "@/hooks/useBillingSummary";
 import { invalidateCreditsCache } from "@/hooks/useCredits";
 import { PLAN_CATALOG, PLAN_ORDER } from "@/constants/planConfig";
-
-function statusLabelKey(status) {
-  if (!status) return "billingPage.status.none";
-  return `billingPage.status.${status}`;
-}
+import {
+  getSubscriptionStatus,
+  isActiveLikeStatus,
+  isCancelAtPeriodEnd,
+  isCurrentOfferPlan,
+  isEndedStatus,
+  isTrialStatus,
+  resolveBillingStatusLabelKey,
+  resolveBillingSummaryEyebrow,
+  resolveBillingSummaryTitle,
+} from "@/lib/billingPresentation";
 
 export default function BillingPage() {
-  const { t } = useDashboardLang();
+  const { t, lang } = useDashboardLang();
   usePageTitle("page.billing.title");
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -115,8 +121,10 @@ export default function BillingPage() {
     }
   };
 
-  const currentPlanId = billing?.planId;
-  const planLabel = currentPlanId ? t(`billingPage.plans.${currentPlanId}`) : "—";
+  const status = getSubscriptionStatus(billing);
+  const summaryEyebrow = resolveBillingSummaryEyebrow(billing, t);
+  const summaryTitle = resolveBillingSummaryTitle(billing, t);
+  const showStatusDetails = Boolean(status);
 
   const plansToShow = useMemo(() => {
     const available = billing?.availablePlans?.length ? billing.availablePlans : PLAN_ORDER;
@@ -162,30 +170,49 @@ export default function BillingPage() {
         </section>
       )}
 
-      <section className="bg-dash-surface border border-dash-border rounded-2xl p-5 md:p-6 space-y-5 shadow-[0_1px_2px_rgba(17,24,39,0.04)]">
+      <section
+        className="bg-dash-surface border border-dash-border rounded-2xl p-5 md:p-6 space-y-5 shadow-[0_1px_2px_rgba(17,24,39,0.04)]"
+        data-testid="billing-summary-card"
+      >
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
           <div>
-            <p className="text-[11px] uppercase tracking-widest text-dash-text-subtle font-semibold">
-              {billing?.hasSubscription ? t("billingPage.currentPlan") : t("billingPage.noSubscription")}
+            <p
+              className="text-[11px] uppercase tracking-widest text-dash-text-subtle font-semibold"
+              data-testid="billing-summary-eyebrow"
+            >
+              {summaryEyebrow}
             </p>
-            <h2 className="font-cabinet text-2xl font-bold text-dash-text tracking-tight mt-1">
-              {billing?.hasSubscription ? planLabel : t("billingPage.choosePlan")}
+            <h2
+              className="font-cabinet text-2xl font-bold text-dash-text tracking-tight mt-1"
+              data-testid="billing-summary-title"
+            >
+              {summaryTitle}
             </h2>
-            {billing?.hasSubscription && (
-              <p className="text-sm text-dash-text-muted mt-1">
-                {t(statusLabelKey(billing.subscriptionStatus))}
-                {billing.trialEndsAt && (
+            {showStatusDetails && (
+              <p className="text-sm text-dash-text-muted mt-1" data-testid="billing-summary-status">
+                {t(resolveBillingStatusLabelKey(billing))}
+                {isTrialStatus(billing) && billing.trialEndsAt && (
                   <span className="block text-xs text-dash-text-subtle mt-1">
-                    {t("billingPage.trialEnds")}: {new Date(billing.trialEndsAt).toLocaleDateString()}
+                    {t("billingPage.trialEnds")}:{" "}
+                    {new Date(billing.trialEndsAt).toLocaleDateString(lang === "en" ? "en-GB" : "fr-FR")}
                   </span>
                 )}
-                {billing.currentPeriodEnd && !billing.trialEndsAt && (
+                {isActiveLikeStatus(billing) && billing.currentPeriodEnd && !isTrialStatus(billing) && (
                   <span className="block text-xs text-dash-text-subtle mt-1">
-                    {t("billingPage.renewal")}: {new Date(billing.currentPeriodEnd).toLocaleDateString()}
+                    {isCancelAtPeriodEnd(billing)
+                      ? `${t("billingPage.expiresOn")}: ${new Date(billing.currentPeriodEnd).toLocaleDateString(
+                          lang === "en" ? "en-GB" : "fr-FR"
+                        )}`
+                      : `${t("billingPage.renewal")}: ${new Date(billing.currentPeriodEnd).toLocaleDateString(
+                          lang === "en" ? "en-GB" : "fr-FR"
+                        )}`}
                   </span>
                 )}
-                {billing.cancelAtPeriodEnd && (
-                  <span className="block text-xs text-amber-700 mt-1">{t("billingPage.cancelScheduled")}</span>
+                {isEndedStatus(billing) && billing.currentPeriodEnd && (
+                  <span className="block text-xs text-dash-text-subtle mt-1">
+                    {t("billingPage.endedOn")}:{" "}
+                    {new Date(billing.currentPeriodEnd).toLocaleDateString(lang === "en" ? "en-GB" : "fr-FR")}
+                  </span>
                 )}
               </p>
             )}
@@ -194,7 +221,7 @@ export default function BillingPage() {
 
           <div className="flex flex-col sm:flex-row gap-3 shrink-0">
             <ImportUsageMeter
-              planId={currentPlanId || "solo"}
+              planId={billing?.planId || "solo"}
               monthlyRemaining={billing?.monthlyAnalysesRemaining}
               monthlyAllocated={billing?.monthlyAnalysesAllocated}
               className="min-w-[220px]"
@@ -238,26 +265,24 @@ export default function BillingPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
           {plansToShow.map((plan) => {
-            const isCurrent = currentPlanId === plan.id;
-            const stripeBacked = Boolean(billing?.actions?.canManage);
-            const onLocalTrial =
-              billing?.subscriptionStatus === "trial" && !stripeBacked;
+            const isCurrentOffer = isCurrentOfferPlan(billing, plan.id);
+            const onLocalTrial = isTrialStatus(billing) && !billing?.actions?.canManage;
             // Trial without Stripe can pick any plan (including current) to open Checkout.
             const canCheckout =
               Boolean(billing?.stripeConfigured) &&
               Boolean(billing?.actions?.canCheckout) &&
-              (!isCurrent || onLocalTrial);
+              (!isCurrentOffer || onLocalTrial);
             const canChange =
               Boolean(billing?.stripeConfigured) &&
               Boolean(billing?.actions?.canChangePlan) &&
-              !isCurrent &&
-              stripeBacked;
+              !isCurrentOffer &&
+              Boolean(billing?.actions?.canManage);
 
             return (
               <SubscriptionPlanCard
                 key={plan.id}
                 plan={plan}
-                isCurrent={isCurrent}
+                isCurrent={isCurrentOffer}
                 canCheckout={canCheckout}
                 canChange={canChange}
                 actionLoading={!!actionLoading}

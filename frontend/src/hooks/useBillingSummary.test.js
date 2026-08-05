@@ -7,45 +7,7 @@ jest.mock("@/lib/billingApi", () => ({
 }));
 
 const { fetchBillingMe } = require("@/lib/billingApi");
-const {
-  resolveSubscriptionPlanLabel,
-  setBillingCache,
-  invalidateBillingCache,
-} = require("@/hooks/useBillingSummary");
-
-function t(key) {
-  return key;
-}
-
-describe("resolveSubscriptionPlanLabel", () => {
-  it("prefers the real plan name when planId is present (including active Stripe)", () => {
-    expect(
-      resolveSubscriptionPlanLabel(
-        { planId: "solo", subscriptionStatus: "active", hasSubscription: true },
-        t
-      )
-    ).toBe("billingPage.plans.solo");
-  });
-
-  it("does not show trial when cache is empty", () => {
-    expect(resolveSubscriptionPlanLabel(null, t)).toBe("sidebar.subscription.none");
-  });
-
-  it("shows trial only when status is trial and planId is missing", () => {
-    expect(
-      resolveSubscriptionPlanLabel({ subscriptionStatus: "trial", hasSubscription: true }, t)
-    ).toBe("sidebar.subscription.trial");
-  });
-
-  it("shows plan name during a local trial when planId is set", () => {
-    expect(
-      resolveSubscriptionPlanLabel(
-        { planId: "solo", subscriptionStatus: "trial", hasSubscription: true },
-        t
-      )
-    ).toBe("billingPage.plans.solo");
-  });
-});
+const { setBillingCache, invalidateBillingCache } = require("@/hooks/useBillingSummary");
 
 describe("billing shared cache", () => {
   beforeEach(() => {
@@ -62,8 +24,6 @@ describe("billing shared cache", () => {
 
     let latest = null;
     const { useBillingSummary } = require("@/hooks/useBillingSummary");
-    // Manually attach via hook module internals: call invalidate with a fake listener path
-    // by mounting through React like BillingPage tests.
     const React = require("react");
     const { act } = require("react");
     const { createRoot } = require("react-dom/client");

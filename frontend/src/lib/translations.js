@@ -2354,6 +2354,7 @@ export const translations = {
           cta: "Voir mon abonnement",
           trial: "Essai gratuit",
           none: "Aucun abonnement",
+          expiresOn: "Expire le {date}",
         },
       },
       imports: {
@@ -2403,6 +2404,8 @@ export const translations = {
         popularBadge: "Le plus populaire",
         renewal: "Prochaine échéance",
         trialEnds: "Fin de l'essai",
+        expiresOn: "Expire le",
+        endedOn: "Fin de période",
         cancelScheduled: "Annulation programmée à la fin de la période",
         subscribe: "S'abonner",
         choosePlanCta: "Choisir {plan}",
@@ -5193,6 +5196,7 @@ export const translations = {
           cta: "View subscription",
           trial: "Free trial",
           none: "No subscription",
+          expiresOn: "Expires on {date}",
         },
       },
       imports: {
@@ -5242,6 +5246,8 @@ export const translations = {
         popularBadge: "Most popular",
         renewal: "Next billing date",
         trialEnds: "Trial ends",
+        expiresOn: "Expires on",
+        endedOn: "Period ended",
         cancelScheduled: "Cancellation scheduled at period end",
         subscribe: "Subscribe",
         choosePlanCta: "Choose {plan}",

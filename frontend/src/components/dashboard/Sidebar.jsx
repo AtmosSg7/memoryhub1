@@ -1,19 +1,20 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
-import { resolveSubscriptionPlanLabel, useBillingSummary } from "@/hooks/useBillingSummary";
+import { useBillingSummary } from "@/hooks/useBillingSummary";
+import { resolveSubscriptionPlanLabel } from "@/lib/billingPresentation";
 import { useIsShowcaseDemo } from "@/context/ShowcaseThemeIsolation";
 import { getSidebarItems } from "@/components/dashboard/sidebarNav";
 import ImportUsageMeter from "@/components/dashboard/ImportUsageMeter";
 import { PLAN_CATALOG } from "@/constants/planConfig";
 
 export default function Sidebar() {
-  const { t } = useDashboardLang();
+  const { t, lang } = useDashboardLang();
   const navigate = useNavigate();
   const isShowcase = useIsShowcaseDemo();
   const { billing, planId, monthlyRemaining, monthlyAllocated, loading } = useBillingSummary();
 
   const displayPlanId = planId || "solo";
-  const planLabel = resolveSubscriptionPlanLabel(billing, t);
+  const planLabel = resolveSubscriptionPlanLabel(billing, t, { lang });
 
   return (
     <aside
