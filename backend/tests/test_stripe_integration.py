@@ -139,13 +139,15 @@ class FakeStripeBackend:
         import time
 
         now = int(time.time())
+        period_end = now + 30 * 24 * 3600
         self.subscriptions[sub_id] = FakeStripeObject(
             id=sub_id,
             customer=customer_id,
             status="trialing" if trial else "active",
             metadata=metadata,
+            # Legacy top-level periods (pre-Basil) — still set for compatibility.
             current_period_start=now,
-            current_period_end=now + 30 * 24 * 3600,
+            current_period_end=period_end,
             trial_end=now + 14 * 24 * 3600 if trial else None,
             cancel_at_period_end=False,
             items=FakeStripeObject(
@@ -153,6 +155,8 @@ class FakeStripeBackend:
                     FakeStripeObject(
                         id=f"si_{uuid.uuid4().hex[:8]}",
                         price=FakeStripeObject(id=price_id),
+                        current_period_start=now,
+                        current_period_end=period_end,
                     )
                 ]
             ),
@@ -272,6 +276,74 @@ def test_webhook_checkout_completed_activates_subscription(client, fake_stripe):
     assert body["hasSubscription"] is True
     assert body["planId"] == "solo"
     assert body["monthlyAnalysesRemaining"] == 10
+
+
+def test_webhook_checkout_completed_basil_periods_on_items(client, fake_stripe):
+    """Stripe Basil: current_period_* only on SubscriptionItem — must not 500."""
+    _auth(client)
+    client.post("/api/billing/checkout", json={"planId": "solo"})
+    sub = next(iter(fake_stripe.subscriptions.values()))
+    sub["current_period_start"] = None
+    sub["current_period_end"] = None
+    # Keep periods only on the subscription item (Basil shape).
+    assert sub["items"]["data"][0]["current_period_start"] is not None
+    assert sub["items"]["data"][0]["current_period_end"] is not None
+
+    event = _checkout_completed_event(fake_stripe)
+    res = client.post(
+        "/api/stripe/webhook",
+        data=json.dumps(event),
+        headers={"stripe-signature": "sig_test"},
+    )
+    assert res.status_code == 200
+    assert res.json()["status"] == "processed"
+
+    me = client.get("/api/billing/me").json()
+    assert me["hasSubscription"] is True
+    assert me["planId"] == "solo"
+
+
+def test_webhook_subscription_created_basil_periods_on_items(client, fake_stripe):
+    _auth(client)
+    client.post("/api/billing/checkout", json={"planId": "solo"})
+    sub = next(iter(fake_stripe.subscriptions.values()))
+    sub["current_period_start"] = None
+    sub["current_period_end"] = None
+
+    event = {
+        "id": f"evt_{uuid.uuid4().hex}",
+        "type": "customer.subscription.created",
+        "data": {"object": dict(sub)},
+    }
+    res = client.post(
+        "/api/stripe/webhook",
+        data=json.dumps(event),
+        headers={"stripe-signature": "sig_test"},
+    )
+    assert res.status_code == 200
+    assert res.json()["status"] == "processed"
+    assert client.get("/api/billing/me").json()["hasSubscription"] is True
+
+
+def test_webhook_checkout_completed_missing_periods_no_500(client, fake_stripe):
+    """Missing period timestamps must skip period sync, not crash."""
+    _auth(client)
+    client.post("/api/billing/checkout", json={"planId": "solo"})
+    sub = next(iter(fake_stripe.subscriptions.values()))
+    sub["current_period_start"] = None
+    sub["current_period_end"] = None
+    sub["items"]["data"][0]["current_period_start"] = None
+    sub["items"]["data"][0]["current_period_end"] = None
+
+    event = _checkout_completed_event(fake_stripe)
+    res = client.post(
+        "/api/stripe/webhook",
+        data=json.dumps(event),
+        headers={"stripe-signature": "sig_test"},
+    )
+    assert res.status_code == 200
+    assert res.json()["status"] == "processed"
+    assert client.get("/api/billing/me").json()["hasSubscription"] is True
 
 
 def test_webhook_idempotent_replay(client, fake_stripe):

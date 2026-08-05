@@ -33,22 +33,53 @@ async def get_user_by_stripe_customer(db, customer_id: str) -> Optional[dict]:
 
 
 def _obj_get(obj: Any, key: str, default=None):
+    if obj is None:
+        return default
     if isinstance(obj, dict):
         return obj.get(key, default)
     return getattr(obj, key, default)
 
 
-def _extract_subscription_fields(stripe_sub: Any) -> Dict[str, Any]:
+def _coerce_optional_int(value: Any) -> Optional[int]:
+    """Convert Stripe timestamps to int; never raise on None/missing."""
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _first_subscription_item(stripe_sub: Any) -> Any:
     items = _obj_get(_obj_get(stripe_sub, "items"), "data") or []
-    price_id = items[0]["price"]["id"] if items else None
+    return items[0] if items else None
+
+
+def _extract_subscription_fields(stripe_sub: Any) -> Dict[str, Any]:
+    """Normalize Subscription fields across Stripe API versions.
+
+    Stripe Basil (2025-03-31+) removed top-level current_period_start/end from
+    Subscription; those timestamps live on SubscriptionItem instead.
+    """
+    item = _first_subscription_item(stripe_sub)
+    price = _obj_get(item, "price") if item is not None else None
+    price_id = _obj_get(price, "id") if price is not None else None
+
+    period_start = _obj_get(stripe_sub, "current_period_start")
+    period_end = _obj_get(stripe_sub, "current_period_end")
+    if period_start is None and item is not None:
+        period_start = _obj_get(item, "current_period_start")
+    if period_end is None and item is not None:
+        period_end = _obj_get(item, "current_period_end")
+
     return {
         "stripe_subscription_id": _obj_get(stripe_sub, "id"),
         "stripe_customer_id": _obj_get(stripe_sub, "customer"),
         "stripe_price_id": price_id,
         "stripe_status": _obj_get(stripe_sub, "status"),
-        "period_start_ts": _obj_get(stripe_sub, "current_period_start"),
-        "period_end_ts": _obj_get(stripe_sub, "current_period_end"),
-        "trial_end_ts": _obj_get(stripe_sub, "trial_end"),
+        "period_start_ts": _coerce_optional_int(period_start),
+        "period_end_ts": _coerce_optional_int(period_end),
+        "trial_end_ts": _coerce_optional_int(_obj_get(stripe_sub, "trial_end")),
         "cancel_at_period_end": bool(_obj_get(stripe_sub, "cancel_at_period_end", False)),
     }
 
@@ -92,16 +123,6 @@ async def _sync_subscription_from_stripe(
         idempotency_key=idempotency_key,
     )
 
-    if fields["period_start_ts"] and fields["period_end_ts"]:
-        await sync_periods_from_stripe(
-            db,
-            user_id,
-            period_start_ts=int(fields["period_start_ts"]),
-            period_end_ts=int(fields["period_end_ts"]),
-            trial_end_ts=int(fields["trial_end_ts"]) if fields["trial_end_ts"] else None,
-        )
-
-    doc = await get_subscription_doc(db, user_id)
     await update_stripe_metadata(
         db,
         user_id,
@@ -115,13 +136,25 @@ async def _sync_subscription_from_stripe(
         last_stripe_event_id=event_id,
     )
 
-    if doc:
+    period_start = fields["period_start_ts"]
+    period_end = fields["period_end_ts"]
+    if period_start is not None and period_end is not None:
         await sync_periods_from_stripe(
             db,
             user_id,
-            period_start_ts=int(fields["period_start_ts"]),
-            period_end_ts=int(fields["period_end_ts"]),
-            trial_end_ts=int(fields["trial_end_ts"]) if fields["trial_end_ts"] else None,
+            period_start_ts=period_start,
+            period_end_ts=period_end,
+            trial_end_ts=fields["trial_end_ts"],
+        )
+    else:
+        # Status/metadata already applied; periods may arrive on a later event.
+        logger.warning(
+            "Stripe subscription %s missing period timestamps (start=%s end=%s); "
+            "skipping period sync for event %s",
+            fields.get("stripe_subscription_id"),
+            period_start,
+            period_end,
+            event_id,
         )
 
 

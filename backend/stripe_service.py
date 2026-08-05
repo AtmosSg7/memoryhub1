@@ -404,12 +404,20 @@ async def change_stripe_subscription_plan(
         )
         return "immediate"
 
-    period_end = items[0] if False else None
-    period_end_ts = (
-        stripe_sub.get("current_period_end")
-        if isinstance(stripe_sub, dict)
-        else stripe_sub.current_period_end
-    )
+    # Basil+: current_period_end lives on SubscriptionItem, not Subscription.
+    if isinstance(stripe_sub, dict):
+        period_end_ts = stripe_sub.get("current_period_end")
+    else:
+        period_end_ts = getattr(stripe_sub, "current_period_end", None)
+    if period_end_ts is None:
+        first = items[0]
+        period_end_ts = (
+            first.get("current_period_end")
+            if isinstance(first, dict)
+            else getattr(first, "current_period_end", None)
+        )
+    if period_end_ts is None:
+        raise StripeCheckoutError("Stripe subscription has no current_period_end.")
     backend.schedule_downgrade_at_period_end(
         stripe_sub_id,
         item_id=item_id,
