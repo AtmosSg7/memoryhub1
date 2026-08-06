@@ -24,6 +24,7 @@ import {
   syncGmail,
   syncGoogleContacts,
 } from "@/lib/integrationsApi";
+import { buildGmailSummaryKeys } from "@/utils/gmailIntegrationSummary";
 
 const integrationsGrid =
   "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 items-stretch";
@@ -116,13 +117,7 @@ export default function IntegrationsPage() {
       ]
     : [];
 
-  const gmailSummary = gmailStatus?.lastSync
-    ? [
-        ["linked", gmailStatus.lastSync.created],
-        ["skipped", gmailStatus.lastSync.skipped],
-        ["total", gmailStatus.lastSync.total],
-      ]
-    : [];
+  const gmailSummary = buildGmailSummaryKeys(gmailStatus);
 
   return (
     <div className="space-y-8" data-testid="integrations-page">
@@ -245,20 +240,9 @@ export default function IntegrationsPage() {
                   }
                   onConfirmImport={() =>
                     runBusy("gmail", async () => {
-                      const data = await syncGmail();
-                      setGmailStatus((prev) => ({
-                        ...prev,
-                        connected: true,
-                        account: data.account,
-                        lastSync: {
-                          created: data.summary.linked,
-                          enriched: 0,
-                          conflicts: 0,
-                          skipped: data.summary.skipped + data.summary.unmatched,
-                          total: data.summary.total,
-                          finishedAt: data.summary.finishedAt,
-                        },
-                      }));
+                      await syncGmail();
+                      // Refetch status so counters match DB (linked/ignored/total), not sync deltas.
+                      await reload();
                       setConfirmGmail(false);
                       setGmailPreview(null);
                       toast.success(t("integrations.gmail.syncDone"));
@@ -270,20 +254,8 @@ export default function IntegrationsPage() {
                   }}
                   onSync={() =>
                     runBusy("gmail", async () => {
-                      const data = await syncGmail();
-                      setGmailStatus((prev) => ({
-                        ...prev,
-                        connected: true,
-                        account: data.account,
-                        lastSync: {
-                          created: data.summary.linked,
-                          enriched: 0,
-                          conflicts: 0,
-                          skipped: data.summary.skipped + data.summary.unmatched,
-                          total: data.summary.total,
-                          finishedAt: data.summary.finishedAt,
-                        },
-                      }));
+                      await syncGmail();
+                      await reload();
                       toast.success(t("integrations.gmail.syncDone"));
                     })
                   }

@@ -39,6 +39,7 @@ export default function AvailableIntegrationCard({
   const connected = Boolean(status?.connected);
   const account = status?.account;
   const lastSync = status?.lastSync;
+  const hasSummary = Array.isArray(summaryKeys) && summaryKeys.length > 0;
   const lastSyncedLabel = formatDate(account?.lastSyncedAt || lastSync?.finishedAt, lang);
   const importPrompt = (importPromptTemplate || "").replace(
     "{count}",
@@ -84,7 +85,7 @@ export default function AvailableIntegrationCard({
         <div className="mb-3" aria-hidden />
       )}
 
-      {lastSync ? (
+      {hasSummary ? (
         <dl
           className="grid grid-cols-2 gap-2 mb-4 text-sm"
           data-testid={`${testIdPrefix}-summary`}

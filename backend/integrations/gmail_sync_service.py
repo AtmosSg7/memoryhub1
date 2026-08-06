@@ -40,6 +40,7 @@ from integrations.gmail_errors import (
 from integrations.gmail_sync_schedule import compute_next_sync_at, gmail_sync_lock_key
 from integrations.models import (
     ClientEmailsResponse,
+    GmailMailboxStats,
     GmailPreviewResponse,
     GmailStatusResponse,
     GmailSyncResponse,
@@ -84,6 +85,31 @@ def _email_public(doc: dict) -> SyncedEmailPublic:
     )
 
 
+async def _gmail_mailbox_stats(db, user_id: str) -> GmailMailboxStats:
+    """Count Gmail communications currently stored for this user."""
+    base = {"userId": user_id, "provider": PROVIDER_GMAIL, "type": "email"}
+    total = int(await db.communications.count_documents(base))
+    ignored = int(
+        await db.communications.count_documents(
+            {**base, "ignoredAt": {"$type": "string", "$ne": ""}}
+        )
+    )
+    linked = int(
+        await db.communications.count_documents(
+            {
+                **base,
+                "clientId": {"$type": "string", "$ne": ""},
+                "$or": [
+                    {"ignoredAt": {"$exists": False}},
+                    {"ignoredAt": None},
+                    {"ignoredAt": ""},
+                ],
+            }
+        )
+    )
+    return GmailMailboxStats(linked=linked, ignored=ignored, total=total)
+
+
 async def get_gmail_status(db, user_id: str) -> GmailStatusResponse:
     from integrations.config import gmail_configured, gmail_provider_mode
 
@@ -91,21 +117,26 @@ async def get_gmail_status(db, user_id: str) -> GmailStatusResponse:
     last_sync = None
     if account and account.get("lastSyncSummary"):
         raw = account["lastSyncSummary"]
+        # Prefer explicit linked; do not fall back to "created" (new rows) — different metric.
         last_sync = SyncSummary(
-            created=int(raw.get("linked") or raw.get("created") or 0),
+            created=int(raw.get("linked") or 0),
             enriched=0,
             conflicts=0,
-            skipped=int(raw.get("skipped") or raw.get("unmatched") or 0),
+            skipped=int(raw.get("skipped") or 0) + int(raw.get("unmatched") or 0),
             total=int(raw.get("total") or 0),
             finishedAt=raw.get("finishedAt"),
         )
     connected = bool(account and account.get("status") == ACCOUNT_STATUS_CONNECTED)
+    stats = (
+        await _gmail_mailbox_stats(db, user_id) if connected else GmailMailboxStats()
+    )
     return GmailStatusResponse(
         configured=gmail_configured() or gmail_provider_mode() == "mock",
         providerMode=gmail_provider_mode(),
         connected=connected,
         account=account_service.account_public(account) if account and connected else None,
         lastSync=last_sync,
+        stats=stats,
     )
 
 

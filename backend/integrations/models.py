@@ -134,12 +134,21 @@ class RemoteEmailMessage(BaseModel):
     raw: Dict[str, Any] = Field(default_factory=dict)
 
 
+class GmailMailboxStats(BaseModel):
+    """Cumulative Gmail communication counts from the database (not last-run deltas)."""
+
+    linked: int = 0
+    ignored: int = 0
+    total: int = 0
+
+
 class GmailStatusResponse(BaseModel):
     configured: bool
     providerMode: str
     connected: bool
     account: Optional[ConnectedAccountPublic] = None
     lastSync: Optional[SyncSummary] = None
+    stats: GmailMailboxStats = Field(default_factory=GmailMailboxStats)
 
 
 class GmailPreviewResponse(BaseModel):

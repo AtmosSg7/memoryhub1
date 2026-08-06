@@ -113,6 +113,14 @@ def test_gmail_connect_sync_match_timeline_dedupe(client):
     assert summary["unmatched"] >= 1
     assert summary["total"] >= 3
 
+    status_after = client.get("/api/integrations/gmail/status")
+    assert status_after.status_code == 200
+    stats = status_after.json().get("stats") or {}
+    assert stats.get("total", 0) >= 3
+    assert stats.get("linked", 0) >= 2
+    assert stats.get("ignored", 0) >= 0
+    assert stats["linked"] + stats["ignored"] <= stats["total"]
+
     jean_emails = client.get(f"/api/integrations/gmail/clients/{jean_id}/emails")
     assert jean_emails.status_code == 200
     items = jean_emails.json()["items"]
