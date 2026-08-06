@@ -73,7 +73,6 @@ export function actionEngineLink(action) {
   if (
     type === ACTION_TYPES.CALL_BACK ||
     type === ACTION_TYPES.SCHEDULE_APPOINTMENT ||
-    type === ACTION_TYPES.PREPARE_QUOTE ||
     type === ACTION_TYPES.HANDLE_COMPLAINT ||
     type === ACTION_TYPES.ANSWER_QUESTION ||
     type === ACTION_TYPES.FOLLOW_UP_COMMUNICATION ||
@@ -99,14 +98,8 @@ export function actionEngineLink(action) {
     });
   }
 
-  if (type === ACTION_TYPES.CREATE_INVOICE_FROM_QUOTE) {
-    const quoteId = meta.quoteId || meta.quote_id;
-    return commercialDocumentsPath({
-      kind: "quote",
-      status: "accepted",
-      open: quoteId || undefined,
-      clientId: action.clientId || undefined,
-    });
+  if (type === ACTION_TYPES.CREATE_INVOICE_FROM_QUOTE || type === ACTION_TYPES.PREPARE_QUOTE) {
+    return "/dashboard/documents?import=1";
   }
 
   if (action.clientId) {
@@ -266,7 +259,7 @@ function primaryLabelKeyForType(type) {
       return "dashboardV2.engine.cta.followUpInvoice";
     case ACTION_TYPES.CREATE_INVOICE_FROM_QUOTE:
     case ACTION_TYPES.PREPARE_QUOTE:
-      return "dashboardV2.engine.cta.createInvoice";
+      return "dashboardV2.engine.cta.importDocument";
     case ACTION_TYPES.HANDLE_COMPLAINT:
     case ACTION_TYPES.ANSWER_QUESTION:
     case ACTION_TYPES.FOLLOW_UP_COMMUNICATION:

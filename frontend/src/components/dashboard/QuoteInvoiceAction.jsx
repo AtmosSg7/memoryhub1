@@ -1,20 +1,22 @@
-import { useState } from "react";
+import { Upload, ExternalLink, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { ExternalLink, Loader2, Receipt } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { toastApiError } from "@/utils/apiErrors";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { useAddQuote } from "@/context/AddQuoteContext";
 import { useAddInvoice } from "@/context/AddInvoiceContext";
-import { convertQuoteToInvoice } from "@/lib/quotesApi";
 import { getInvoice } from "@/lib/invoicesApi";
 import { ActionButton } from "@/components/dashboard/ActionButton";
 
+/**
+ * Pivot UX: Basera no longer creates invoices from quotes.
+ * Accepted quotes → import the final invoice; linked invoice → open/view.
+ */
 export default function QuoteInvoiceAction({ quote, compact = false, prominent = false }) {
   const { t } = useDashboardLang();
   const navigate = useNavigate();
   const { notifyQuotesChanged } = useAddQuote();
-  const { notifyInvoicesChanged, queueOpenInvoice } = useAddInvoice();
+  const { queueOpenInvoice } = useAddInvoice();
   const [submitting, setSubmitting] = useState(false);
 
   if (!quote) return null;
@@ -48,26 +50,6 @@ export default function QuoteInvoiceAction({ quote, compact = false, prominent =
     }
   };
 
-  const handleConvert = async () => {
-    setSubmitting(true);
-    try {
-      const invoice = await convertQuoteToInvoice(quote.id);
-      notifyQuotesChanged();
-      notifyInvoicesChanged();
-      toast.success(t("toast.invoiceCreatedFromQuote"), {
-        description: invoice.number,
-      });
-      openInvoice(invoice);
-    } catch (err) {
-      if (err.message?.includes("déjà été converti") || err.message?.includes("already")) {
-        notifyQuotesChanged();
-      }
-      toastApiError(err, t, "toast.quoteConvertError");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   if (hasLinkedInvoice) {
     return (
       <ActionButton
@@ -92,17 +74,12 @@ export default function QuoteInvoiceAction({ quote, compact = false, prominent =
   return (
     <ActionButton
       variant={prominent ? "primary" : "accent"}
-      onClick={handleConvert}
-      disabled={submitting}
+      onClick={() => navigate("/dashboard/documents?import=1")}
       className={compact ? "gap-1.5" : "h-10 px-4 text-sm gap-1.5"}
-      data-testid={`quote-create-invoice-${quote.id}`}
+      data-testid={`quote-import-invoice-${quote.id}`}
     >
-      {submitting ? (
-        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-      ) : (
-        <Receipt className="w-3.5 h-3.5" />
-      )}
-      {t("actions.createInvoiceFromQuote")}
+      <Upload className="w-3.5 h-3.5" />
+      {t("documentActions.importDocument")}
     </ActionButton>
   );
 }

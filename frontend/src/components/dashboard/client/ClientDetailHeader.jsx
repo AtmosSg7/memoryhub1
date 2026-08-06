@@ -5,7 +5,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  FileText,
   Loader2,
   Mail,
   MapPin,
@@ -13,7 +12,6 @@ import {
   Pencil,
   Phone,
   Plus,
-  Receipt,
   Star,
   StickyNote,
   Trash2,
@@ -67,8 +65,6 @@ export default function ClientDetailHeader({
   onEdit,
   onDelete,
   onImportDocument,
-  onCreateQuote,
-  onCreateInvoice,
   onCreateNote,
   onCreateReminder,
   onOpenCommunications,
@@ -277,17 +273,6 @@ export default function ClientDetailHeader({
                   {t("actions.createNote")}
                 </ActionButton>
               ) : null}
-              {onCreateQuote ? (
-                <ActionButton
-                  variant="secondary"
-                  onClick={onCreateQuote}
-                  className="gap-1.5 min-h-11 shrink-0 hidden sm:inline-flex"
-                  data-testid="client-create-quote"
-                >
-                  <FileText className="w-4 h-4" />
-                  {t("clientBrief.quick.quote")}
-                </ActionButton>
-              ) : null}
               {onCreateReminder ? (
                 <ActionButton
                   variant="secondary"
@@ -330,15 +315,9 @@ export default function ClientDetailHeader({
                 </ActionButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                {onCreateQuote ? (
-                  <DropdownMenuItem onClick={onCreateQuote} data-testid="client-create-quote-menu">
-                    <FileText className="w-4 h-4 mr-2" />
-                    {t("documentActions.addProposal")}
-                  </DropdownMenuItem>
-                ) : null}
-                <DropdownMenuItem onClick={onCreateInvoice} data-testid="client-create-invoice">
-                  <Receipt className="w-4 h-4 mr-2" />
-                  {t("documentActions.addTrackingInvoice")}
+                <DropdownMenuItem onClick={onImportDocument} data-testid="client-import-document-menu-primary">
+                  <Upload className="w-4 h-4 mr-2" />
+                  {t("documentActions.importDocument")}
                 </DropdownMenuItem>
                 {onCreateReminder ? (
                   <DropdownMenuItem onClick={onCreateReminder} data-testid="client-create-reminder-menu">

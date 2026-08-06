@@ -28,9 +28,8 @@ export default function ClientInboxSection({
   t,
   lang,
   initialConversationId = null,
-  onCreateQuote,
-  onCreateInvoice,
   onCreateNote,
+  onImportDocument,
 }) {
   const [inbox, setInbox] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -320,9 +319,8 @@ export default function ClientInboxSection({
             showBack
             onBack={() => setActiveConversationId(null)}
             onReply={handleReply}
-            onCreateQuote={() => onCreateQuote?.(client)}
-            onCreateInvoice={() => onCreateInvoice?.(client)}
             onCreateNote={() => onCreateNote?.(client)}
+            onImportDocument={() => onImportDocument?.(client)}
           />
           <div className="flex-1 overflow-y-auto pr-1 -mr-1 space-y-1">
             <ConversationThread

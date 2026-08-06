@@ -4,8 +4,6 @@ import { toast } from "sonner";
 import { toastApiError } from "@/utils/apiErrors";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { useAddClient } from "@/context/AddClientContext";
-import { useAddQuote } from "@/context/AddQuoteContext";
-import { useAddInvoice } from "@/context/AddInvoiceContext";
 import { useFormSubmitShortcut } from "@/hooks/useFormSubmitShortcut";
 import { createClient, updateClient } from "@/lib/clientsApi";
 import { ActionButton } from "@/components/dashboard/ActionButton";
@@ -78,10 +76,7 @@ export default function AddClientModal() {
     closeAddClient,
     notifyClientsChanged,
     registerCreatedClient,
-    chainAfterCreate,
   } = useAddClient();
-  const { openAddQuote } = useAddQuote();
-  const { openAddInvoice } = useAddInvoice();
   const [form, setForm] = useState(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [showMore, setShowMore] = useState(false);
@@ -133,20 +128,16 @@ export default function AddClientModal() {
         registerCreatedClient(created);
         notifyClientsChanged();
         closeAddClient();
-        if (chainAfterCreate === "quote") {
-          openAddQuote(created);
-          toast.success(t("toast.clientCreated"));
-        } else if (chainAfterCreate === "invoice") {
-          openAddInvoice(created);
-          toast.success(t("toast.clientCreated"));
-        } else {
-          toast.success(t("toast.clientCreated"), {
-            action: {
-              label: t("toast.clientCreatedNext"),
-              onClick: () => openAddQuote(created),
+        toast.success(t("toast.clientCreated"), {
+          action: {
+            label: t("documentActions.importDocument"),
+            onClick: () => {
+              window.location.assign(
+                `/dashboard/clients/${encodeURIComponent(created.id)}?section=documents&import=1`,
+              );
             },
-          });
-        }
+          },
+        });
       }
       if (isEdit) {
         notifyClientsChanged();

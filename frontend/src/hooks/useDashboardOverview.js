@@ -11,11 +11,12 @@ export function useDashboardOverview() {
   const onboarding = useMemo(
     () => ({
       needsClient: stats.kpis.clientsTotal === 0,
-      needsQuote: stats.kpis.quotesTotal === 0,
-      needsInvoice: stats.kpis.invoicesTotal === 0,
       needsImport: documentsTotal === 0,
+      // Legacy flags kept false — manual quote/invoice create removed from product UX.
+      needsQuote: false,
+      needsInvoice: false,
     }),
-    [stats.kpis.clientsTotal, stats.kpis.quotesTotal, stats.kpis.invoicesTotal, documentsTotal]
+    [stats.kpis.clientsTotal, documentsTotal]
   );
 
   const isEmptyAccount = useMemo(

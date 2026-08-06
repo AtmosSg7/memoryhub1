@@ -1,29 +1,21 @@
-import { Users, FileText, Receipt, Upload } from "lucide-react";
+import { Users, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { useAddClient } from "@/context/AddClientContext";
-import { useAddQuote } from "@/context/AddQuoteContext";
-import { useAddInvoice } from "@/context/AddInvoiceContext";
 import { ActionButton } from "@/components/dashboard/ActionButton";
 
 const STEPS = [
   { key: "client", icon: Users, variant: "primary" },
   { key: "import", icon: Upload, variant: "primary" },
-  { key: "quote", icon: FileText, variant: "secondary" },
-  { key: "invoice", icon: Receipt, variant: "secondary" },
 ];
 
-export default function OnboardingCards({ onboarding, hasClients = false, compact = false }) {
+export default function OnboardingCards({ onboarding, compact = false }) {
   const { t } = useDashboardLang();
   const navigate = useNavigate();
   const { openAddClient } = useAddClient();
-  const { openAddQuote } = useAddQuote();
-  const { openAddInvoice } = useAddInvoice();
 
   const visibleSteps = STEPS.filter(({ key }) => {
     if (key === "client") return onboarding.needsClient;
-    if (key === "quote") return onboarding.needsQuote;
-    if (key === "invoice") return onboarding.needsInvoice;
     if (key === "import") return onboarding.needsImport;
     return false;
   });
@@ -32,8 +24,6 @@ export default function OnboardingCards({ onboarding, hasClients = false, compac
 
   const handlers = {
     client: openAddClient,
-    quote: () => (hasClients ? openAddQuote() : openAddClient("quote")),
-    invoice: () => (hasClients ? openAddInvoice() : openAddClient("invoice")),
     import: () => navigate("/dashboard/documents?import=1"),
   };
 
@@ -75,11 +65,7 @@ export default function OnboardingCards({ onboarding, hasClients = false, compac
       <div
         className={[
           "grid gap-3 mt-6",
-          visibleSteps.length === 1
-            ? "grid-cols-1 max-w-sm"
-            : visibleSteps.length === 2
-              ? "grid-cols-1 md:grid-cols-2"
-              : "grid-cols-1 md:grid-cols-2 xl:grid-cols-4",
+          visibleSteps.length === 1 ? "grid-cols-1 max-w-sm" : "grid-cols-1 md:grid-cols-2",
         ].join(" ")}
       >
         {visibleSteps.map(({ key, icon: Icon, variant }, index) => (
@@ -93,14 +79,19 @@ export default function OnboardingCards({ onboarding, hasClients = false, compac
                 {index + 1}
               </span>
               <Icon className="w-4 h-4 text-dash-primary" strokeWidth={1.75} />
-              <span className="font-medium text-sm text-dash-text">{t(`onboarding.steps.${key}.title`)}</span>
+              <span className="font-medium text-sm text-dash-text">
+                {t(`onboarding.steps.${key}.title`)}
+              </span>
             </div>
             <p className="text-xs text-dash-text-muted leading-relaxed flex-1">
-              {!hasClients && (key === "quote" || key === "invoice")
-                ? t("onboarding.requiresClient")
-                : t(`onboarding.steps.${key}.desc`)}
+              {t(`onboarding.steps.${key}.desc`)}
             </p>
-            <ActionButton variant={variant} onClick={handlers[key]} className="w-full justify-center text-xs h-9">
+            <ActionButton
+              variant={variant}
+              onClick={handlers[key]}
+              className="w-full"
+              data-testid={`onboarding-step-${key}-cta`}
+            >
               {t(`onboarding.steps.${key}.cta`)}
             </ActionButton>
           </div>

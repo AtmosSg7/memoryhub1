@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { Plus, FileText, StickyNote, UserPlus, Upload } from "lucide-react";
+import { Plus, FolderOpen, StickyNote, UserPlus, Upload } from "lucide-react";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { useProspectsPendingCount } from "@/hooks/useProspectsPendingCount";
 import { useActionsCount } from "@/hooks/useActions";
 import { useAddClient } from "@/context/AddClientContext";
 import { useAddNote } from "@/context/AddNoteContext";
-import { useAddQuote } from "@/context/AddQuoteContext";
 import { getMobilePrimaryNavItems } from "@/components/dashboard/sidebarNav";
 import {
   Sheet,
@@ -34,7 +33,6 @@ export default function MobileBottomNav() {
   const navigate = useNavigate();
   const { openAddClient } = useAddClient();
   const { openAddNote } = useAddNote();
-  const { openAddQuote } = useAddQuote();
   const { total: prospectsPending } = useProspectsPendingCount({ enabled: true });
   const { total: actionsPending } = useActionsCount({ status: "pending", enabled: true });
   const badges = { prospectsPending, actionsPending };
@@ -134,18 +132,18 @@ export default function MobileBottomNav() {
                 onClick: () => openAddNote(),
               },
               {
-                key: "quote",
-                label: t("clientBrief.quick.quote"),
-                icon: FileText,
-                testId: "mobile-plus-quote",
-                onClick: () => openAddQuote(),
-              },
-              {
                 key: "import",
-                label: t("importWizard.importDocument"),
+                label: t("documentActions.importDocument"),
                 icon: Upload,
                 testId: "mobile-plus-import",
                 onClick: () => navigate("/dashboard/documents?import=1"),
+              },
+              {
+                key: "documents",
+                label: t("dashboardV2.quickActions.viewDocuments"),
+                icon: FolderOpen,
+                testId: "mobile-plus-documents",
+                onClick: () => navigate("/dashboard/documents"),
               },
             ].map((action) => (
               <li key={action.key}>

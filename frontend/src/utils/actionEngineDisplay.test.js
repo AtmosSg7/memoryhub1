@@ -75,7 +75,16 @@ describe("actionEngineDisplay", () => {
           metadata: { quoteId: "q-9" },
         })
       )
-    ).toContain("kind=quote");
+    ).toBe("/dashboard/documents?import=1");
+
+    expect(
+      actionEngineLink(
+        action({
+          type: ACTION_TYPES.PREPARE_QUOTE,
+          clientId: "client-9",
+        })
+      )
+    ).toBe("/dashboard/documents?import=1");
 
     expect(
       actionEngineLink(

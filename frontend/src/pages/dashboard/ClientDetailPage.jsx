@@ -499,8 +499,6 @@ export default function ClientDetailPage() {
         nextClientLabel={nextClient ? getDisplayCompany(nextClient) : ""}
         onEdit={() => openEditClient(client)}
         onDelete={handleDelete}
-        onCreateQuote={() => openAddQuote(client)}
-        onCreateInvoice={() => openAddInvoice(client)}
         onCreateNote={() => openAddNote(client)}
         onCreateReminder={() => openAddNote(client)}
         onOpenCommunications={() => setSection("emails")}
@@ -648,9 +646,8 @@ export default function ClientDetailPage() {
               t={t}
               lang={lang}
               initialConversationId={searchParams.get("conversation")}
-              onCreateQuote={openAddQuote}
-              onCreateInvoice={openAddInvoice}
               onCreateNote={openAddNote}
+              onImportDocument={() => navigate(`/dashboard/clients/${client.id}?section=documents&import=1`)}
             />
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-dash-text-subtle mb-3">

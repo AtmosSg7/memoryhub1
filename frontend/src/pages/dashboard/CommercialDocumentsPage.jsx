@@ -307,10 +307,7 @@ export default function CommercialDocumentsPage() {
           <CommercialDocumentsHeaderActions
             hasClients={hasClients}
             onImportDocument={() => openImport("quote")}
-            onCreateQuote={() => openAddQuote()}
-            onCreateInvoice={() => openAddInvoice()}
-            onCreateBlank={() => openAddQuote()}
-            onNeedClient={() => openAddClient("quote")}
+            onNeedClient={() => openAddClient()}
           />
         }
       />

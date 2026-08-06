@@ -2,12 +2,13 @@ import { memo } from "react";
 import {
   ArrowLeft,
   ExternalLink,
-  FileText,
+  FolderOpen,
   Phone,
-  Receipt,
   Reply,
   StickyNote,
+  Upload,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { ActionButton } from "@/components/dashboard/ActionButton";
 import ConversationAvatar from "./ConversationAvatar";
 import ConversationBadges from "./ConversationBadges";
@@ -18,11 +19,11 @@ function ConversationHeader({
   t,
   onBack,
   onReply,
-  onCreateQuote,
-  onCreateInvoice,
   onCreateNote,
+  onImportDocument,
   showBack = false,
 }) {
+  const navigate = useNavigate();
   const participant = conversation?._participant || {};
   const name =
     participant.name || conversation?.clientName || client?.name || t("clientInbox.noSubject");
@@ -96,20 +97,34 @@ function ConversationHeader({
         <ActionButton
           variant="secondary"
           className="min-h-11"
-          onClick={onCreateQuote}
-          data-testid="client-inbox-create-quote"
+          onClick={() =>
+            onImportDocument
+              ? onImportDocument()
+              : navigate(
+                  client?.id
+                    ? `/dashboard/clients/${client.id}?section=documents&import=1`
+                    : "/dashboard/documents?import=1",
+                )
+          }
+          data-testid="client-inbox-import"
         >
-          <FileText className="w-3.5 h-3.5 mr-1" />
-          {t("clientInbox.actions.createQuote")}
+          <Upload className="w-3.5 h-3.5 mr-1" />
+          {t("documentActions.importDocument")}
         </ActionButton>
         <ActionButton
           variant="secondary"
           className="min-h-11"
-          onClick={onCreateInvoice}
-          data-testid="client-inbox-create-invoice"
+          onClick={() =>
+            navigate(
+              client?.id
+                ? `/dashboard/clients/${client.id}?section=quotes`
+                : "/dashboard/documents",
+            )
+          }
+          data-testid="client-inbox-view-documents"
         >
-          <Receipt className="w-3.5 h-3.5 mr-1" />
-          {t("clientInbox.actions.createInvoice")}
+          <FolderOpen className="w-3.5 h-3.5 mr-1" />
+          {t("dashboardV2.quickActions.viewDocuments")}
         </ActionButton>
         <ActionButton
           variant="ghost"

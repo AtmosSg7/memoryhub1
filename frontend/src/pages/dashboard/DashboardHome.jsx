@@ -1,55 +1,50 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
-import { useDashboardHomeData } from "@/hooks/useDashboardHomeData";
-import { useActions } from "@/hooks/useActions";
+import { useLivingDashboard } from "@/hooks/useLivingDashboard";
 import { useOnboardingState } from "@/hooks/useOnboardingState";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAuth } from "@/context/AuthContext";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import DashboardKpiGrid from "@/components/dashboard/DashboardKpiGrid";
 import DashboardQuickActions from "@/components/dashboard/DashboardQuickActions";
-import DashboardPipelineCard from "@/components/dashboard/DashboardPipelineCard";
 import DashboardActionCenterCard from "@/components/dashboard/DashboardActionCenterCard";
 import TopClients from "@/components/dashboard/TopClients";
 import OnboardingCards from "@/components/dashboard/OnboardingCards";
 import OnboardingWizard from "@/components/dashboard/OnboardingWizard";
 import StartupChecklist from "@/components/dashboard/StartupChecklist";
 import ActivityFeed from "@/components/dashboard/ActivityFeed";
-import { Skeleton } from "@/components/ui/skeleton";
-
-const DashboardAnalyticsSection = lazy(
-  () => import("@/components/dashboard/DashboardAnalyticsSection")
-);
-
-function AnalyticsFallback() {
-  return (
-    <div className="space-y-3" data-testid="dashboard-analytics-fallback">
-      <Skeleton className="h-6 w-40 bg-dash-border" />
-      <Skeleton className="h-56 w-full rounded-xl bg-dash-surface-muted" />
-    </div>
-  );
-}
+import LivingKpiStrip from "@/components/dashboard/living/LivingKpiStrip";
+import LivingTodayStrip from "@/components/dashboard/living/LivingTodayStrip";
+import LivingMoneySection from "@/components/dashboard/living/LivingMoneySection";
+import LivingCommunicationStats from "@/components/dashboard/living/LivingCommunicationStats";
+import LivingRemindersSection from "@/components/dashboard/living/LivingRemindersSection";
 
 export default function DashboardHome() {
   const { t, lang } = useDashboardLang();
   usePageTitle("page.dashboard.title");
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [period, setPeriod] = useState("30d");
 
   const {
-    kpis,
-    pipeline,
+    livingKpis,
+    money,
     series,
     topClients,
-    periodMeta,
     emptyAnalytics,
     loading: dataLoading,
     listsLoading,
     onboarding,
     isEmptyAccount,
     hasOnboardingSteps,
-  } = useDashboardHomeData({ lang, period, enabled: true });
+    todayEvents,
+    pulseActions,
+    pulseLoading,
+    communicationStats,
+    reminders,
+    refetchAll,
+  } = useLivingDashboard({ lang, period, enabled: true });
 
   const {
     state: onboardingState,
@@ -63,17 +58,6 @@ export default function DashboardHome() {
     maturity,
     refresh: refreshOnboarding,
   } = useOnboardingState({ enabled: true });
-
-  const {
-    actions: engineActions,
-    loading: actionsLoading,
-    error: actionsError,
-    refetch: refetchActions,
-  } = useActions({
-    status: "pending",
-    limit: 50,
-    enabled: maturity !== "empty",
-  });
 
   useEffect(() => {
     if (!pendingFirstWin) return;
@@ -89,16 +73,16 @@ export default function DashboardHome() {
   }, [isEmptyAccount, maturity, refreshOnboarding]);
 
   const showEmptyHero = (isEmptyAccount || maturity === "empty") && !showWizard;
+  const showFullDashboard = maturity === "active" || (!isEmptyAccount && !showEmptyHero);
+  const firstName = user?.firstName?.trim();
   const showOnboardingGuidance =
     hasOnboardingSteps &&
-    engineActions.length === 0 &&
-    !actionsLoading &&
+    (pulseActions?.length || 0) === 0 &&
+    !pulseLoading &&
     maturity !== "active";
-  const firstName = user?.firstName?.trim();
-  const showFullDashboard = maturity === "active" || (!isEmptyAccount && !showEmptyHero);
 
   return (
-    <div className="space-y-6 md:space-y-8" data-testid="dashboard-home">
+    <div className="space-y-6 md:space-y-8 pb-8" data-testid="dashboard-home">
       <OnboardingWizard
         open={showWizard}
         demoAllowed={demoAllowed}
@@ -109,75 +93,100 @@ export default function DashboardHome() {
       />
 
       <div className="space-y-4">
-        <DashboardHeader firstName={firstName} />
+        <DashboardHeader
+          firstName={firstName}
+          subtitle={t("livingDashboard.header.subtitle")}
+        />
         {showChecklist ? (
           <StartupChecklist
             checklist={onboardingState?.checklist}
             onDismiss={() => dismissChecklist().catch(() => toast.error(t("errors.generic")))}
           />
         ) : null}
-        {showFullDashboard ? (
-          <DashboardKpiGrid kpis={kpis} loading={dataLoading} periodMeta={periodMeta} />
-        ) : null}
       </div>
 
       {showEmptyHero ? (
-        <OnboardingCards onboarding={onboarding} hasClients={(kpis?.clients?.total || 0) > 0} />
+        <OnboardingCards onboarding={onboarding} />
       ) : showFullDashboard ? (
         <>
-          <DashboardActionCenterCard
-            actions={engineActions}
-            loading={actionsLoading}
-            error={actionsError}
-            onboardingHint={showOnboardingGuidance}
-            onChanged={refetchActions}
-          />
+          <LivingKpiStrip kpis={livingKpis} loading={dataLoading || pulseLoading} t={t} />
 
-          {/* One-handed: create CTAs before secondary analytics on small screens */}
           <div className="md:hidden">
             <DashboardQuickActions compact />
           </div>
 
-          <Suspense fallback={<AnalyticsFallback />}>
-            <DashboardAnalyticsSection
-              series={series}
-              loading={listsLoading}
-              period={period}
-              onPeriodChange={setPeriod}
-              empty={emptyAnalytics}
-            />
-          </Suspense>
-
-          <DashboardPipelineCard
-            pipeline={pipeline}
-            loading={listsLoading}
-            periodMeta={periodMeta}
+          <LivingTodayStrip
+            events={todayEvents}
+            importsToday={livingKpis.importsToday}
+            t={t}
           />
 
-          {topClients?.length > 0 || dataLoading ? (
-            <TopClients clients={topClients.slice(0, 5)} loading={dataLoading} />
-          ) : null}
+          <DashboardActionCenterCard
+            actions={pulseActions}
+            loading={pulseLoading}
+            error={null}
+            onboardingHint={showOnboardingGuidance}
+            onChanged={refetchAll}
+          />
+
+          <LivingRemindersSection reminders={reminders} t={t} />
+
+          <section className="space-y-2" data-testid="living-activity">
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-dash-text-subtle">
+              {t("livingDashboard.activity.title")}
+            </h2>
+            <ActivityFeed
+              limit={8}
+              compact
+              muted={false}
+              showViewAll
+              showHeader={false}
+              showEmptyState
+              viewAllPath="/dashboard/communications"
+            />
+          </section>
+
+          <LivingMoneySection
+            money={money}
+            series={series}
+            period={period}
+            onPeriodChange={setPeriod}
+            empty={emptyAnalytics}
+            loading={listsLoading}
+            t={t}
+          />
+
+          {(topClients?.length > 0 || dataLoading) && (
+            <section className="space-y-2" data-testid="living-top-clients">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-dash-text-subtle">
+                  {t("livingDashboard.topClients.title")}
+                </h2>
+                <button
+                  type="button"
+                  className="text-xs font-medium text-dash-primary"
+                  onClick={() => navigate("/dashboard/clients")}
+                >
+                  {t("livingDashboard.seeAll")}
+                </button>
+              </div>
+              <TopClients
+                clients={topClients.slice(0, 5)}
+                loading={dataLoading}
+                variant="living"
+                compact
+              />
+            </section>
+          )}
+
+          <LivingCommunicationStats stats={communicationStats} t={t} />
 
           <div className="hidden md:block">
             <DashboardQuickActions compact />
           </div>
-
-          <ActivityFeed
-            limit={6}
-            compact
-            muted
-            showViewAll
-            showHeader
-            showEmptyState={false}
-            viewAllPath="/dashboard/communications"
-          />
         </>
       ) : (
-        <OnboardingCards
-          onboarding={onboarding}
-          hasClients={(kpis?.clients?.total || 0) > 0}
-          compact
-        />
+        <OnboardingCards onboarding={onboarding} compact />
       )}
     </div>
   );
