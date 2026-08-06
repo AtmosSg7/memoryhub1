@@ -60,6 +60,7 @@ from emails_dev import emails_dev_router
 from dev_demo import dev_demo_router
 from admin import admin_router
 from integrations.routes import integrations_router
+from phone.routes import phone_router
 from onboarding import onboarding_router
 from beta_feedback import beta_feedback_router
 from e2e_harness import e2e_router
@@ -190,6 +191,7 @@ api_router.include_router(invoices_router)
 api_router.include_router(commercial_router)
 api_router.include_router(company_profile_router)
 api_router.include_router(integrations_router)
+api_router.include_router(phone_router)
 api_router.include_router(imports_router)
 api_router.include_router(catalog_router)
 api_router.include_router(reminders_router)

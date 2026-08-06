@@ -35,7 +35,7 @@ COMMUNICATION_TYPES: tuple[str, ...] = (
     "ai_summary",
 )
 
-# Providers reserved for future connectors (do not implement now).
+# Reserved / multi-channel provider ids (phone Hub V1 writes type=phone via phone.*).
 RESERVED_PROVIDERS = ("whatsapp", "phone", "sms", "outlook", "calendar", "google_calendar")
 
 
@@ -324,6 +324,128 @@ async def upsert_from_gmail_email_doc(
         doc["connectedAccountId"] = account_id
     doc["status"] = association_status
     return await upsert_communication(db, doc)
+
+
+async def upsert_from_phone_call(
+    db,
+    *,
+    user_id: str,
+    call,
+    client_name: Optional[str] = None,
+) -> dict:
+    """Feed Communication Center from a PhoneCall (Phone Hub → same path as Gmail).
+
+    Idempotent on ``(userId, provider, providerId)``. Sets metadata for Hub
+    conversation keys, Timeline ``call_logged``, and Action Engine missed-call rules.
+    """
+    from phone.constants import DIRECTION_TO_COMM, PROVIDER_PHONE
+
+    provider = getattr(call, "provider", None) or PROVIDER_PHONE
+    provider_id = getattr(call, "providerCallId", None) or getattr(call, "provider_call_id", None)
+    if not provider_id:
+        raise ValueError("PhoneCall.providerCallId is required")
+
+    existing = await db.communications.find_one(
+        {"userId": user_id, "provider": provider, "providerId": provider_id},
+        {"_id": 0},
+    )
+
+    call_direction = getattr(call, "direction", None) or "incoming"
+    direction = DIRECTION_TO_COMM.get(call_direction, "inbound")
+    status = getattr(call, "status", None) or "unknown"
+    missed = status in {"missed", "rejected", "voicemail"} or bool(getattr(call, "voicemail", False))
+    phone_number = getattr(call, "phoneNumber", None) or ""
+    normalized = getattr(call, "normalizedPhone", None) or ""
+    started_at = getattr(call, "startedAt", None) or utc_now_iso()
+    client_id = getattr(call, "clientId", None)
+    if existing and existing.get("ignoredAt"):
+        client_id = existing.get("clientId")
+        client_name = (existing.get("metadata") or {}).get("clientName") or client_name
+    elif existing and existing.get("clientId") and not client_id:
+        client_id = existing.get("clientId")
+
+    association_status = "ignored" if (existing or {}).get("ignoredAt") else (
+        "linked" if client_id else "unlinked"
+    )
+
+    attachments = getattr(call, "attachments", None) or []
+    att_list = []
+    for a in attachments:
+        if hasattr(a, "model_dump"):
+            att_list.append(a.model_dump())
+        elif isinstance(a, dict):
+            att_list.append(a)
+
+    preview_bits = [status]
+    if getattr(call, "duration", None):
+        preview_bits.append(f"{int(call.duration)}s")
+    if phone_number:
+        preview_bits.append(phone_number)
+
+    meta = {
+        "clientName": client_name,
+        "phoneNumber": phone_number,
+        "normalizedPhone": normalized,
+        "fromPhone": phone_number if call_direction == "incoming" else None,
+        "toPhone": phone_number if call_direction == "outgoing" else None,
+        "phone": phone_number,
+        "callDirection": call_direction,
+        "status": status,
+        "missed": missed,
+        "missedCall": missed,
+        "voicemail": bool(getattr(call, "voicemail", False)),
+        "duration": getattr(call, "duration", None),
+        "startedAt": started_at,
+        "endedAt": getattr(call, "endedAt", None),
+        "recordingUrl": getattr(call, "recordingUrl", None),
+        "notes": getattr(call, "notes", None),
+        "matchedBy": getattr(call, "matchedBy", None),
+        "connectedAccountId": getattr(call, "connectedAccountId", None),
+        "vendor": getattr(call, "vendor", None),
+        "channel": "phone",
+        "source": "phone",
+        "attachments": att_list,
+    }
+    meta = {k: v for k, v in meta.items() if v not in (None, "", [])}
+
+    subject = {
+        "missed": "Appel manqué",
+        "voicemail": "Messagerie vocale",
+        "rejected": "Appel rejeté",
+        "blocked": "Appel bloqué",
+        "spam": "Appel indésirable",
+        "outgoing": "Appel sortant",
+        "incoming": "Appel entrant",
+        "answered": "Appel",
+    }.get(status, "Appel")
+
+    doc = build_communication_doc(
+        user_id=user_id,
+        type="phone",
+        client_id=client_id,
+        direction=direction,  # type: ignore[arg-type]
+        provider=provider,
+        provider_id=provider_id,
+        subject=subject,
+        preview=" · ".join(preview_bits),
+        created_at=started_at,
+        attachments_count=len(att_list),
+        external_url=getattr(call, "recordingUrl", None),
+        metadata=meta,
+        existing_id=(existing or {}).get("id"),
+    )
+    account_id = getattr(call, "connectedAccountId", None)
+    if account_id:
+        doc["connectedAccountId"] = account_id
+    doc["status"] = association_status
+    if (existing or {}).get("ignoredAt"):
+        doc["ignoredAt"] = existing["ignoredAt"]
+
+    persisted = await upsert_communication(db, doc)
+    # Reflect Hub conversation id back when present
+    if hasattr(call, "conversationId"):
+        call.conversationId = persisted.get("conversationId")
+    return persisted
 
 
 async def list_center_communications(

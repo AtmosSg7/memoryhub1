@@ -4,12 +4,10 @@ import {
   GoogleCalendarLogo,
   GoogleDriveLogo,
   OutlookLogo,
-  PhoneLogo,
   WhatsAppLogo,
 } from "@/components/dashboard/integrations/integrationLogos";
 
 export const COMING_SOON_INTEGRATIONS = [
-  { id: "phone", Logo: PhoneLogo, nameKey: "integrations.comingSoon.phone.name", descKey: "integrations.comingSoon.phone.desc" },
   { id: "whatsapp", Logo: WhatsAppLogo, nameKey: "integrations.comingSoon.whatsapp.name", descKey: "integrations.comingSoon.whatsapp.desc" },
   { id: "google-calendar", Logo: GoogleCalendarLogo, nameKey: "integrations.comingSoon.googleCalendar.name", descKey: "integrations.comingSoon.googleCalendar.desc" },
   { id: "outlook", Logo: OutlookLogo, nameKey: "integrations.comingSoon.outlook.name", descKey: "integrations.comingSoon.outlook.desc" },

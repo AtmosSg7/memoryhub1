@@ -94,4 +94,37 @@ export async function fetchClientEmails(clientId, { limit = 50 } = {}) {
   return data;
 }
 
+export async function fetchPhoneStatus() {
+  const { res, data } = await apiFetch("/api/integrations/phone/status");
+  if (!res.ok) throw new Error(parseError(data, "Failed to load Phone status."));
+  return data;
+}
+
+export async function startPhoneConnect() {
+  const { res, data } = await apiFetch("/api/integrations/phone/connect", { method: "POST" });
+  if (!res.ok) throw new Error(parseError(data, "Failed to connect Phone."));
+  return data;
+}
+
+export async function previewPhone() {
+  const { res, data } = await apiFetch("/api/integrations/phone/preview");
+  if (!res.ok) throw new Error(parseError(data, "Failed to preview Phone calls."));
+  return data;
+}
+
+export async function syncPhone() {
+  const { res, data } = await apiFetch("/api/integrations/phone/sync", {
+    method: "POST",
+    timeoutMs: 120_000,
+  });
+  if (!res.ok) throw new Error(parseError(data, "Failed to sync Phone."));
+  return data;
+}
+
+export async function disconnectPhone() {
+  const { res, data } = await apiFetch("/api/integrations/phone/disconnect", { method: "POST" });
+  if (!res.ok) throw new Error(parseError(data, "Failed to disconnect Phone."));
+  return data;
+}
+
 export { API_BASE };

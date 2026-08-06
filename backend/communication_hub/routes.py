@@ -29,7 +29,7 @@ async def hub_providers(
     current_user: dict = Depends(get_current_user),
     _rate=Depends(hub_rate),
 ):
-    """List channel providers and readiness (Gmail live, phone/WA reserved)."""
+    """List channel providers and readiness (Gmail live, Phone Hub mock-ready, WA stub)."""
     items = []
     for provider_id, provider in list_channel_providers().items():
         items.append(

@@ -1,4 +1,4 @@
-"""Phone provider stub — architecture only (no carrier / VoIP API yet)."""
+"""Hub ChannelProvider adapter — delegates normalize/readiness to Phone Hub."""
 
 from __future__ import annotations
 
@@ -9,30 +9,48 @@ from communication_hub.providers.base import ChannelProvider
 
 
 class PhoneProvider(ChannelProvider):
-    """Reserved phone channel.
+    """Hub-facing phone channel.
 
-    Future wiring:
-    - Phone Conversation → communication_hub conversations (channel=phone)
-    - Phone Event → communications.type=phone + timeline call_logged
-    - Phone Identity → prospects.identity phone:<e164>
-    - Phone Timeline → Timeline V2 COMM_TYPES already includes call_logged
+    Live sync / vendor APIs live in ``phone.*`` (Phone Hub). This adapter only
+    exposes readiness + identity for Hub registry / conversation keys.
     """
 
     provider_id = PROVIDER_PHONE
     channel = CHANNEL_PHONE
 
     def is_configured(self) -> bool:
-        return False
+        try:
+            from phone.config import phone_configured
+
+            return bool(phone_configured())
+        except Exception:
+            return False
 
     def is_ready(self) -> bool:
-        return False
+        try:
+            from phone.config import phone_ready
+
+            return bool(phone_ready())
+        except Exception:
+            return False
 
     def normalize_identity(self, raw: Dict[str, Any]) -> Optional[str]:
-        phone = (raw.get("phone") or raw.get("fromPhone") or raw.get("toPhone") or "").strip()
-        if not phone:
-            return None
-        digits = "".join(ch for ch in phone if ch.isdigit() or ch == "+")
-        return f"phone:{digits}" if digits else None
+        try:
+            from phone.normalizer import PhoneNormalizer
+
+            identity = PhoneNormalizer.identity(
+                raw.get("phone")
+                or raw.get("fromPhone")
+                or raw.get("toPhone")
+                or raw.get("phoneNumber")
+            )
+            return identity.identityKey if identity else None
+        except Exception:
+            phone = (raw.get("phone") or raw.get("fromPhone") or raw.get("toPhone") or "").strip()
+            if not phone:
+                return None
+            digits = "".join(ch for ch in phone if ch.isdigit() or ch == "+")
+            return f"phone:{digits}" if digits else None
 
     def conversation_key_parts(self, raw: Dict[str, Any]) -> List[str]:
         identity = self.normalize_identity(raw)
@@ -44,9 +62,10 @@ class PhoneProvider(ChannelProvider):
         return []
 
     async def sync(self, db, user_id: str, **kwargs: Any) -> Dict[str, Any]:
-        raise NotImplementedError(
-            "Phone sync is reserved. Connect a telephony provider to enable it."
-        )
+        from phone.sync_service import sync_phone
+
+        result = await sync_phone(db, user_id)
+        return result.model_dump() if hasattr(result, "model_dump") else dict(result)
 
 
 def build_phone_event_stub(
@@ -59,7 +78,7 @@ def build_phone_event_stub(
     duration_seconds: Optional[int] = None,
     client_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Shape of a future phone ingest payload (not persisted by itself)."""
+    """Legacy stub shape — prefer ``phone.models.RemoteCall`` for new code."""
     return {
         "userId": user_id,
         "type": CHANNEL_PHONE,

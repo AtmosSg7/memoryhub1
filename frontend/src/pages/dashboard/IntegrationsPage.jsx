@@ -8,21 +8,27 @@ import SettingsShell from "@/components/dashboard/SettingsShell";
 import { PageLoader } from "@/components/dashboard/PageFeedback";
 import AvailableIntegrationCard from "@/components/dashboard/integrations/AvailableIntegrationCard";
 import ComingSoonIntegrationCard from "@/components/dashboard/integrations/ComingSoonIntegrationCard";
+import PhoneIntegrationCard from "@/components/dashboard/integrations/PhoneIntegrationCard";
 import IntegrationsBenefits from "@/components/dashboard/integrations/IntegrationsBenefits";
 import { COMING_SOON_INTEGRATIONS } from "@/components/dashboard/integrations/comingSoonIntegrations";
-import { GmailLogo, GoogleContactsLogo } from "@/components/dashboard/integrations/integrationLogos";
+import { GmailLogo, GoogleContactsLogo, PhoneLogo } from "@/components/dashboard/integrations/integrationLogos";
 import {
   disconnectGmail,
   disconnectGoogleContacts,
+  disconnectPhone,
   fetchGmailStatus,
   fetchGoogleContactsStatus,
+  fetchPhoneStatus,
   importGoogleContacts,
   previewGmail,
   previewGoogleContacts,
+  previewPhone,
   startGmailConnect,
   startGoogleContactsConnect,
+  startPhoneConnect,
   syncGmail,
   syncGoogleContacts,
+  syncPhone,
 } from "@/lib/integrationsApi";
 import { buildGmailSummaryKeys } from "@/utils/gmailIntegrationSummary";
 
@@ -36,21 +42,26 @@ export default function IntegrationsPage() {
 
   const [contactsStatus, setContactsStatus] = useState(null);
   const [gmailStatus, setGmailStatus] = useState(null);
+  const [phoneStatus, setPhoneStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState(null);
   const [contactsPreview, setContactsPreview] = useState(null);
   const [gmailPreview, setGmailPreview] = useState(null);
+  const [phonePreview, setPhonePreview] = useState(null);
   const [confirmContacts, setConfirmContacts] = useState(false);
   const [confirmGmail, setConfirmGmail] = useState(false);
+  const [confirmPhone, setConfirmPhone] = useState(false);
 
   const reload = useCallback(async () => {
-    const [contacts, gmail] = await Promise.all([
+    const [contacts, gmail, phone] = await Promise.all([
       fetchGoogleContactsStatus(),
       fetchGmailStatus(),
+      fetchPhoneStatus(),
     ]);
     setContactsStatus(contacts);
     setGmailStatus(gmail);
-    return { contacts, gmail };
+    setPhoneStatus(phone);
+    return { contacts, gmail, phone };
   }, []);
 
   useEffect(() => {
@@ -272,6 +283,71 @@ export default function IntegrationsPage() {
                       setGmailPreview(null);
                       setConfirmGmail(false);
                       toast.success(t("integrations.gmail.disconnectedToast"));
+                    })
+                  }
+                />
+
+                <PhoneIntegrationCard
+                  Logo={PhoneLogo}
+                  status={phoneStatus}
+                  preview={phonePreview}
+                  confirmImport={confirmPhone}
+                  busy={busyKey === "phone"}
+                  t={t}
+                  lang={lang}
+                  onConnect={() =>
+                    runBusy("phone", async () => {
+                      try {
+                        await startPhoneConnect();
+                        await reload();
+                        toast.success(t("integrations.phone.connectedToast"));
+                      } catch (err) {
+                        toast.error(err.message || t("integrations.phone.connectError"));
+                      }
+                    })
+                  }
+                  onPreviewImport={() =>
+                    runBusy("phone", async () => {
+                      const data = await previewPhone();
+                      setPhonePreview(data);
+                      setConfirmPhone(true);
+                    })
+                  }
+                  onConfirmImport={() =>
+                    runBusy("phone", async () => {
+                      await syncPhone();
+                      await reload();
+                      setConfirmPhone(false);
+                      setPhonePreview(null);
+                      toast.success(t("integrations.phone.syncDone"));
+                    })
+                  }
+                  onCancelImport={() => {
+                    setConfirmPhone(false);
+                    setPhonePreview(null);
+                  }}
+                  onSync={() =>
+                    runBusy("phone", async () => {
+                      await syncPhone();
+                      await reload();
+                      toast.success(t("integrations.phone.syncDone"));
+                    })
+                  }
+                  onDisconnect={() =>
+                    runBusy("phone", async () => {
+                      if (!window.confirm(t("integrations.phone.disconnectConfirm"))) return;
+                      await disconnectPhone();
+                      setPhoneStatus((prev) => ({
+                        ...prev,
+                        connected: false,
+                        account: null,
+                        lastSync: null,
+                        lastCall: null,
+                        syncing: false,
+                      }));
+                      setPhonePreview(null);
+                      setConfirmPhone(false);
+                      toast.success(t("integrations.phone.disconnectedToast"));
                     })
                   }
                 />

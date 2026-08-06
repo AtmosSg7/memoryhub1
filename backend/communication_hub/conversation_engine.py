@@ -87,12 +87,19 @@ def derive_conversation_key(communication: dict) -> str:
 
     if channel == CHANNEL_PHONE:
         phone = (
-            meta.get("fromPhone")
+            meta.get("normalizedPhone")
+            or meta.get("fromPhone")
             or meta.get("toPhone")
             or meta.get("phone")
+            or meta.get("phoneNumber")
             or ""
         ).strip()
-        digits = "".join(ch for ch in phone if ch.isdigit() or ch == "+")
+        try:
+            from phone.normalizer import PhoneNormalizer
+
+            digits = PhoneNormalizer.normalize_phone(phone)
+        except Exception:
+            digits = "".join(ch for ch in phone if ch.isdigit())
         if digits:
             return f"phone:{provider}:identity:{digits}"
         call_id = (communication.get("providerId") or "").strip()
