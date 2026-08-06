@@ -21,9 +21,10 @@ from admin_constants import USER_ROLE_ADMIN  # noqa: E402
 from auth import build_user_document  # noqa: E402
 from credit_seed import seed_credit_catalog  # noqa: E402
 from credit_service import grant_monthly_credits, grant_permanent_credits  # noqa: E402
+from e2e_db_guard import resolve_e2e_db_name  # noqa: E402
 
 E2E_TAG = "e2e_rc_v1"
-E2E_DB = os.environ.get("E2E_DB_NAME", "memoryhub_e2e")
+E2E_DB = resolve_e2e_db_name()
 
 USERS = {
     "artisan_a": {

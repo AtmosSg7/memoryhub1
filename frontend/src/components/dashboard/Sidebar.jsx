@@ -1,18 +1,39 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { useBillingSummary } from "@/hooks/useBillingSummary";
+import { useProspectsPendingCount } from "@/hooks/useProspectsPendingCount";
+import { useActionsCount } from "@/hooks/useActions";
 import { useIsShowcaseDemo } from "@/context/ShowcaseThemeIsolation";
 import { getSidebarItems } from "@/components/dashboard/sidebarNav";
 import ImportUsageMeter from "@/components/dashboard/ImportUsageMeter";
 import { PLAN_CATALOG } from "@/constants/planConfig";
+
+function NavBadge({ count, testId = "sidebar-nav-badge" }) {
+  if (!count || count < 1) return null;
+  const label = count > 99 ? "99+" : String(count);
+  return (
+    <span
+      className="ml-auto inline-flex min-w-[1.25rem] h-5 items-center justify-center rounded-full bg-dash-accent text-[10px] font-bold text-[var(--dash-cta-text,#fff)] px-1.5"
+      data-testid={testId}
+    >
+      {label}
+    </span>
+  );
+}
 
 export default function Sidebar() {
   const { t } = useDashboardLang();
   const navigate = useNavigate();
   const isShowcase = useIsShowcaseDemo();
   const { view, loading } = useBillingSummary();
+  const { total: prospectsPending } = useProspectsPendingCount({ enabled: !isShowcase });
+  const { total: actionsPending } = useActionsCount({
+    status: "pending",
+    enabled: !isShowcase,
+  });
 
   const usagePlanId = view.usagePlanId || "solo";
+  const badges = { prospectsPending, actionsPending };
 
   return (
     <aside
@@ -56,6 +77,16 @@ export default function Sidebar() {
                   <>
                     <item.icon className="w-[18px] h-[18px]" strokeWidth={isActive ? 2 : 1.75} />
                     <span className="flex-1">{item.label}</span>
+                    {item.badgeKey ? (
+                      <NavBadge
+                        count={badges[item.badgeKey]}
+                        testId={
+                          item.badgeKey === "prospectsPending"
+                            ? "sidebar-prospects-badge"
+                            : `sidebar-${item.badgeKey}-badge`
+                        }
+                      />
+                    ) : null}
                   </>
                 )}
               </NavLink>

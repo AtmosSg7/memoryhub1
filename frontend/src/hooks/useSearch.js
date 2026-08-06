@@ -4,7 +4,7 @@ import { searchGlobal } from "@/lib/searchApi";
 export const SEARCH_MIN_CHARS = 2;
 const DEBOUNCE_MS = 300;
 
-export function useSearch(query, { enabled = true } = {}) {
+export function useSearch(query, { enabled = true, types, limit, offset = 0 } = {}) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -29,7 +29,11 @@ export function useSearch(query, { enabled = true } = {}) {
       setError(null);
 
       try {
-        const result = await searchGlobal(trimmed, controller.signal);
+        const result = await searchGlobal(trimmed, controller.signal, {
+          types,
+          limit,
+          offset,
+        });
         if (!controller.signal.aborted) {
           setData(result);
         }
@@ -48,7 +52,7 @@ export function useSearch(query, { enabled = true } = {}) {
       clearTimeout(timer);
       abortRef.current?.abort();
     };
-  }, [query, enabled]);
+  }, [query, enabled, types, limit, offset]);
 
   return { data, loading, error, minChars: SEARCH_MIN_CHARS };
 }

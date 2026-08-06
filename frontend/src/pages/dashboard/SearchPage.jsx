@@ -21,12 +21,15 @@ export default function SearchPage() {
   const [inputValue, setInputValue] = useState(urlQuery);
 
   const minChars = SEARCH_MIN_CHARS;
+  const [resultLimit, setResultLimit] = useState(20);
   const { data, loading, error } = useSearch(inputValue, {
     enabled: inputValue.trim().length >= minChars,
+    limit: resultLimit,
   });
 
   useEffect(() => {
     setInputValue(urlQuery);
+    setResultLimit(20);
   }, [urlQuery]);
 
   const handleSubmit = (event) => {
@@ -89,6 +92,7 @@ export default function SearchPage() {
               query={trimmed}
               loading={loading}
               error={error}
+              onSeeMoreGroup={() => setResultLimit((n) => Math.min(40, n + 12))}
               testId="search-page-results"
             />
           </div>

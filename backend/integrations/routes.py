@@ -220,10 +220,14 @@ async def gmail_sync(
     current_user: dict = Depends(get_current_user),
     db=Depends(get_db),
 ):
+    from integrations.gmail_errors import GmailSyncInProgressError
+
     try:
         return await gmail_sync_service.sync_gmail(db, current_user["id"])
     except ValueError as exc:
         raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    except GmailSyncInProgressError as exc:
+        raise HTTPException(status_code=409, detail={"message": str(exc)}) from exc
     except Exception:
         logger.exception("Gmail sync failed")
         raise HTTPException(

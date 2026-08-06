@@ -41,6 +41,9 @@ from reminders import reminders_router
 from personal_reminders import personal_reminders_router
 from portal import portal_router, portal_admin_router
 from communications import communications_router
+from prospects.routes import prospects_router
+from action_engine.routes import actions_router
+from communication_intelligence.routes import ci_router
 from follow_ups import follow_ups_router
 from document_sends import document_sends_router
 from analytics.routes import analytics_router
@@ -58,6 +61,7 @@ from admin import admin_router
 from integrations.routes import integrations_router
 from onboarding import onboarding_router
 from beta_feedback import beta_feedback_router
+from e2e_harness import e2e_router
 
 logger = get_logger(__name__)
 
@@ -192,6 +196,9 @@ api_router.include_router(personal_reminders_router)
 api_router.include_router(portal_router)
 api_router.include_router(portal_admin_router)
 api_router.include_router(communications_router)
+api_router.include_router(prospects_router)
+api_router.include_router(actions_router)
+api_router.include_router(ci_router)
 api_router.include_router(follow_ups_router)
 api_router.include_router(document_sends_router)
 api_router.include_router(dashboard_router)
@@ -206,6 +213,7 @@ api_router.include_router(stripe_router)
 if not IS_DEPLOYED:
     api_router.include_router(emails_dev_router)
     api_router.include_router(dev_demo_router)
+    api_router.include_router(e2e_router)
 api_router.include_router(admin_router)
 
 # Include the router in the main app
@@ -334,11 +342,55 @@ async def startup_db_indexes():
         [("userId", 1), ("type", 1), ("clientId", 1), ("createdAt", -1)]
     )
 
-    # Search V2 helpers (regex still limited; compound filters + sort)
+    # Prospects — user decisions only (exchanges stay on communications)
+    await ensure_index(
+        db.prospect_decisions,
+        "id",
+        name="prospect_decisions_id_unique",
+        unique=True,
+    )
+    await ensure_index(
+        db.prospect_decisions,
+        [("userId", 1), ("identityKey", 1)],
+        name="prospect_decisions_user_identity_unique",
+        unique=True,
+    )
+    await db.prospect_decisions.create_index([("userId", 1), ("status", 1), ("updatedAt", -1)])
+
+    # Action Engine — persisted, channel-agnostic actions
+    await ensure_index(db.actions, "id", name="actions_id_unique", unique=True)
+    await ensure_index(
+        db.actions,
+        [("userId", 1), ("idempotencyKey", 1)],
+        name="actions_user_idempotency_unique",
+        unique=True,
+    )
+    await db.actions.create_index([("userId", 1), ("status", 1), ("createdAt", -1)])
+    await db.actions.create_index([("userId", 1), ("type", 1), ("status", 1)])
+    await db.actions.create_index([("userId", 1), ("clientId", 1), ("createdAt", -1)])
+    await db.actions.create_index([("userId", 1), ("communicationId", 1)])
+    await db.actions.create_index([("userId", 1), ("status", 1), ("snoozedUntil", 1)])
+
+    # Communication Intelligence (one analysis doc per communication)
+    await db.communication_analyses.create_index(
+        [("userId", 1), ("communicationId", 1)],
+        name="ci_user_communication_unique",
+        unique=True,
+    )
+    await db.communication_analyses.create_index(
+        [("userId", 1), ("dayKey", 1), ("billed", 1)],
+        name="ci_user_day_billed",
+    )
+
+    # Search V2/universal helpers (regex still limited; compound filters + sort)
     await db.clients.create_index([("userId", 1), ("emails.value", 1)])
     await db.clients.create_index([("userId", 1), ("phones.value", 1)])
     await db.clients.create_index([("userId", 1), ("siret", 1)])
     await db.clients.create_index([("userId", 1), ("city", 1)])
+    await db.actions.create_index([("userId", 1), ("title", 1)])
+    await db.communication_analyses.create_index([("userId", 1), ("intent", 1)])
+    await db.quotes.create_index([("userId", 1), ("amountTTC", 1)])
+    await db.invoices.create_index([("userId", 1), ("amountTTC", 1)])
 
     # Memory Intelligence snapshot cache
     await ensure_index(
@@ -450,6 +502,12 @@ async def startup_db_indexes():
         unique=True,
     )
     await db.connected_accounts.create_index([("userId", 1), ("updatedAt", -1)])
+    await db.connected_accounts.create_index(
+        [("provider", 1), ("status", 1), ("nextSyncAt", 1)],
+        name="connected_accounts_provider_status_next_sync",
+    )
+    # Expire stale distributed locks automatically (reclaim also happens on acquire).
+    await db.distributed_locks.create_index("expiresAt", expireAfterSeconds=0)
 
     await ensure_index(db.beta_feedback, "id", name="beta_feedback_id_unique", unique=True)
     await ensure_index(

@@ -14,8 +14,7 @@ import { useClientInvoices } from "@/hooks/useClientInvoices";
 import { useClient } from "@/hooks/useClient";
 import { useClientNotes } from "@/hooks/useClientNotes";
 import { useClientDocuments } from "@/hooks/useClientDocuments";
-import { useClientTimeline } from "@/hooks/useClientTimeline";
-import { useClientFollowUps } from "@/hooks/useClientFollowUps";
+import { useClientTimelineV2 } from "@/hooks/useClientTimelineV2";
 import { useFollowUpLastMap } from "@/hooks/useFollowUpLastMap";
 import { useListPagination } from "@/hooks/useListPagination";
 import { useDocumentsContext } from "@/context/DocumentsContext";
@@ -44,14 +43,12 @@ import { PageLoader, InlineLoader, PageError } from "@/components/dashboard/Page
 import ClientDetailHeader from "@/components/dashboard/client/ClientDetailHeader";
 import ClientDocumentHighlight from "@/components/dashboard/client/ClientDocumentHighlight";
 import ClientTimelineList from "@/components/dashboard/client/ClientTimelineList";
-import ClientFollowUpList from "@/components/dashboard/client/ClientFollowUpList";
 import FollowUpLastHint from "@/components/dashboard/FollowUpLastHint";
 import ListCollectionFooter from "@/components/dashboard/ListCollectionFooter";
 import ClientSectionNav from "@/components/dashboard/client/ClientSectionNav";
 import ClientContactsSection from "@/components/dashboard/client/ClientContactsSection";
 import ClientEmailsSection from "@/components/dashboard/client/ClientEmailsSection";
-import Client360Dashboard from "@/components/dashboard/client/Client360Dashboard";
-import ClientInsightsCard from "@/components/dashboard/client/ClientInsightsCard";
+import ClientRelationSummary from "@/components/dashboard/client/ClientRelationSummary";
 import SectionPanel from "@/components/dashboard/client/SectionPanel";
 import {
   CLIENT_DIVIDER_LIST_CLASS,
@@ -101,7 +98,6 @@ export default function ClientDetailPage() {
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState("");
   const [contactsSaving, setContactsSaving] = useState(false);
   const [favoriteSaving, setFavoriteSaving] = useState(false);
-  const [client360, setClient360] = useState(null);
   const [emailsTotal, setEmailsTotal] = useState(0);
   const activeSection = searchParams.get("section") || "overview";
   const needsOverview = activeSection === "overview";
@@ -131,17 +127,21 @@ export default function ClientDetailPage() {
   const { documents: clientDocs, total: clientDocsTotal, loading: docsLoading, error: docsError } =
     useClientDocuments(id, { enabled: activeSection === "documents" });
   const {
-    events: timelineEvents,
+    items: timelineItems,
+    summary: timelineSummary,
     total: timelineTotal,
     loading: timelineLoading,
     loadingMore: timelineLoadingMore,
     error: timelineError,
     hasMore: timelineHasMore,
     loadMore: loadMoreTimeline,
-  } = useClientTimeline(id, 40, { enabled: needsOverview || needsTimelineSection });
-  const { items: followUps, total: followUpsTotal, loading: followUpsLoading, error: followUpsError } =
-    useClientFollowUps(id, 50, { enabled: needsOverview });
-
+    category: timelineCategory,
+    setCategory: setTimelineCategory,
+    refetch: refetchTimeline,
+  } = useClientTimelineV2(id, {
+    pageSize: 40,
+    enabled: needsOverview || needsTimelineSection,
+  });
   const quotesForSection = needsQuotesSection ? loadedSectionQuotes : overviewQuotes;
   const invoicesForSection = needsInvoicesSection ? loadedSectionInvoices : overviewInvoices;
   const clientQuotesTotal = needsQuotesSection ? sectionQuotesTotal : overviewQuotesTotal;
@@ -239,9 +239,9 @@ export default function ClientDetailPage() {
 
   const recentNotes = useMemo(() => clientNotes.slice(0, 3), [clientNotes]);
 
-  const overviewTimelineEvents = useMemo(
-    () => timelineEvents.filter((event) => event.type !== "follow_up_recorded"),
-    [timelineEvents],
+  const overviewTimelineItems = useMemo(
+    () => timelineItems.filter((item) => item.type !== "follow_up_recorded"),
+    [timelineItems],
   );
 
   useEffect(() => {
@@ -262,14 +262,10 @@ export default function ClientDetailPage() {
     getClient360(id)
       .then((payload) => {
         if (cancelled) return;
-        setClient360(payload);
         setEmailsTotal(payload?.stats?.exchangesTotal ?? 0);
       })
       .catch(() => {
-        if (!cancelled) {
-          setClient360(null);
-          setEmailsTotal(0);
-        }
+        if (!cancelled) setEmailsTotal(0);
       });
     return () => {
       cancelled = true;
@@ -481,7 +477,7 @@ export default function ClientDetailPage() {
   }
 
   const sectionCounts = {
-    emails: emailsTotal,
+    emails: timelineSummary?.communicationCount ?? emailsTotal,
     quotes: clientQuotesTotal,
     invoices: clientInvoicesTotal,
     notes: clientNotesTotal,
@@ -494,6 +490,7 @@ export default function ClientDetailPage() {
         client={client}
         lang={lang}
         t={t}
+        lastExchangeAt={timelineSummary?.lastExchangeAt}
         onBack={() => navigate("/dashboard/clients")}
         onPrevClient={prevClient ? () => navigateToClient(prevClient.id) : undefined}
         onNextClient={nextClient ? () => navigateToClient(nextClient.id) : undefined}
@@ -504,6 +501,8 @@ export default function ClientDetailPage() {
         onCreateQuote={() => openAddQuote(client)}
         onCreateInvoice={() => openAddInvoice(client)}
         onCreateNote={() => openAddNote(client)}
+        onCreateReminder={() => openAddNote(client)}
+        onOpenCommunications={() => setSection("emails")}
         onImportDocument={() => navigate("/dashboard/documents?import=1")}
         onToggleFavorite={handleToggleFavorite}
         favoriteSaving={favoriteSaving}
@@ -513,31 +512,35 @@ export default function ClientDetailPage() {
 
       {activeSection === "overview" && (
         <div className="space-y-6">
-          <Client360Dashboard
-            clientId={client.id}
-            client={client}
-            commercialStats={stats}
+          <ClientRelationSummary
+            summary={timelineSummary}
             lang={lang}
-            t={t}
-            onOpenSection={setSection}
-            initialData={client360}
+            loading={timelineLoading}
+            error={timelineError}
+            clientId={id}
+            onChanged={refetchTimeline}
+            onSeeAllActions={() => setSection("timeline")}
+            showOpenActions
           />
 
-          <ClientInsightsCard clientId={client.id} t={t} />
-
-          <SectionPanel id="client-overview-follow-ups" title={t("followUpHistory.title")} testId="client-overview-follow-ups">
-            <ClientFollowUpList
-              items={followUps}
-              loading={followUpsLoading}
-              error={followUpsError}
-              emptyLabel={t("followUpHistory.empty")}
-              limit={5}
+          <SectionPanel id="client-overview-timeline" title={t("nav.timeline")} testId="client-overview-timeline">
+            <ClientTimelineList
+              items={overviewTimelineItems}
+              summary={timelineSummary}
+              loading={false}
+              error={null}
+              emptyLabel={timelineLoading ? undefined : t("clientDetail.noTimeline")}
+              limit={8}
+              compact
+              clientId={id}
+              showFilters={false}
+              showSummary={false}
+              showOpenActions={false}
+              onChanged={refetchTimeline}
             />
-            {followUpsTotal > 5 ? (
-              <ClientSectionLink
-                onClick={() => navigate("/dashboard/communications?category=follow_up&clientId=" + client.id)}
-              >
-                {t("followUpHistory.seeAll")} ({followUpsTotal})
+            {overviewTimelineItems.length > 8 || timelineTotal > 8 ? (
+              <ClientSectionLink onClick={() => setSection("timeline")}>
+                {t("clientDetail.seeAllTimeline")}
               </ClientSectionLink>
             ) : null}
           </SectionPanel>
@@ -565,76 +568,58 @@ export default function ClientDetailPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <SectionPanel
-              id="client-overview-notes"
-              title={t("nav.notes")}
-              testId="client-overview-notes"
-              action={
-                <ClientSectionAction icon={StickyNote} onClick={() => openAddNote(client)}>
-                  {t("actions.createNote")}
-                </ClientSectionAction>
-              }
-            >
-              {notesLoading ? (
-                <InlineLoader label={t("noteForm.loading")} className="py-6 justify-start" />
-              ) : recentNotes.length ? (
-                <ul className="space-y-2">
-                  {recentNotes.map((n) => {
-                    const typeKey = normalizeNoteType(n.type);
-                    const typeStyle = getNoteTypeStyle(typeKey);
-                    return (
-                      <li key={n.id}>
-                        <button
-                          type="button"
-                          onClick={() => openEditNote(n)}
-                          className={CLIENT_NOTE_CARD_CLASS}
-                          data-testid={`client-overview-note-${n.id}`}
-                        >
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${typeStyle.bg} ${typeStyle.text}`}>
-                              {t(`noteType.${typeKey}`)}
-                            </span>
-                            <span className="text-[11px] text-dash-text-subtle">{formatNoteDate(getNoteDate(n), lang)}</span>
-                          </div>
-                          <div className="font-medium text-sm text-dash-text truncate">{n.title}</div>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <ClientTabEmpty
-                  icon={StickyNote}
-                  title={t("clientDetail.noNotes")}
-                  cta={t("actions.createNote")}
-                  onCta={() => openAddNote(client)}
-                  testId="client-overview-notes-empty"
-                />
-              )}
-              {clientNotesTotal > 3 ? (
-                <ClientSectionLink onClick={() => setSection("notes")}>
-                  {t("clientDetail.seeAllNotes")} ({clientNotesTotal})
-                </ClientSectionLink>
-              ) : null}
-            </SectionPanel>
-
-            <SectionPanel id="client-overview-timeline" title={t("nav.timeline")} testId="client-overview-timeline">
-              <ClientTimelineList
-                events={overviewTimelineEvents}
-                loading={timelineLoading}
-                error={timelineError}
-                emptyLabel={t("clientDetail.noTimeline")}
-                limit={6}
-                compact
+          <SectionPanel
+            id="client-overview-notes"
+            title={t("nav.notes")}
+            testId="client-overview-notes"
+            action={
+              <ClientSectionAction icon={StickyNote} onClick={() => openAddNote(client)}>
+                {t("actions.createNote")}
+              </ClientSectionAction>
+            }
+          >
+            {notesLoading ? (
+              <InlineLoader label={t("noteForm.loading")} className="py-6 justify-start" />
+            ) : recentNotes.length ? (
+              <ul className="space-y-2">
+                {recentNotes.map((n) => {
+                  const typeKey = normalizeNoteType(n.type);
+                  const typeStyle = getNoteTypeStyle(typeKey);
+                  return (
+                    <li key={n.id}>
+                      <button
+                        type="button"
+                        onClick={() => openEditNote(n)}
+                        className={CLIENT_NOTE_CARD_CLASS}
+                        data-testid={`client-overview-note-${n.id}`}
+                      >
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${typeStyle.bg} ${typeStyle.text}`}>
+                            {t(`noteType.${typeKey}`)}
+                          </span>
+                          <span className="text-[11px] text-dash-text-subtle">{formatNoteDate(getNoteDate(n), lang)}</span>
+                        </div>
+                        <div className="font-medium text-sm text-dash-text truncate">{n.title}</div>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <ClientTabEmpty
+                icon={StickyNote}
+                title={t("clientDetail.noNotes")}
+                cta={t("actions.createNote")}
+                onCta={() => openAddNote(client)}
+                testId="client-overview-notes-empty"
               />
-              {overviewTimelineEvents.length > 6 || timelineTotal > 6 ? (
-                <ClientSectionLink onClick={() => setSection("timeline")}>
-                  {t("clientDetail.seeAllTimeline")}
-                </ClientSectionLink>
-              ) : null}
-            </SectionPanel>
-          </div>
+            )}
+            {clientNotesTotal > 3 ? (
+              <ClientSectionLink onClick={() => setSection("notes")}>
+                {t("clientDetail.seeAllNotes")} ({clientNotesTotal})
+              </ClientSectionLink>
+            ) : null}
+          </SectionPanel>
         </div>
       )}
 
@@ -970,13 +955,21 @@ export default function ClientDetailPage() {
       {activeSection === "timeline" && (
         <SectionPanel id="client-section-timeline" title={t("nav.timeline")} testId="client-section-timeline">
           <ClientTimelineList
-            events={timelineEvents}
+            items={timelineItems}
+            summary={timelineSummary}
             loading={timelineLoading}
             error={timelineError}
             emptyLabel={t("clientDetail.noTimeline")}
             hasMore={timelineHasMore}
             loadingMore={timelineLoadingMore}
             onLoadMore={loadMoreTimeline}
+            category={timelineCategory}
+            onCategoryChange={setTimelineCategory}
+            clientId={id}
+            showFilters
+            showSummary
+            showOpenActions
+            onChanged={refetchTimeline}
           />
         </SectionPanel>
       )}

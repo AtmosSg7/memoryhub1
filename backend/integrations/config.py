@@ -5,6 +5,30 @@ from __future__ import annotations
 import os
 from typing import List
 
+from integrations.constants import (
+    GMAIL_AUTO_SYNC_DEFAULT_BATCH_SIZE,
+    GMAIL_AUTO_SYNC_DEFAULT_INTERVAL_MINUTES,
+    GMAIL_AUTO_SYNC_DEFAULT_TIMEOUT_SECONDS,
+    GMAIL_AUTO_SYNC_MIN_INTERVAL_MINUTES,
+)
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None or not str(raw).strip():
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None or not str(raw).strip():
+        return default
+    try:
+        return int(str(raw).strip())
+    except ValueError:
+        return default
+
 
 def google_client_id() -> str:
     return os.environ.get("GOOGLE_CLIENT_ID", "").strip()
@@ -78,3 +102,35 @@ def gmail_provider_mode() -> str:
     if explicit in {"google", "mock"}:
         return explicit
     return "google" if gmail_configured() else "mock"
+
+
+def gmail_auto_sync_enabled() -> bool:
+    """Scheduler Gmail auto-sync master switch (default: enabled)."""
+    return _env_bool("GMAIL_AUTO_SYNC_ENABLED", True)
+
+
+def gmail_auto_sync_interval_minutes() -> int:
+    """Cadence between successful syncs. Never below 5 minutes."""
+    value = _env_int(
+        "GMAIL_AUTO_SYNC_INTERVAL_MINUTES",
+        GMAIL_AUTO_SYNC_DEFAULT_INTERVAL_MINUTES,
+    )
+    return max(GMAIL_AUTO_SYNC_MIN_INTERVAL_MINUTES, value)
+
+
+def gmail_auto_sync_batch_size() -> int:
+    """Max Gmail accounts processed per scheduler tick."""
+    value = _env_int(
+        "GMAIL_AUTO_SYNC_BATCH_SIZE",
+        GMAIL_AUTO_SYNC_DEFAULT_BATCH_SIZE,
+    )
+    return max(1, min(value, 200))
+
+
+def gmail_auto_sync_timeout_seconds() -> int:
+    """Per-account sync timeout (seconds)."""
+    value = _env_int(
+        "GMAIL_AUTO_SYNC_TIMEOUT_SECONDS",
+        GMAIL_AUTO_SYNC_DEFAULT_TIMEOUT_SECONDS,
+    )
+    return max(10, min(value, 600))

@@ -129,16 +129,40 @@ def test_gmail_connect_sync_match_timeline_dedupe(client):
     sophie_events = client.get(f"/api/events?clientId={sophie_id}")
     assert any(e["type"] == "email_sent" for e in sophie_events.json()["items"])
 
-    # Dedupe on second sync
+    # Second sync is incremental — no new messages, no duplicates, cursor kept
     again = client.post("/api/integrations/gmail/sync")
     assert again.status_code == 200
-    assert again.json()["summary"]["skipped"] >= 3
-    assert again.json()["summary"]["linked"] == 0
+    again_summary = again.json()["summary"]
+    assert again_summary["linked"] == 0
+    assert again_summary.get("mode") == "incremental"
+    assert again_summary.get("detected", 0) == 0
+    assert again_summary.get("cursorUpdated") is True
 
     db = _mongo()
     user = db.users.find_one({"email": email.lower()})
-    count = db.email_messages.count_documents({"userId": user["id"], "provider": "gmail"})
+    user_id = user["id"]
+    count = db.email_messages.count_documents({"userId": user_id, "provider": "gmail"})
     assert count == summary["total"]  # no duplicates
+
+    # Communications SoT: same count, connectedAccountId, directions preserved
+    account = db.connected_accounts.find_one({"userId": user_id, "provider": "gmail"})
+    assert account.get("historyId")
+    center = list(
+        db.communications.find({"userId": user_id, "provider": "gmail", "type": "email"}, {"_id": 0})
+    )
+    assert len(center) == count
+    assert all(c.get("connectedAccountId") == account["id"] for c in center)
+    assert {c["direction"] for c in center} >= {"inbound", "outbound"}
+    event_count = db.events.count_documents(
+        {"userId": user_id, "type": {"$in": ["email_received", "email_sent"]}}
+    )
+    client.post("/api/integrations/gmail/sync")
+    assert (
+        db.events.count_documents(
+            {"userId": user_id, "type": {"$in": ["email_received", "email_sent"]}}
+        )
+        == event_count
+    )
 
 
 def test_gmail_user_isolation(client):

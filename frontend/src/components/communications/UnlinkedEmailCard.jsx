@@ -1,6 +1,7 @@
 import { ExternalLink, Mail, MailOpen, Paperclip } from "lucide-react";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { ActionButton } from "@/components/dashboard/ActionButton";
+import CommunicationIntelligenceCard from "@/components/communications/CommunicationIntelligenceCard";
 
 function formatDate(value, lang) {
   if (!value) return "—";
@@ -104,6 +105,14 @@ export default function UnlinkedEmailCard({
           ) : null}
         </div>
       </div>
+
+      {inbound && !isIgnored ? (
+        <CommunicationIntelligenceCard
+          communicationId={item.id}
+          compact
+          testId={`unlinked-intelligence-${item.id}`}
+        />
+      ) : null}
 
       {suggestion && !isIgnored && !isLinked ? (
         <div

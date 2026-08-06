@@ -51,11 +51,23 @@ async def run_once() -> dict:
         invoice_emails = await run_scheduled_invoice_emails(db)
         logger.info("Scheduled invoice emails: %s", invoice_emails)
 
+        gmail_auto_sync = {"enabled": False, "skipped": True}
+        try:
+            from integrations.gmail_auto_sync_job import run_gmail_auto_sync
+
+            gmail_auto_sync = await run_gmail_auto_sync(db)
+            logger.info("Gmail auto-sync: %s", gmail_auto_sync)
+        except Exception:
+            # Never let Gmail sync take down the rest of the scheduler.
+            logger.exception("Gmail auto-sync tick failed")
+            gmail_auto_sync = {"enabled": True, "error": "tick_failed"}
+
         return {
             "email_retries": retried,
             "expired_quotes": expired_quotes,
             "overdue_invoices": overdue_invoices,
             "invoice_emails": invoice_emails,
+            "gmail_auto_sync": gmail_auto_sync,
         }
     finally:
         client.close()

@@ -53,7 +53,7 @@ Copy `deploy/.env.production.example` to `deploy/.env` and replace every `CHANGE
 ## Optional
 
 - [ ] `SENTRY_DSN` — error monitoring
-- [ ] `OPENAI_API_KEY` — if `ANALYZER_PROVIDER=openai`
+- [ ] `OPENAI_API_KEY` — **required** in production (`ANALYZER_PROVIDER` must be `openai`)
 - [ ] S3 variables — if `STORAGE_BACKEND=s3`
 
 ## Optional — Google integrations (Contacts + Gmail)
@@ -92,6 +92,27 @@ Optional scope overrides (defaults are read-only):
 
 - `GOOGLE_CONTACTS_SCOPES` — default: `contacts.readonly openid email profile`
 - `GOOGLE_GMAIL_SCOPES` or `GMAIL_SCOPES` — default: `gmail.readonly openid email profile`
+
+Gmail auto-sync (scheduler — **not secrets**, safe to commit as defaults):
+
+- [ ] `GMAIL_AUTO_SYNC_ENABLED=true`
+- [ ] `GMAIL_AUTO_SYNC_INTERVAL_MINUTES=10` (minimum enforced: 5)
+- [ ] `GMAIL_AUTO_SYNC_BATCH_SIZE=25`
+- [ ] `GMAIL_AUTO_SYNC_TIMEOUT_SECONDS=60`
+
+Action Engine / Communication Intelligence (product flags — **not secrets**):
+
+- [ ] `ACTION_ENGINE_ENABLED=true` (or `false` to disable action generation)
+- [ ] `COMMUNICATION_INTELLIGENCE_ENABLED=false` until explicitly approved
+- [ ] `COMMUNICATION_INTELLIGENCE_AUTO_ON_INGEST=false`
+- [ ] If CI is enabled later: `COMMUNICATION_INTELLIGENCE_PROVIDER=openai` (mock is rejected when deployed)
+
+Forbidden in production:
+
+- [ ] `ALLOW_E2E_SEED` unset / false
+- [ ] `E2E_DISABLE_RATE_LIMIT` unset
+- [ ] `DB_NAME` is **not** `memoryhub_e2e` (use product DB, e.g. `basera`)
+- [ ] `INTEGRATIONS_GMAIL_PROVIDER` / `INTEGRATIONS_CONTACTS_PROVIDER` not set to `mock`
 
 ### Post-config verification
 

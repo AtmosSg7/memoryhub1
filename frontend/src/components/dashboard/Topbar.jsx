@@ -96,24 +96,21 @@ export default function Topbar() {
       ].join(" ")}
       data-testid="topbar-root"
     >
-      <div className="h-full max-w-[1440px] mx-auto flex items-center gap-3 md:gap-4 px-5 md:px-8">
-        <div className="md:hidden flex items-center gap-2">
+      <div className="h-full max-w-[1440px] mx-auto flex items-center gap-2 sm:gap-3 md:gap-4 px-4 sm:px-5 md:px-8">
+        <div className="md:hidden flex items-center shrink-0">
           <button
             type="button"
-            className="w-9 h-9 rounded-lg border border-dash-border flex items-center justify-center text-dash-text-muted hover:bg-dash-surface-muted transition-colors"
+            className="min-h-11 min-w-11 rounded-lg border border-dash-border flex items-center justify-center text-dash-text-muted hover:bg-dash-surface-muted transition-colors"
             data-testid="topbar-mobile-menu"
             aria-label={t("topbar.menu.mobileNav")}
             onClick={() => setMobileNavOpen(true)}
           >
-            <Menu className="w-4 h-4" />
+            <Menu className="w-5 h-5" />
           </button>
           <MobileNavSheet open={mobileNavOpen} onOpenChange={setMobileNavOpen} />
-          <div className="w-8 h-8 rounded-lg bg-[var(--dash-nav-active-bg)] dark:bg-dash-surface-elevated flex items-center justify-center">
-            <span className="font-cabinet text-white text-sm font-bold">M</span>
-          </div>
         </div>
 
-        <div className="flex-1 max-w-xl relative">
+        <div className="flex-1 min-w-0 max-w-xl relative">
           <SearchField
             ref={searchInputRef}
             value={searchQuery}
@@ -126,18 +123,23 @@ export default function Topbar() {
             }}
             placeholder={t("topbar.search.placeholder")}
             data-testid="topbar-search-input"
+            inputClassName="h-11 md:h-10"
           />
           <SearchDropdown
             query={searchQuery}
             open={dropdownOpen}
             onClose={() => setDropdownOpen(false)}
             onNavigate={() => setSearchQuery("")}
+            onQueryChange={(value) => {
+              setSearchQuery(value);
+              setDropdownOpen(value.trim().length >= SEARCH_MIN_CHARS);
+            }}
           />
         </div>
 
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
           <div
-            className="flex items-center bg-dash-surface-muted rounded-lg p-0.5"
+            className="hidden md:flex items-center bg-dash-surface-muted rounded-lg p-0.5"
             data-testid="topbar-lang-toggle"
           >
             {["fr", "en"].map((code) => (
@@ -159,11 +161,13 @@ export default function Topbar() {
 
           <CreditBalanceBadge className="hidden sm:inline-flex" />
 
-          <ThemeToggleButton />
+          <div className="hidden md:block">
+            <ThemeToggleButton />
+          </div>
 
           <button
             type="button"
-            className="relative w-9 h-9 rounded-lg border border-dash-border bg-dash-surface-muted flex items-center justify-center text-dash-text-subtle cursor-not-allowed"
+            className="relative hidden sm:flex min-h-11 min-w-11 md:w-9 md:h-9 md:min-h-0 md:min-w-0 rounded-lg border border-dash-border bg-dash-surface-muted items-center justify-center text-dash-text-subtle cursor-not-allowed"
             data-testid="topbar-notifications-btn"
             disabled
             aria-disabled="true"

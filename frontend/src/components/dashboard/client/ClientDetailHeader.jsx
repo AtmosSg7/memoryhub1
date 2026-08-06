@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   ArrowLeft,
+  Bell,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -8,6 +9,7 @@ import {
   Loader2,
   Mail,
   MapPin,
+  MessagesSquare,
   Pencil,
   Phone,
   Plus,
@@ -68,8 +70,11 @@ export default function ClientDetailHeader({
   onCreateQuote,
   onCreateInvoice,
   onCreateNote,
+  onCreateReminder,
+  onOpenCommunications,
   onToggleFavorite,
   favoriteSaving = false,
+  lastExchangeAt = null,
 }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -179,20 +184,29 @@ export default function ClientDetailHeader({
                 {client.activity ? ` · ${client.activity}` : ""}
               </p>
               <p className="text-[11px] text-dash-text-subtle mt-1">
-                {t("clientDetail.lastActivity")} · {formatLastInteraction(client.updatedAt, lang)}
+                {t("clientDetail.lastActivity")} ·{" "}
+                {formatLastInteraction(lastExchangeAt || client.updatedAt, lang)}
               </p>
               <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs text-dash-text-muted">
                 {email ? (
-                  <span className="inline-flex items-center gap-1.5" data-testid="client-header-email">
+                  <a
+                    href={`mailto:${email}`}
+                    className="inline-flex items-center gap-1.5 hover:text-dash-text transition-colors"
+                    data-testid="client-header-email"
+                  >
                     <Mail className="w-3.5 h-3.5 shrink-0" />
                     {email}
-                  </span>
+                  </a>
                 ) : null}
                 {phone ? (
-                  <span className="inline-flex items-center gap-1.5" data-testid="client-header-phone">
+                  <a
+                    href={`tel:${phone}`}
+                    className="inline-flex items-center gap-1.5 hover:text-dash-text transition-colors"
+                    data-testid="client-header-phone"
+                  >
                     <Phone className="w-3.5 h-3.5 shrink-0" />
                     {phone}
-                  </span>
+                  </a>
                 ) : null}
                 {location ? (
                   <span className="inline-flex items-center gap-1.5" data-testid="client-header-location">
@@ -221,35 +235,130 @@ export default function ClientDetailHeader({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <ActionButton variant="primary" onClick={onImportDocument} className="gap-1.5" data-testid="client-import-document">
+          <div className="flex flex-col gap-2 shrink-0 w-full lg:w-auto">
+            <div
+              className="flex gap-2 overflow-x-auto scrollbar-none -mx-1 px-1 pb-0.5 lg:flex-wrap lg:overflow-visible"
+              data-testid="client-quick-actions"
+            >
+              {phone ? (
+                <ActionButton
+                  variant="primary"
+                  className="gap-1.5 min-h-11 shrink-0 flex-1 sm:flex-none"
+                  onClick={() => {
+                    window.location.href = `tel:${phone}`;
+                  }}
+                  data-testid="client-quick-call"
+                >
+                  <Phone className="w-4 h-4" />
+                  {t("clientBrief.quick.call")}
+                </ActionButton>
+              ) : null}
+              {email ? (
+                <ActionButton
+                  variant="secondary"
+                  className="gap-1.5 min-h-11 shrink-0 flex-1 sm:flex-none"
+                  onClick={() => {
+                    window.location.href = `mailto:${email}`;
+                  }}
+                  data-testid="client-quick-email"
+                >
+                  <Mail className="w-4 h-4" />
+                  {t("clientBrief.quick.email")}
+                </ActionButton>
+              ) : null}
+              {onCreateNote ? (
+                <ActionButton
+                  variant="secondary"
+                  onClick={onCreateNote}
+                  className="gap-1.5 min-h-11 shrink-0"
+                  data-testid="client-create-note"
+                >
+                  <StickyNote className="w-4 h-4" />
+                  {t("actions.createNote")}
+                </ActionButton>
+              ) : null}
+              {onCreateQuote ? (
+                <ActionButton
+                  variant="secondary"
+                  onClick={onCreateQuote}
+                  className="gap-1.5 min-h-11 shrink-0 hidden sm:inline-flex"
+                  data-testid="client-create-quote"
+                >
+                  <FileText className="w-4 h-4" />
+                  {t("clientBrief.quick.quote")}
+                </ActionButton>
+              ) : null}
+              {onCreateReminder ? (
+                <ActionButton
+                  variant="secondary"
+                  onClick={onCreateReminder}
+                  className="gap-1.5 min-h-11 shrink-0 hidden sm:inline-flex"
+                  data-testid="client-create-reminder"
+                >
+                  <Bell className="w-4 h-4" />
+                  {t("clientBrief.quick.reminder")}
+                </ActionButton>
+              ) : null}
+              {onOpenCommunications ? (
+                <ActionButton
+                  variant="secondary"
+                  onClick={onOpenCommunications}
+                  className="gap-1.5 min-h-11 shrink-0 hidden sm:inline-flex"
+                  data-testid="client-open-communications"
+                >
+                  <MessagesSquare className="w-4 h-4" />
+                  {t("clientBrief.quick.communications")}
+                </ActionButton>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+            <ActionButton
+              variant="secondary"
+              onClick={onImportDocument}
+              className="gap-1.5 min-h-11 hidden sm:inline-flex"
+              data-testid="client-import-document"
+            >
               <Upload className="w-4 h-4" />
-              {t("documentActions.importDocument")}
-            </ActionButton>
-            <ActionButton variant="secondary" onClick={onCreateNote} className="gap-1.5" data-testid="client-create-note">
-              <StickyNote className="w-4 h-4" />
-              {t("actions.createNote")}
+              <span>{t("documentActions.importDocument")}</span>
             </ActionButton>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <ActionButton variant="secondary" className="gap-1.5" data-testid="client-add-menu">
+                <ActionButton variant="secondary" className="gap-1.5 min-h-11" data-testid="client-add-menu">
                   <Plus className="w-4 h-4" />
                   {t("documentActions.add")}
                   <ChevronDown className="w-3.5 h-3.5" />
                 </ActionButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={onCreateQuote} data-testid="client-create-quote">
-                  <FileText className="w-4 h-4 mr-2" />
-                  {t("documentActions.addProposal")}
-                </DropdownMenuItem>
+                {onCreateQuote ? (
+                  <DropdownMenuItem onClick={onCreateQuote} data-testid="client-create-quote-menu">
+                    <FileText className="w-4 h-4 mr-2" />
+                    {t("documentActions.addProposal")}
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem onClick={onCreateInvoice} data-testid="client-create-invoice">
                   <Receipt className="w-4 h-4 mr-2" />
                   {t("documentActions.addTrackingInvoice")}
                 </DropdownMenuItem>
+                {onCreateReminder ? (
+                  <DropdownMenuItem onClick={onCreateReminder} data-testid="client-create-reminder-menu">
+                    <Bell className="w-4 h-4 mr-2" />
+                    {t("clientBrief.quick.reminder")}
+                  </DropdownMenuItem>
+                ) : null}
+                {onOpenCommunications ? (
+                  <DropdownMenuItem onClick={onOpenCommunications} data-testid="client-open-communications-menu">
+                    <MessagesSquare className="w-4 h-4 mr-2" />
+                    {t("clientBrief.quick.communications")}
+                  </DropdownMenuItem>
+                ) : null}
+                <DropdownMenuItem onClick={onImportDocument} className="sm:hidden" data-testid="client-import-document-menu">
+                  <Upload className="w-4 h-4 mr-2" />
+                  {t("documentActions.importDocument")}
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <ActionButton variant="secondary" onClick={onEdit} className="gap-1.5" data-testid="client-detail-edit">
+            <ActionButton variant="secondary" onClick={onEdit} className="gap-1.5 min-h-11" data-testid="client-detail-edit">
               <Pencil className="w-3.5 h-3.5" />
               {t("clientDetail.edit")}
             </ActionButton>
@@ -291,6 +400,7 @@ export default function ClientDetailHeader({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            </div>
           </div>
         </div>
       </div>

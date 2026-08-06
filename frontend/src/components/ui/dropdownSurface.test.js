@@ -20,7 +20,7 @@ describe("dropdown surface tokens", () => {
     expect(source).toMatch(/z-\[200\]/);
     expect(source).toMatch(/bg-popover/);
     expect(source).toMatch(/border-border/);
-    expect(source).toMatch(/shadow-lg/);
+    expect(source).toMatch(/shadow-\[var\(--dash-panel-shadow/);
     expect(source).not.toMatch(/["']z-50 /);
   });
 

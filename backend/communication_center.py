@@ -51,6 +51,7 @@ class CommunicationRecord(BaseModel):
     id: str
     userId: str
     clientId: Optional[str] = None
+    connectedAccountId: Optional[str] = None
     type: CommunicationType
     direction: Optional[CommunicationDirection] = None
     provider: Optional[str] = None
@@ -58,8 +59,12 @@ class CommunicationRecord(BaseModel):
     subject: Optional[str] = None
     preview: Optional[str] = None
     createdAt: str
+    updatedAt: Optional[str] = None
     attachmentsCount: int = 0
     externalUrl: Optional[str] = None
+    # Association: linked | unlinked | ignored (Gmail inbox + sync)
+    status: Optional[str] = None
+    ignoredAt: Optional[str] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -160,13 +165,15 @@ async def upsert_communication(db, doc: dict) -> dict:
             # Keep manual link / ignore across Gmail re-sync
             if existing.get("clientId") and not doc.get("clientId"):
                 doc["clientId"] = existing["clientId"]
-                meta = dict(doc.get("metadata") or {})
-                existing_meta = existing.get("metadata") or {}
-                if existing_meta.get("clientName") and not meta.get("clientName"):
-                    meta["clientName"] = existing_meta["clientName"]
-                if existing_meta.get("linkedBy"):
-                    meta["linkedBy"] = existing_meta["linkedBy"]
-                doc["metadata"] = meta
+            meta = dict(doc.get("metadata") or {})
+            existing_meta = existing.get("metadata") or {}
+            if existing.get("clientId") and existing_meta.get("clientName") and not meta.get("clientName"):
+                meta["clientName"] = existing_meta["clientName"]
+            # Preserve association provenance even when clientId is also on email_messages
+            for key in ("linkedBy", "linkedAt", "suggestionDismissedAt"):
+                if existing_meta.get(key):
+                    meta[key] = existing_meta[key]
+            doc["metadata"] = meta
             if existing.get("ignoredAt") and "ignoredAt" not in doc:
                 doc["ignoredAt"] = existing["ignoredAt"]
                 if existing.get("status"):
@@ -175,44 +182,134 @@ async def upsert_communication(db, doc: dict) -> dict:
                 {"userId": user_id, "id": existing["id"]},
                 {"$set": {k: v for k, v in doc.items() if k not in ("id", "userId")}},
             )
+            await _hook_action_engine(db, doc)
+            await _hook_communication_intelligence(db, doc)
             return doc
 
     await db.communications.insert_one(doc)
+    await _hook_action_engine(db, doc)
+    await _hook_communication_intelligence(db, doc)
     return doc
 
 
-async def upsert_from_gmail_email_doc(db, email_doc: dict) -> dict:
-    """Feed Communication Center from a Gmail ``email_messages`` document."""
+async def _hook_action_engine(db, communication: dict) -> None:
+    """Channel-agnostic Action Engine hook — never breaks writers."""
+    try:
+        from action_engine.engine import safe_evaluate_communication
+
+        await safe_evaluate_communication(db, communication)
+    except Exception:
+        pass
+
+
+async def _hook_communication_intelligence(db, communication: dict) -> None:
+    """Optional AI analysis after ingest — never breaks writers / Gmail sync.
+
+    Auto-run is gated by COMMUNICATION_INTELLIGENCE_ENABLED and
+    COMMUNICATION_INTELLIGENCE_AUTO_ON_INGEST (both default false).
+    """
+    try:
+        from communication_intelligence.hooks import schedule_analyze_after_ingest
+
+        schedule_analyze_after_ingest(db, communication)
+    except Exception:
+        pass
+
+
+def _association_status_for_gmail(email_doc: dict, *, existing: Optional[dict] = None) -> str:
+    """Derive association status without wiping an ignored / manual link on re-sync."""
+    if (existing or {}).get("ignoredAt") or email_doc.get("ignoredAt"):
+        return "ignored"
+    if email_doc.get("clientId") or (existing or {}).get("clientId"):
+        return "linked"
+    return "unlinked"
+
+
+async def upsert_from_gmail_email_doc(
+    db,
+    email_doc: dict,
+    *,
+    connected_account_id: Optional[str] = None,
+) -> dict:
+    """Feed Communication Center from a Gmail ``email_messages`` document.
+
+    Idempotent on ``(userId, provider, providerId)``. Re-syncs refresh metadata
+    without creating duplicate rows. Preserves manual client links and ignoredAt.
+    """
     direction = email_doc.get("direction") or "inbound"
     if direction not in ("inbound", "outbound", "internal"):
         direction = "inbound"
+
+    provider = email_doc.get("provider") or "gmail"
+    provider_id = email_doc.get("providerMessageId")
+    existing = None
+    if provider_id:
+        existing = await db.communications.find_one(
+            {
+                "userId": email_doc["userId"],
+                "provider": provider,
+                "providerId": provider_id,
+            },
+            {"_id": 0},
+        )
+
+    account_id = (
+        connected_account_id
+        or email_doc.get("connectedAccountId")
+        or (existing or {}).get("connectedAccountId")
+        or ((existing or {}).get("metadata") or {}).get("connectedAccountId")
+    )
+    association_status = _association_status_for_gmail(email_doc, existing=existing)
+    sent_at = email_doc.get("sentAt") or email_doc.get("createdAt")
+
+    # While ignored, never re-attach from email_messages (ignore must stick until restore).
+    if existing and existing.get("ignoredAt"):
+        client_id = existing.get("clientId")
+        client_name = (existing.get("metadata") or {}).get("clientName")
+    else:
+        client_id = email_doc.get("clientId")
+        client_name = email_doc.get("clientName")
+
     meta = {
-        "clientName": email_doc.get("clientName"),
+        "clientName": client_name,
         "fromEmail": email_doc.get("fromEmail"),
         "fromName": email_doc.get("fromName"),
         "toEmail": email_doc.get("toEmail"),
-        "toEmails": email_doc.get("toEmails") or [],
+        "toEmails": list(email_doc.get("toEmails") or []),
+        "ccEmails": list(email_doc.get("ccEmails") or []),
         "threadId": email_doc.get("threadId"),
         "matchedBy": email_doc.get("matchedBy"),
         "emailMessageId": email_doc.get("id"),
+        "sourceId": provider_id,
         "accountEmail": email_doc.get("accountEmail"),
+        "connectedAccountId": account_id,
+        "sentAt": sent_at,
+        "associationStatus": association_status,
         "channel": "email",
         "source": "gmail",
+        "attachments": list(email_doc.get("attachments") or []),
     }
+    # Drop empty optional metadata keys for cleaner documents
+    meta = {k: v for k, v in meta.items() if v not in (None, "", [])}
+
     doc = build_communication_doc(
         user_id=email_doc["userId"],
         type="email",
-        client_id=email_doc.get("clientId"),
+        client_id=client_id,
         direction=direction,  # type: ignore[arg-type]
-        provider=email_doc.get("provider") or "gmail",
-        provider_id=email_doc.get("providerMessageId"),
+        provider=provider,
+        provider_id=provider_id,
         subject=email_doc.get("subject"),
         preview=email_doc.get("preview"),
-        created_at=email_doc.get("sentAt") or email_doc.get("createdAt"),
+        created_at=sent_at,
         attachments_count=int(email_doc.get("attachmentCount") or 0),
         external_url=email_doc.get("gmailUrl"),
         metadata=meta,
+        existing_id=(existing or {}).get("id"),
     )
+    if account_id:
+        doc["connectedAccountId"] = account_id
+    doc["status"] = association_status
     return await upsert_communication(db, doc)
 
 

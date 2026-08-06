@@ -12,11 +12,23 @@ from commercial_lifecycle_constants import INVOICE_PAYMENT_DAYS
 from tests.conftest import create_client_record, register_user
 
 
+_LOOP = None
+
+
+def _loop():
+    global _LOOP
+    if _LOOP is None or _LOOP.is_closed():
+        _LOOP = asyncio.new_event_loop()
+        asyncio.set_event_loop(_LOOP)
+    return _LOOP
+
+
 def _run_sync(db):
-    return asyncio.get_event_loop().run_until_complete(sync_overdue_invoices(db))
+    return _loop().run_until_complete(sync_overdue_invoices(db))
 
 
 def _motor_db():
+    _loop()
     client = AsyncIOMotorClient(os.environ["MONGO_URL"])
     return client, client[os.environ["DB_NAME"]]
 
@@ -153,8 +165,8 @@ def test_sync_overdue_invoices_idempotent(client):
 
     motor, db = _motor_db()
     try:
-        first = asyncio.get_event_loop().run_until_complete(sync_overdue_invoices(db))
-        second = asyncio.get_event_loop().run_until_complete(sync_overdue_invoices(db))
+        first = _loop().run_until_complete(sync_overdue_invoices(db))
+        second = _loop().run_until_complete(sync_overdue_invoices(db))
     finally:
         motor.close()
 

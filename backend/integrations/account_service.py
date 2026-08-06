@@ -68,23 +68,51 @@ async def upsert_connected_account(
         else (existing or {}).get("refreshTokenEnc")
     )
 
+    new_email = (token_payload.get("account_email") or "").strip().lower() or None
+    new_account_id = (token_payload.get("account_id") or "").strip() or None
+    prev_email = ((existing or {}).get("accountEmail") or "").strip().lower() or None
+    prev_account_id = ((existing or {}).get("accountId") or "").strip() or None
+
+    # Same Gmail mailbox → keep incremental cursor. Different mailbox → reset.
+    # accountId is authoritative when both sides have it (email alone is not enough:
+    # reconnecting a different Google identity must never reuse another mailbox's cursor).
+    if not existing:
+        same_mailbox = False
+    elif new_account_id and prev_account_id:
+        same_mailbox = new_account_id == prev_account_id
+    elif new_email and prev_email:
+        same_mailbox = new_email == prev_email
+    else:
+        same_mailbox = False
+
     doc = {
         "id": (existing or {}).get("id") or str(uuid.uuid4()),
         "userId": user_id,
         "provider": provider,
         "status": ACCOUNT_STATUS_CONNECTED,
-        "accountEmail": token_payload.get("account_email") or (existing or {}).get("accountEmail"),
+        "accountEmail": new_email or (existing or {}).get("accountEmail"),
         "accountName": token_payload.get("account_name") or (existing or {}).get("accountName"),
-        "accountId": token_payload.get("account_id") or (existing or {}).get("accountId"),
+        "accountId": new_account_id or (existing or {}).get("accountId"),
         "scopes": scopes or (token_payload.get("scope") or "").split() or (existing or {}).get("scopes") or [],
         "accessTokenEnc": access_enc,
         "refreshTokenEnc": refresh_enc,
         "tokenExpiresAt": expires_at,
         "connectedAt": (existing or {}).get("connectedAt") or now.isoformat(),
         "updatedAt": now.isoformat(),
-        "lastSyncedAt": (existing or {}).get("lastSyncedAt"),
-        "lastSyncSummary": (existing or {}).get("lastSyncSummary"),
+        "lastSyncedAt": (existing or {}).get("lastSyncedAt") if same_mailbox else None,
+        "lastSyncSummary": (existing or {}).get("lastSyncSummary") if same_mailbox else None,
         "lastError": None,
+        # Gmail incremental cursor (never reuse across different mailboxes)
+        "historyId": (existing or {}).get("historyId") if same_mailbox else None,
+        "lastSuccessfulSyncAt": (existing or {}).get("lastSuccessfulSyncAt") if same_mailbox else None,
+        "lastFullSyncAt": (existing or {}).get("lastFullSyncAt") if same_mailbox else None,
+        "syncState": (existing or {}).get("syncState") if same_mailbox else None,
+        "lastSyncError": None,
+        "lastSyncAttemptAt": (existing or {}).get("lastSyncAttemptAt") if same_mailbox else None,
+        "consecutiveSyncErrors": (
+            int((existing or {}).get("consecutiveSyncErrors") or 0) if same_mailbox else 0
+        ),
+        "nextSyncAt": (existing or {}).get("nextSyncAt") if same_mailbox else None,
     }
 
     await db.connected_accounts.update_one(

@@ -224,7 +224,7 @@ def test_search_v2_nested_client_and_email_snippet(client):
 
 
 def test_gmail_sync_feeds_communication_center(client, monkeypatch):
-    """Gmail sync dual-writes email_messages + communications."""
+    """Gmail sync dual-writes email_messages + communications with full SoT fields."""
     monkeypatch.setenv("INTEGRATIONS_GMAIL_PROVIDER", "mock")
     monkeypatch.setenv("INTEGRATIONS_TOKEN_KEY", "test-integrations-token-key-32chars!!")
 
@@ -241,6 +241,10 @@ def test_gmail_sync_feeds_communication_center(client, monkeypatch):
     client.post(
         "/api/clients",
         json={"name": "Jean Martin", "email": "jean@martin.fr", "status": "active"},
+    )
+    client.post(
+        "/api/clients",
+        json={"name": "Sophie Durand", "email": "sophie@durand.fr", "status": "active"},
     )
 
     res = client.post("/api/integrations/gmail/connect")
@@ -259,12 +263,203 @@ def test_gmail_sync_feeds_communication_center(client, monkeypatch):
 
     db = _mongo()
     user = db.users.find_one({"email": email.lower()})
-    email_count = db.email_messages.count_documents({"userId": user["id"], "provider": "gmail"})
-    center_count = db.communications.count_documents(
-        {"userId": user["id"], "provider": "gmail", "type": "email"}
+    user_id = user["id"]
+    account = db.connected_accounts.find_one({"userId": user_id, "provider": "gmail"})
+    assert account and account.get("id")
+
+    email_count = db.email_messages.count_documents({"userId": user_id, "provider": "gmail"})
+    center_docs = list(
+        db.communications.find({"userId": user_id, "provider": "gmail", "type": "email"}, {"_id": 0})
     )
     assert email_count >= 1
-    assert center_count == email_count
+    assert len(center_docs) == email_count
+
+    for doc in center_docs:
+        assert doc.get("userId") == user_id
+        assert doc.get("connectedAccountId") == account["id"]
+        assert doc.get("type") == "email"
+        assert doc.get("direction") in ("inbound", "outbound")
+        assert doc.get("provider") == "gmail"
+        assert doc.get("providerId")
+        assert doc.get("createdAt")
+        assert doc.get("updatedAt")
+        assert doc.get("status") in ("linked", "unlinked")
+        meta = doc.get("metadata") or {}
+        assert meta.get("channel") == "email"
+        assert meta.get("source") == "gmail"
+        assert meta.get("sourceId") == doc["providerId"]
+        assert meta.get("fromEmail")
+        assert meta.get("toEmails") or meta.get("toEmail")
+        assert meta.get("threadId")
+        assert meta.get("connectedAccountId") == account["id"]
+        assert meta.get("associationStatus") == doc.get("status")
+        assert meta.get("emailMessageId")
+        assert meta.get("sentAt")
+
+    linked = [d for d in center_docs if d.get("clientId")]
+    unlinked = [d for d in center_docs if not d.get("clientId")]
+    assert linked
+    assert unlinked
+    assert all(d["status"] == "linked" for d in linked)
+    assert all(d["status"] == "unlinked" for d in unlinked)
+
+    # Unlinked inbox (À traiter)
+    inbox = client.get("/api/communications/unlinked")
+    assert inbox.status_code == 200, inbox.text
+    assert inbox.json()["total"] == len(unlinked)
+
+    # Timeline via communications for a linked client
+    jean = db.clients.find_one({"userId": user_id, "email": "jean@martin.fr"})
+    events = client.get("/api/events", params={"clientId": jean["id"]})
+    assert events.status_code == 200
+    email_items = [
+        e for e in events.json()["items"] if e["type"] in ("email_received", "email_sent")
+    ]
+    assert email_items
+    assert any(e["id"].startswith("comm-") for e in email_items)
+
+    # Re-sync (incremental): no duplicates in email_messages, communications, or events
+    again = client.post("/api/integrations/gmail/sync")
+    assert again.status_code == 200
+    assert again.json()["summary"]["linked"] == 0
+    assert again.json()["summary"].get("mode") == "incremental"
+    assert db.email_messages.count_documents({"userId": user_id, "provider": "gmail"}) == email_count
+    assert (
+        db.communications.count_documents(
+            {"userId": user_id, "provider": "gmail", "type": "email"}
+        )
+        == email_count
+    )
+    email_events = db.events.count_documents(
+        {"userId": user_id, "type": {"$in": ["email_received", "email_sent"]}}
+    )
+    again_events = client.post("/api/integrations/gmail/sync")
+    assert again_events.status_code == 200
+    assert (
+        db.events.count_documents(
+            {"userId": user_id, "type": {"$in": ["email_received", "email_sent"]}}
+        )
+        == email_events
+    )
+
+    reset_mock_gmail()
+    reset_fernet_for_tests()
+
+
+def test_gmail_resync_backfills_missing_communications(client, monkeypatch):
+    """Re-sync upserts communications for email_messages that lack a center row."""
+    monkeypatch.setenv("INTEGRATIONS_GMAIL_PROVIDER", "mock")
+    monkeypatch.setenv("INTEGRATIONS_TOKEN_KEY", "test-integrations-token-key-32chars!!")
+
+    from integrations.providers.mock_gmail import (
+        force_mock_history_expired,
+        reset_mock_gmail,
+        seed_mock_gmail,
+    )
+    from integrations.secrets import reset_fernet_for_tests
+    from urllib.parse import urlparse
+
+    reset_fernet_for_tests()
+    reset_mock_gmail()
+    seed_mock_gmail()
+
+    email, password = register_user(client, suffix=_uid("gm-bf"))
+    login_user(client, email, password)
+    client.post(
+        "/api/clients",
+        json={"name": "Jean Martin", "email": "jean@martin.fr", "status": "active"},
+    )
+
+    res = client.post("/api/integrations/gmail/connect")
+    authorize_url = res.json()["authorizeUrl"]
+    parsed = urlparse(authorize_url)
+    authorize_path = parsed.path + (("?" + parsed.query) if parsed.query else "")
+    follow = client.get(authorize_path, follow_redirects=False)
+    cb_parsed = urlparse(follow.headers["location"])
+    client.get(
+        cb_parsed.path + (("?" + cb_parsed.query) if cb_parsed.query else ""),
+        follow_redirects=False,
+    )
+    assert client.post("/api/integrations/gmail/sync").status_code == 200
+
+    db = _mongo()
+    user = db.users.find_one({"email": email.lower()})
+    user_id = user["id"]
+    before = db.communications.count_documents({"userId": user_id, "provider": "gmail"})
+    assert before >= 1
+
+    # Simulate legacy gap: email_messages exist without communications
+    db.communications.delete_many({"userId": user_id, "provider": "gmail"})
+    assert db.communications.count_documents({"userId": user_id, "provider": "gmail"}) == 0
+    email_count = db.email_messages.count_documents({"userId": user_id, "provider": "gmail"})
+
+    # Full fallback re-lists messages and upserts missing communications
+    force_mock_history_expired(True)
+    assert client.post("/api/integrations/gmail/sync").status_code == 200
+    after = db.communications.count_documents({"userId": user_id, "provider": "gmail"})
+    assert after == email_count
+    assert db.email_messages.count_documents({"userId": user_id, "provider": "gmail"}) == email_count
+
+    reset_mock_gmail()
+    reset_fernet_for_tests()
+
+
+def test_gmail_resync_preserves_manual_link_and_ignored(client, monkeypatch):
+    """Re-sync must not wipe a manual association or ignoredAt."""
+    monkeypatch.setenv("INTEGRATIONS_GMAIL_PROVIDER", "mock")
+    monkeypatch.setenv("INTEGRATIONS_TOKEN_KEY", "test-integrations-token-key-32chars!!")
+
+    from integrations.providers.mock_gmail import reset_mock_gmail, seed_mock_gmail
+    from integrations.secrets import reset_fernet_for_tests
+    from urllib.parse import urlparse
+
+    reset_fernet_for_tests()
+    reset_mock_gmail()
+    seed_mock_gmail()
+
+    email, password = register_user(client, suffix=_uid("gm-pres"))
+    login_user(client, email, password)
+    created = create_client_record(client, name="Client Manuel")
+    client_id = created["id"]
+
+    res = client.post("/api/integrations/gmail/connect")
+    authorize_url = res.json()["authorizeUrl"]
+    parsed = urlparse(authorize_url)
+    authorize_path = parsed.path + (("?" + parsed.query) if parsed.query else "")
+    follow = client.get(authorize_path, follow_redirects=False)
+    cb_parsed = urlparse(follow.headers["location"])
+    client.get(
+        cb_parsed.path + (("?" + cb_parsed.query) if cb_parsed.query else ""),
+        follow_redirects=False,
+    )
+    assert client.post("/api/integrations/gmail/sync").status_code == 200
+
+    inbox = client.get("/api/communications/unlinked")
+    assert inbox.status_code == 200
+    assert inbox.json()["total"] >= 1
+    ignored_id = inbox.json()["items"][0]["id"]
+
+    assert client.post(f"/api/communications/{ignored_id}/ignore").status_code == 200
+    before_ignored = client.get("/api/communications/unlinked/count").json()["total"]
+    assert client.post("/api/integrations/gmail/sync").status_code == 200
+    db = _mongo()
+    ignored = db.communications.find_one({"id": ignored_id}, {"_id": 0})
+    assert ignored.get("ignoredAt")
+    assert ignored.get("status") == "ignored"
+    assert client.get("/api/communications/unlinked/count").json()["total"] == before_ignored
+
+    # Restore then associate; re-sync must keep the manual link
+    assert client.post(f"/api/communications/{ignored_id}/restore").status_code == 200
+    assoc = client.post(
+        f"/api/communications/{ignored_id}/associate",
+        json={"clientId": client_id},
+    )
+    assert assoc.status_code == 200, assoc.text
+    assert client.post("/api/integrations/gmail/sync").status_code == 200
+    linked = db.communications.find_one({"id": ignored_id}, {"_id": 0})
+    assert linked["clientId"] == client_id
+    assert (linked.get("metadata") or {}).get("linkedBy") == "manual"
+    assert linked.get("status") == "linked"
 
     reset_mock_gmail()
     reset_fernet_for_tests()

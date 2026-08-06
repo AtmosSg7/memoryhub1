@@ -29,6 +29,7 @@ def remote_to_email_doc(
     client: Optional[dict] = None,
     matched_by: Optional[str] = None,
     account_email: Optional[str] = None,
+    connected_account_id: Optional[str] = None,
 ) -> dict:
     now = _utc_now_iso()
     to_emails = list(message.toEmails or [])
@@ -41,7 +42,7 @@ def remote_to_email_doc(
         }
         for a in (message.attachments or [])
     ]
-    return {
+    doc = {
         "id": str(uuid.uuid4()),
         "userId": user_id,
         "clientId": client["id"] if client else None,
@@ -67,6 +68,27 @@ def remote_to_email_doc(
         "createdAt": now,
         "updatedAt": now,
     }
+    if connected_account_id:
+        doc["connectedAccountId"] = connected_account_id
+    return doc
+
+
+def _is_automatic_message(message: RemoteEmailMessage) -> bool:
+    try:
+        from prospects.identity import classify_email_noise
+
+        if message.direction != "inbound":
+            return False
+        return (
+            classify_email_noise(
+                email=message.fromEmail,
+                from_name=message.fromName,
+                subject=message.subject,
+            )
+            is not None
+        )
+    except Exception:
+        return False
 
 
 async def import_remote_emails(
@@ -75,11 +97,24 @@ async def import_remote_emails(
     messages: List[RemoteEmailMessage],
     *,
     account_email: Optional[str] = None,
+    connected_account_id: Optional[str] = None,
 ) -> GmailSyncSummary:
+    """Import Gmail messages into ``email_messages`` and upsert ``communications``.
+
+    - New messages: insert email_messages + upsert communications + optional event.
+    - Already-imported messages: skip email_messages / events; still upsert
+      ``communications`` so the Communication Center stays complete and idempotent.
+    """
+    from communication_center import upsert_from_gmail_email_doc
+
     cursor = db.clients.find({"userId": user_id}, {"_id": 0})
     clients = [doc async for doc in cursor]
 
-    summary = GmailSyncSummary(total=len(messages))
+    summary = GmailSyncSummary(
+        total=len(messages),
+        detected=len(messages),
+        analyzed=len(messages),
+    )
     seen_ids = set()
 
     for message in messages:
@@ -94,10 +129,40 @@ async def import_remote_emails(
                 "provider": PROVIDER_GMAIL,
                 "providerMessageId": message.sourceId,
             },
-            {"_id": 0, "id": 1},
+            {"_id": 0},
         )
         if existing:
+            # Refresh Communication Center representation without duplicating rows/events.
+            account_id = connected_account_id or existing.get("connectedAccountId")
+            if connected_account_id and not existing.get("connectedAccountId"):
+                await db.email_messages.update_one(
+                    {"userId": user_id, "id": existing["id"]},
+                    {
+                        "$set": {
+                            "connectedAccountId": connected_account_id,
+                            "updatedAt": _utc_now_iso(),
+                        }
+                    },
+                )
+                existing = {**existing, "connectedAccountId": connected_account_id}
+            await upsert_from_gmail_email_doc(
+                db,
+                existing,
+                connected_account_id=account_id,
+            )
             summary.skipped += 1
+            summary.updated += 1
+            # Count already-ignored communications separately (not lost, just classified)
+            comm = await db.communications.find_one(
+                {
+                    "userId": user_id,
+                    "provider": PROVIDER_GMAIL,
+                    "providerId": message.sourceId,
+                },
+                {"_id": 0, "ignoredAt": 1},
+            )
+            if comm and comm.get("ignoredAt"):
+                summary.ignored += 1
             continue
 
         match, reason = find_client_for_email(
@@ -109,13 +174,16 @@ async def import_remote_emails(
             client=match,
             matched_by=reason or None,
             account_email=account_email,
+            connected_account_id=connected_account_id,
         )
         await db.email_messages.insert_one(doc)
+        summary.created += 1
 
-        # Feed Communication Center (canonical interaction layer)
-        from communication_center import upsert_from_gmail_email_doc
-
-        await upsert_from_gmail_email_doc(db, doc)
+        await upsert_from_gmail_email_doc(
+            db,
+            doc,
+            connected_account_id=connected_account_id,
+        )
 
         if match:
             summary.linked += 1
@@ -136,12 +204,14 @@ async def import_remote_emails(
                     "direction": message.direction,
                     "threadId": message.threadId,
                     "provider": PROVIDER_GMAIL,
+                    "providerMessageId": message.sourceId,
+                    "emailMessageId": doc["id"],
                     "channel": "email",
                     "gmailUrl": message.webLink,
                     "attachmentCount": doc.get("attachmentCount") or 0,
+                    "connectedAccountId": connected_account_id,
                 },
             )
-            # Soft hint for future deep-links
             if message.threadId:
                 await db.clients.update_one(
                     {"userId": user_id, "id": match["id"]},
@@ -154,6 +224,8 @@ async def import_remote_emails(
                 )
         else:
             summary.unmatched += 1
+            if _is_automatic_message(message):
+                summary.automatic += 1
 
     summary.finishedAt = _utc_now_iso()
     return summary

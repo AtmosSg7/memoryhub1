@@ -1,7 +1,12 @@
-*
-!.gitignore
-
-.auth/
+node_modules/
 playwright-report/
 test-results/
-node_modules/
+blob-report/
+.auth/
+*.log
+.*.pid
+.backend.log
+.frontend.log
+.backend.pid
+.frontend.pid
+.ports

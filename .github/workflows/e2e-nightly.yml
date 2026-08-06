@@ -35,10 +35,20 @@ jobs:
       EMAIL_PROVIDER: fake
       ANALYZER_PROVIDER: mock
       E2E_DISABLE_RATE_LIMIT: "1"
-      CREDITS_ENFORCED: "true"
+      CREDITS_ENFORCED: "false"
       ALLOW_E2E_SEED: "1"
       STRIPE_BACKEND: fake
       E2E_ALL_SPECS: "1"
+      INTEGRATIONS_GMAIL_PROVIDER: mock
+      INTEGRATIONS_CONTACTS_PROVIDER: mock
+      INTEGRATIONS_TOKEN_KEY: e2e-integrations-token-key-32chars!!
+      ACTION_ENGINE_ENABLED: "true"
+      COMMUNICATION_INTELLIGENCE_ENABLED: "true"
+      COMMUNICATION_INTELLIGENCE_PROVIDER: mock
+      COMMUNICATION_INTELLIGENCE_AUTO_ON_INGEST: "false"
+      GMAIL_AUTO_SYNC_ENABLED: "false"
+      BACKEND_PUBLIC_URL: http://127.0.0.1:8000
+      PUBLIC_APP_URL: http://127.0.0.1:3000
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

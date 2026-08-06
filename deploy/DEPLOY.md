@@ -162,18 +162,20 @@ gunzip -c deploy/backups/mongo-YYYYMMDD-HHMMSS.archive.gz | \
 
 ## Mise à jour
 
+Toujours utiliser l'overlay production (sinon pas de scheduler / auth Mongo).
+
 ```bash
-cd /opt/memoryhub
+cd /opt/memoryhub1
 git pull
-docker compose --env-file deploy/.env up -d --build
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env up -d --build
 ```
 
 ## Dépannage
 
 ```bash
-docker compose --env-file deploy/.env logs -f backend
-docker compose --env-file deploy/.env logs -f nginx
-docker compose --env-file deploy/.env exec backend curl -fsS http://127.0.0.1:8000/api/health
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env logs -f backend
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env logs -f nginx
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env exec backend curl -fsS http://127.0.0.1:8000/api/health
 ```
 
 Si Nginx ne démarre pas : vérifiez que `deploy/certs/fullchain.pem` et `privkey.pem` existent.

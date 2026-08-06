@@ -117,19 +117,23 @@ export default function AssociateClientModal({
           )}
         </div>
 
-        <DetailModalFooter>
-          <ActionButton variant="ghost" onClick={onClose} disabled={submitting}>
-            {t("clientForm.cancel")}
-          </ActionButton>
-          <ActionButton
-            variant="primary"
-            disabled={!selected || submitting}
-            onClick={() => selected && onConfirm(selected)}
-            data-testid="associate-client-confirm"
-          >
-            {t("unlinkedEmails.confirmAssociate")}
-          </ActionButton>
-        </DetailModalFooter>
+        <DetailModalFooter
+          secondary={
+            <ActionButton variant="ghost" onClick={onClose} disabled={submitting}>
+              {t("clientForm.cancel")}
+            </ActionButton>
+          }
+          primary={
+            <ActionButton
+              variant="primary"
+              disabled={!selected || submitting}
+              onClick={() => selected && onConfirm(selected)}
+              data-testid="associate-client-confirm"
+            >
+              {t("unlinkedEmails.confirmAssociate")}
+            </ActionButton>
+          }
+        />
       </DialogContent>
     </Dialog>
   );

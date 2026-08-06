@@ -28,6 +28,9 @@ export default function CreateClientFromEmailModal({
   prefill,
   loading = false,
   submitting = false,
+  title,
+  description,
+  confirmLabel,
 }) {
   const { t } = useDashboardLang();
   const [form, setForm] = useState(EMPTY);
@@ -61,10 +64,10 @@ export default function CreateClientFromEmailModal({
       >
         <DialogHeader className="space-y-1 pb-1">
           <DialogTitle className="font-cabinet text-xl font-bold tracking-[-0.02em] text-dash-text">
-            {t("unlinkedEmails.createTitle")}
+            {title || t("unlinkedEmails.createTitle")}
           </DialogTitle>
           <DialogDescription className="text-[#4B5563]">
-            {t("unlinkedEmails.createDesc")}
+            {description || t("unlinkedEmails.createDesc")}
           </DialogDescription>
         </DialogHeader>
 
@@ -126,25 +129,32 @@ export default function CreateClientFromEmailModal({
                 <Label className={FORM_LABEL_CLASS}>{t("clientForm.phone")}</Label>
                 <Input
                   className={FORM_FIELD_CLASS}
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
                   value={form.phone}
                   onChange={setField("phone")}
                 />
               </div>
             </div>
 
-            <DetailModalFooter>
-              <ActionButton type="button" variant="ghost" onClick={onClose} disabled={submitting}>
-                {t("clientForm.cancel")}
-              </ActionButton>
-              <ActionButton
-                type="submit"
-                variant="primary"
-                disabled={submitting || !form.name.trim()}
-                data-testid="create-from-email-confirm"
-              >
-                {t("unlinkedEmails.confirmCreate")}
-              </ActionButton>
-            </DetailModalFooter>
+            <DetailModalFooter
+              secondary={
+                <ActionButton type="button" variant="ghost" onClick={onClose} disabled={submitting}>
+                  {t("clientForm.cancel")}
+                </ActionButton>
+              }
+              primary={
+                <ActionButton
+                  type="submit"
+                  variant="primary"
+                  disabled={submitting || !form.name.trim()}
+                  data-testid="create-from-email-confirm"
+                >
+                  {confirmLabel || t("unlinkedEmails.confirmCreate")}
+                </ActionButton>
+              }
+            />
           </form>
         )}
       </DialogContent>

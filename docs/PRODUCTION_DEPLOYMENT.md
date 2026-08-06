@@ -101,6 +101,29 @@ docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file
 
 Le service `scheduler` (compose prod) exécute :
 - Retries emails transactionnels (`process_pending_email_retries`)
+- Expiration devis / factures en retard
+- Relances factures planifiées
+- **Gmail auto-sync** (`run_gmail_auto_sync`) — incrémental via `historyId`, verrou Mongo, backoff
+
+Variables (dans `deploy/.env`, sans secrets) :
+
+```bash
+GMAIL_AUTO_SYNC_ENABLED=true
+GMAIL_AUTO_SYNC_INTERVAL_MINUTES=10
+GMAIL_AUTO_SYNC_BATCH_SIZE=25
+GMAIL_AUTO_SYNC_TIMEOUT_SECONDS=60
+```
+
+### Recréer uniquement le scheduler (après git pull + vars)
+
+```bash
+cd /opt/memoryhub
+git pull
+export IMAGE_TAG=$(git rev-parse --short HEAD)
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env build backend
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env up -d --no-deps --force-recreate scheduler
+docker compose -f docker-compose.yml -f docker-compose.production.yml --env-file deploy/.env logs --tail=80 scheduler
+```
 
 Sauvegardes via cron hôte : `sudo deploy/scripts/install-cron.sh /opt/memoryhub`
 

@@ -137,6 +137,7 @@ def validate_production_env() -> None:
     _validate_staging_providers(errors)
     _validate_dev_credit_purchases(errors)
     _validate_dev_runtime_flags(errors)
+    _validate_communication_intelligence(errors)
 
     _validate_positive_int("MAX_LIST_ITEMS", errors)
     _validate_positive_int("MAX_UPLOAD_BYTES", errors)
@@ -298,6 +299,35 @@ def _validate_dev_runtime_flags(errors: list[str]) -> None:
         errors.append("E2E_DISABLE_RATE_LIMIT must not be set in staging or production.")
     if os.environ.get("ALLOW_E2E_SEED", "").lower() in {"1", "true", "yes"}:
         errors.append("ALLOW_E2E_SEED must not be set in staging or production.")
+    db_name = os.environ.get("DB_NAME", "").strip()
+    if db_name == "memoryhub_e2e" or db_name.startswith("memoryhub_e2e_"):
+        errors.append(
+            "DB_NAME must not be an E2E database (memoryhub_e2e*) in staging or production."
+        )
+
+
+def _validate_communication_intelligence(errors: list[str]) -> None:
+    """When CI is enabled in deployed env, refuse silent mock provider."""
+    if not IS_DEPLOYED:
+        return
+    enabled = os.environ.get("COMMUNICATION_INTELLIGENCE_ENABLED", "false").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    if not enabled:
+        return
+    provider = os.environ.get("COMMUNICATION_INTELLIGENCE_PROVIDER", "mock").strip().lower()
+    if provider != "openai":
+        errors.append(
+            "COMMUNICATION_INTELLIGENCE_PROVIDER must be 'openai' when "
+            "COMMUNICATION_INTELLIGENCE_ENABLED is true in staging or production."
+        )
+    if not os.environ.get("OPENAI_API_KEY", "").strip():
+        errors.append(
+            "OPENAI_API_KEY is required when COMMUNICATION_INTELLIGENCE_ENABLED is true "
+            "in staging or production."
+        )
 
 
 def _validate_dev_credit_purchases(errors: list[str]) -> None:

@@ -59,6 +59,12 @@ def _base_production_env() -> dict:
         "DEV_CREDIT_PURCHASES_ENABLED": "false",
         "E2E_DISABLE_RATE_LIMIT": "false",
         "ALLOW_E2E_SEED": "false",
+        # Pin product flags so a polluted parent shell (local E2E) cannot fail RC guards.
+        "STRIPE_BACKEND": "stripe",
+        "COMMUNICATION_INTELLIGENCE_ENABLED": "false",
+        "COMMUNICATION_INTELLIGENCE_PROVIDER": "mock",
+        "ACTION_ENGINE_ENABLED": "true",
+        "GMAIL_AUTO_SYNC_ENABLED": "false",
     }
 
 
@@ -145,6 +151,31 @@ def test_staging_rejects_allow_e2e_seed():
     result = _run_validation(env)
     assert result.returncode != 0
     assert "ALLOW_E2E_SEED" in result.stderr
+
+
+def test_production_rejects_e2e_db_name():
+    env = _base_production_env()
+    env["DB_NAME"] = "memoryhub_e2e"
+    result = _run_validation(env)
+    assert result.returncode != 0
+    assert "memoryhub_e2e" in result.stderr
+
+
+def test_production_rejects_ci_enabled_with_mock_provider():
+    env = _base_production_env()
+    env["COMMUNICATION_INTELLIGENCE_ENABLED"] = "true"
+    env["COMMUNICATION_INTELLIGENCE_PROVIDER"] = "mock"
+    result = _run_validation(env)
+    assert result.returncode != 0
+    assert "COMMUNICATION_INTELLIGENCE_PROVIDER" in result.stderr
+
+
+def test_production_accepts_ci_disabled_even_if_provider_mock():
+    env = _base_production_env()
+    env["COMMUNICATION_INTELLIGENCE_ENABLED"] = "false"
+    env["COMMUNICATION_INTELLIGENCE_PROVIDER"] = "mock"
+    result = _run_validation(env)
+    assert result.returncode == 0, result.stderr
 
 
 def test_staging_accepts_valid_config():

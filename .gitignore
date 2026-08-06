@@ -27,8 +27,15 @@ next-env.d.ts
 
 # Production builds
 /build
+frontend/build/
 dist/
 dist
+
+# Test / E2E artefacts
+coverage/
+frontend/coverage/
+**/playwright-report/
+**/test-results/
 
 # Environment files (comprehensive coverage)
 
@@ -99,3 +106,4 @@ credentials.json
 
 .dev-backend.log
 .dev-backend.pid
+.dev/

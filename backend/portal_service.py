@@ -300,6 +300,13 @@ async def _apply_portal_quote_decision(
         quote=doc,
         accepted=accepted,
     )
+    if accepted:
+        try:
+            from action_engine.engine import safe_evaluate_quote
+
+            await safe_evaluate_quote(db, doc)
+        except Exception:
+            pass
 
     public = portal_quote_public(doc)
     if not public:

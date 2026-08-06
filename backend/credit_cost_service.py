@@ -129,6 +129,12 @@ DEFAULT_COSTS = [
         "defaultCost": 2,
         "supportsTiers": False,
     },
+    {
+        "actionKey": "COMMUNICATION_ANALYSIS",
+        "label": "Analyse de communication",
+        "defaultCost": 5,
+        "supportsTiers": False,
+    },
 ]
 
 

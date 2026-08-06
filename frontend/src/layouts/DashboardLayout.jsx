@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import { Suspense } from "react";
 import Sidebar from "@/components/dashboard/Sidebar";
 import Topbar from "@/components/dashboard/Topbar";
+import MobileBottomNav from "@/components/dashboard/MobileBottomNav";
 import { PageLoader } from "@/components/dashboard/PageFeedback";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import AddClientModal from "@/components/dashboard/AddClientModal";
@@ -46,10 +47,11 @@ function DashboardShell() {
         <Topbar />
         <main
           className={[
-            "px-5 md:px-8 py-7 md:py-9 max-w-[1440px] mx-auto w-full",
+            "px-4 sm:px-5 md:px-8 py-5 md:py-9 max-w-[1440px] mx-auto w-full overflow-x-hidden",
+            // Room for fixed mobile bottom nav + home indicator
             isShowcase
-              ? "min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
-              : "",
+              ? "min-h-0 flex-1 overflow-y-auto overscroll-contain"
+              : "pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] md:pb-9",
           ].join(" ")}
           data-testid="dashboard-main"
         >
@@ -62,6 +64,7 @@ function DashboardShell() {
       </div>
       {!isShowcase ? (
         <>
+          <MobileBottomNav />
           <AddClientModal />
           <AddNoteModal />
           <AddQuoteModal />

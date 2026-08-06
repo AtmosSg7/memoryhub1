@@ -9,10 +9,11 @@ const MODAL_CLOSE_BUTTON =
 
 /** Opaque panel only — blur belongs on the overlay, never on this shell. */
 const MODAL_SHELL_BASE = [
-  "w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto",
-  "border border-dash-border rounded-[18px] p-6 sm:p-8 text-dash-text",
+  "w-[calc(100%-1rem)] sm:w-[calc(100%-2rem)] max-h-[min(92vh,100dvh)] overflow-y-auto overscroll-contain",
+  "border border-dash-border rounded-[18px] p-5 sm:p-8 text-dash-text",
   "bg-[var(--dash-modal-bg,#FFFFFF)] backdrop-blur-none",
   "shadow-[var(--dash-modal-shadow)] sm:rounded-[18px]",
+  "pb-[max(1.25rem,env(safe-area-inset-bottom))]",
   MODAL_CLOSE_BUTTON,
 ].join(" ");
 
@@ -34,7 +35,7 @@ export const DETAIL_MODAL_TITLE_CLASS =
   "font-cabinet text-xl font-bold tracking-[-0.02em] text-dash-text";
 
 export const FORM_FIELD_CLASS =
-  "h-10 rounded-xl border border-dash-border bg-[var(--dash-input-bg)] px-4 text-[15px] text-dash-text shadow-none placeholder:text-dash-text-subtle hover:bg-[var(--dash-input-bg-hover)] focus-visible:border-dash-accent focus-visible:ring-2 focus-visible:ring-dash-accent/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
+  "h-11 sm:h-10 rounded-xl border border-dash-border bg-[var(--dash-input-bg)] px-4 text-[16px] sm:text-[15px] text-dash-text shadow-none placeholder:text-dash-text-subtle hover:bg-[var(--dash-input-bg-hover)] focus-visible:border-dash-accent focus-visible:ring-2 focus-visible:ring-dash-accent/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 
 export const FORM_TEXTAREA_CLASS = `${FORM_FIELD_CLASS} min-h-[88px] py-3 h-auto`;
 
@@ -58,7 +59,7 @@ export const SEARCH_ICON_CLASS =
   "absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dash-text-subtle pointer-events-none";
 
 export const SEARCH_FIELD_CLASS =
-  "w-full h-10 rounded-lg border border-dash-border bg-[var(--dash-input-bg)] pl-10 pr-3 text-sm text-dash-text shadow-none placeholder:text-dash-text-subtle transition-colors focus:outline-none focus-visible:outline-none hover:bg-[var(--dash-input-bg-hover)] focus:bg-dash-surface-elevated focus-visible:border-dash-accent focus-visible:ring-2 focus-visible:ring-dash-accent/25";
+  "w-full h-11 md:h-10 rounded-lg border border-dash-border bg-[var(--dash-input-bg)] pl-10 pr-3 text-[16px] md:text-sm text-dash-text shadow-none placeholder:text-dash-text-subtle transition-colors focus:outline-none focus-visible:outline-none hover:bg-[var(--dash-input-bg-hover)] focus:bg-dash-surface-elevated focus-visible:border-dash-accent focus-visible:ring-2 focus-visible:ring-dash-accent/25";
 
 export const LIST_TABLE_CONTAINER_CLASS =
   "bg-dash-surface border border-dash-border rounded-xl overflow-hidden overflow-x-auto max-h-[min(70vh,720px)] overflow-y-auto shadow-[var(--dash-card-shadow)]";
@@ -84,7 +85,7 @@ export const METRIC_VALUE_CLASS =
   "font-cabinet text-xl md:text-2xl font-bold text-dash-text tracking-tight tabular-nums";
 
 export const FILTER_PILL_CLASS = {
-  base: "shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors border",
+  base: "shrink-0 min-h-11 px-3.5 py-2 rounded-full text-[13px] font-semibold transition-colors border md:min-h-0 md:px-3 md:py-1.5 md:text-xs",
   active: "bg-[var(--dash-nav-active-bg)] text-[var(--dash-nav-active-text)] border-transparent",
   inactive:
     "bg-dash-surface-muted text-dash-text-muted border-dash-border-soft hover:border-dash-border hover:text-dash-text hover:bg-dash-surface",
@@ -129,9 +130,13 @@ export function DetailModalSection({ title, children }) {
 
 export function DetailModalFooter({ primary, secondary }) {
   return (
-    <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-dash-border-soft mt-2">
-      <div className="flex flex-wrap items-center gap-2">{secondary}</div>
-      <div className="flex flex-wrap items-center gap-2 sm:justify-end w-full sm:w-auto">{primary}</div>
+    <div className="sticky bottom-0 z-10 -mx-5 sm:-mx-8 mt-3 px-5 sm:px-8 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-dash-border-soft bg-[var(--dash-modal-bg,#FFFFFF)] flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto [&>button]:min-h-11 sm:[&>button]:min-h-0 [&>button]:w-full sm:[&>button]:w-auto">
+        {secondary}
+      </div>
+      <div className="flex flex-wrap items-center gap-2 sm:justify-end w-full sm:w-auto [&>button]:min-h-11 sm:[&>button]:min-h-0 [&>button]:w-full sm:[&>button]:w-auto">
+        {primary}
+      </div>
     </div>
   );
 }

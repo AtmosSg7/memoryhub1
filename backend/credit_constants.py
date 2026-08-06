@@ -9,6 +9,7 @@ CreditActionKey = Literal[
     "SUMMARY",
     "CLIENT_ANALYSIS",
     "SEARCH_AI",
+    "COMMUNICATION_ANALYSIS",
 ]
 
 # Complexity tiers for variable-cost actions (import estimation via ai_import_estimator).

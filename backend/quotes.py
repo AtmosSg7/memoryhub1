@@ -574,6 +574,12 @@ async def update_quote(
             quote=merged,
             accepted=True,
         )
+        try:
+            from action_engine.engine import safe_evaluate_quote
+
+            await safe_evaluate_quote(db, merged)
+        except Exception:
+            pass
 
     if merged.get("status") == "rejected" and previous_status != "rejected":
         await record_event(
@@ -718,6 +724,29 @@ async def convert_quote_to_invoice(
             "invoiceNumber": invoice_doc["number"],
         },
     )
+    try:
+        from action_engine.constants import (
+            ACTION_STATUS_COMPLETED,
+            ACTION_TYPE_CREATE_INVOICE_FROM_QUOTE,
+        )
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+        await db.actions.update_one(
+            {
+                "userId": user_id,
+                "idempotencyKey": f"{ACTION_TYPE_CREATE_INVOICE_FROM_QUOTE}:{quote_id}",
+                "status": "pending",
+            },
+            {
+                "$set": {
+                    "status": ACTION_STATUS_COMPLETED,
+                    "completedAt": now_iso,
+                    "updatedAt": now_iso,
+                }
+            },
+        )
+    except Exception:
+        pass
 
     invalidate_user(user_id)
     return await run_post_conversion_workflow(db, user_id, invoice_doc["id"])

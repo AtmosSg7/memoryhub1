@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 
-from integrations.models import RemoteEmailMessage
+from integrations.models import GmailHistoryResult, GmailMailboxProfile, RemoteEmailMessage
 
 
 class EmailProvider(ABC):
@@ -43,3 +43,30 @@ class EmailProvider(ABC):
     @abstractmethod
     async def count_messages(self, *, access_token: str) -> int:
         """Lightweight count for confirmation UI."""
+
+    async def get_mailbox_profile(self, *, access_token: str) -> GmailMailboxProfile:
+        """Return mailbox email + current historyId when the provider supports it."""
+        raise NotImplementedError(f"{self.provider_key} does not support mailbox profile.")
+
+    async def list_history_message_ids(
+        self,
+        *,
+        access_token: str,
+        start_history_id: str,
+        max_message_ids: int = 200,
+    ) -> GmailHistoryResult:
+        """List message ids changed since ``start_history_id``.
+
+        Raises ``GmailHistoryExpiredError`` when the cursor is no longer valid.
+        """
+        raise NotImplementedError(f"{self.provider_key} does not support history sync.")
+
+    async def fetch_messages_by_ids(
+        self,
+        *,
+        access_token: str,
+        message_ids: List[str],
+        account_email: Optional[str] = None,
+    ) -> List[RemoteEmailMessage]:
+        """Fetch message metadata for explicit ids (read-only)."""
+        raise NotImplementedError(f"{self.provider_key} does not support fetch by id.")

@@ -1,5 +1,7 @@
 # Browser QA — Basera V1
 
+Voir aussi [E2E.md](./E2E.md) (prérequis, harness mock Gmail, parcours prospect→client) et [ACTION_LIFECYCLE.md](./ACTION_LIFECYCLE.md).
+
 ## Matrice exécutée (local E2E)
 
 | Navigateur | Projet Playwright | Résultat typique |

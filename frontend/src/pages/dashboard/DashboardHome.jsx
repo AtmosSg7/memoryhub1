@@ -1,15 +1,11 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { useDashboardHomeData } from "@/hooks/useDashboardHomeData";
-import { useReminders } from "@/hooks/useReminders";
-import { usePersonalRemindersDue } from "@/hooks/usePersonalRemindersDue";
-import { usePendingImports } from "@/hooks/usePendingImports";
-import { useIntelligenceOverview } from "@/hooks/useIntelligenceOverview";
+import { useActions } from "@/hooks/useActions";
 import { useOnboardingState } from "@/hooks/useOnboardingState";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { useAuth } from "@/context/AuthContext";
-import { mergeDashboardActions } from "@/utils/dashboardActions";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import DashboardKpiGrid from "@/components/dashboard/DashboardKpiGrid";
 import DashboardQuickActions from "@/components/dashboard/DashboardQuickActions";
@@ -68,43 +64,16 @@ export default function DashboardHome() {
     refresh: refreshOnboarding,
   } = useOnboardingState({ enabled: true });
 
-  const { reminders: rawReminders, loading: remindersLoading } = useReminders(200);
-  const { items: personalReminders, loading: personalLoading } = usePersonalRemindersDue(50);
-  const { sessions: pendingImports, loading: importsLoading } = usePendingImports(100);
   const {
-    data: intelligence,
-    loading: intelligenceLoading,
-    error: intelligenceError,
-  } = useIntelligenceOverview({ enabled: maturity !== "empty" });
-
-  const commercialReminders = useMemo(
-    () => mergeDashboardActions(rawReminders, pendingImports, personalReminders, t, lang),
-    [rawReminders, pendingImports, personalReminders, t, lang]
-  );
-
-  const actionsLoading = intelligenceLoading || remindersLoading || personalLoading || importsLoading;
-
-  const todayActions = useMemo(() => {
-    const mi = intelligence?.actions || [];
-    const seen = new Set(mi.map((a) => a.link || a.id));
-    const extras = commercialReminders
-      .filter((r) => !seen.has(r.link) && !seen.has(r.id))
-      .slice(0, 8)
-      .map((r) => ({
-        id: `commercial:${r.id}`,
-        kind: "action",
-        ruleId: r.type || "commercial",
-        priority: r.priority || "medium",
-        category: "commercial",
-        title: r.title,
-        reason: r.description || "",
-        date: r.date,
-        link: r.link,
-        clientId: r.clientId,
-        clientName: r.clientName,
-      }));
-    return [...mi, ...extras];
-  }, [intelligence, commercialReminders]);
+    actions: engineActions,
+    loading: actionsLoading,
+    error: actionsError,
+    refetch: refetchActions,
+  } = useActions({
+    status: "pending",
+    limit: 50,
+    enabled: maturity !== "empty",
+  });
 
   useEffect(() => {
     if (!pendingFirstWin) return;
@@ -121,7 +90,10 @@ export default function DashboardHome() {
 
   const showEmptyHero = (isEmptyAccount || maturity === "empty") && !showWizard;
   const showOnboardingGuidance =
-    hasOnboardingSteps && todayActions.length === 0 && !actionsLoading && maturity !== "active";
+    hasOnboardingSteps &&
+    engineActions.length === 0 &&
+    !actionsLoading &&
+    maturity !== "active";
   const firstName = user?.firstName?.trim();
   const showFullDashboard = maturity === "active" || (!isEmptyAccount && !showEmptyHero);
 
@@ -153,6 +125,19 @@ export default function DashboardHome() {
         <OnboardingCards onboarding={onboarding} hasClients={(kpis?.clients?.total || 0) > 0} />
       ) : showFullDashboard ? (
         <>
+          <DashboardActionCenterCard
+            actions={engineActions}
+            loading={actionsLoading}
+            error={actionsError}
+            onboardingHint={showOnboardingGuidance}
+            onChanged={refetchActions}
+          />
+
+          {/* One-handed: create CTAs before secondary analytics on small screens */}
+          <div className="md:hidden">
+            <DashboardQuickActions compact />
+          </div>
+
           <Suspense fallback={<AnalyticsFallback />}>
             <DashboardAnalyticsSection
               series={series}
@@ -163,29 +148,19 @@ export default function DashboardHome() {
             />
           </Suspense>
 
-          <div className="grid grid-cols-1 xl:grid-cols-5 gap-3 md:gap-4">
-            <div className="xl:col-span-3 min-w-0">
-              <DashboardPipelineCard
-                pipeline={pipeline}
-                loading={listsLoading}
-                periodMeta={periodMeta}
-              />
-            </div>
-            <div className="xl:col-span-2 min-w-0">
-              <DashboardActionCenterCard
-                actions={todayActions}
-                loading={actionsLoading}
-                error={intelligenceError}
-                onboardingHint={showOnboardingGuidance}
-              />
-            </div>
-          </div>
+          <DashboardPipelineCard
+            pipeline={pipeline}
+            loading={listsLoading}
+            periodMeta={periodMeta}
+          />
 
           {topClients?.length > 0 || dataLoading ? (
             <TopClients clients={topClients.slice(0, 5)} loading={dataLoading} />
           ) : null}
 
-          <DashboardQuickActions compact />
+          <div className="hidden md:block">
+            <DashboardQuickActions compact />
+          </div>
 
           <ActivityFeed
             limit={6}

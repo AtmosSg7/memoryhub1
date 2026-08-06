@@ -185,7 +185,78 @@ export default function DocumentsPage() {
         <PageError message={error} testId="documents-error" />
       ) : filteredDocuments.length ? (
         <div className="space-y-3">
-          <div className={LIST_TABLE_CONTAINER_CLASS}>
+          {/* Mobile cards — avoid unreadable tables */}
+          <ul className="md:hidden space-y-2" data-testid="files-mobile-list">
+            {pageDocuments.map((doc) => {
+              const typeStyle = getDocumentTypeStyle(doc);
+              return (
+                <li
+                  key={doc.id}
+                  className="rounded-xl border border-dash-border bg-dash-surface p-3.5 space-y-3"
+                  data-testid={`document-row-${doc.id}`}
+                >
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-lg bg-dash-surface-muted flex items-center justify-center text-dash-text-muted shrink-0">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[15px] font-medium text-dash-text truncate">{doc.name}</p>
+                      <p className="text-[13px] text-dash-text-muted truncate mt-0.5">
+                        {doc.clientName || "—"}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold ${typeStyle.bg} ${typeStyle.text}`}
+                        >
+                          {typeStyle.label}
+                        </span>
+                        <span className="text-[12px] text-dash-text-subtle">
+                          {formatFileSize(doc.sizeBytes, lang)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {canPreviewDocument(doc) ? (
+                      <ActionButton
+                        variant="secondary"
+                        className="min-h-11 flex-1"
+                        aria-label={t("documents.preview")}
+                        onClick={() => setPreviewDoc(doc)}
+                      >
+                        <Eye className="w-4 h-4" />
+                        {t("documents.preview")}
+                      </ActionButton>
+                    ) : null}
+                    <ActionButton
+                      variant="secondary"
+                      className="min-h-11 flex-1"
+                      aria-label={t("documents.download")}
+                      disabled={actionId === doc.id}
+                      onClick={() => handleDownload(doc)}
+                    >
+                      {actionId === doc.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Download className="w-4 h-4" />
+                      )}
+                      {t("documents.download")}
+                    </ActionButton>
+                    <ActionButton
+                      variant="dangerIcon"
+                      className="min-h-11 min-w-11"
+                      aria-label={t("documents.deleteAction")}
+                      onClick={() => setDeletingDoc(doc)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </ActionButton>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className={`${LIST_TABLE_CONTAINER_CLASS} hidden md:block`}>
             <table className="w-full text-sm">
               <thead>
                 <tr className={TABLE_HEAD_ROW_CLASS}>
@@ -203,7 +274,7 @@ export default function DocumentsPage() {
                     <tr
                       key={doc.id}
                       className={TABLE_BODY_ROW_CLASS}
-                      data-testid={`document-row-${doc.id}`}
+                      data-testid={`document-row-desktop-${doc.id}`}
                     >
                       <td className={TABLE_BODY_CELL_CLASS}>
                         <div className="flex items-center gap-3">

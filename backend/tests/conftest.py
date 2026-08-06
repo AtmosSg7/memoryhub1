@@ -8,13 +8,19 @@ from fastapi.testclient import TestClient
 from pymongo import MongoClient
 
 os.environ.setdefault("MONGO_URL", "mongodb://localhost:27017")
-os.environ.setdefault("DB_NAME", "memoryhub_test")
+# Force the pytest DB — never inherit memoryhub / memoryhub_e2e from a polluted shell.
+os.environ["DB_NAME"] = "memoryhub_test"
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-at-least-32-characters-long")
-os.environ.setdefault("ENV", "development")
+os.environ["ENV"] = "development"
 os.environ.setdefault("E2E_DISABLE_RATE_LIMIT", "1")
 os.environ.setdefault("EMAIL_PROVIDER", "fake")
 os.environ.setdefault("CREDITS_ENFORCED", "false")
 os.environ["ANALYZER_PROVIDER"] = "mock"
+# Neutralize local/E2E overlays that would leak into TestClient + subprocess guards.
+os.environ.pop("ALLOW_E2E_SEED", None)
+os.environ.pop("E2E_PROXY_TARGET", None)
+os.environ.pop("STRIPE_BACKEND", None)
+os.environ["COMMUNICATION_INTELLIGENCE_ENABLED"] = "false"
 
 from analysis.factory import reset_analyzer_for_tests  # noqa: E402
 

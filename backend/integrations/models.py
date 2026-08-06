@@ -148,12 +148,36 @@ class GmailPreviewResponse(BaseModel):
     accountEmail: Optional[str] = None
 
 
+class GmailMailboxProfile(BaseModel):
+    emailAddress: Optional[str] = None
+    historyId: Optional[str] = None
+    messagesTotal: Optional[int] = None
+
+
+class GmailHistoryResult(BaseModel):
+    messageIds: List[str] = Field(default_factory=list)
+    historyId: Optional[str] = None
+    pages: int = 0
+
+
 class GmailSyncSummary(BaseModel):
+    """Sync summary — core counters stay FE-compatible; extras are additive."""
+
     linked: int = 0
     unmatched: int = 0
     skipped: int = 0
     total: int = 0
     finishedAt: Optional[str] = None
+    mode: Optional[Literal["full", "incremental"]] = None
+    detected: int = 0
+    analyzed: int = 0
+    created: int = 0
+    updated: int = 0
+    automatic: int = 0
+    ignored: int = 0
+    errors: int = 0
+    cursorUpdated: bool = False
+    fallbackFromIncremental: bool = False
 
 
 class GmailSyncResponse(BaseModel):

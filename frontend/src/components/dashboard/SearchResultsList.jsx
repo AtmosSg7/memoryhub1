@@ -5,11 +5,22 @@ import { translateApiError } from "@/utils/apiErrors";
 import { InlineLoader } from "@/components/dashboard/PageFeedback";
 import { ActionButton } from "@/components/dashboard/ActionButton";
 
-const GROUP_ORDER = ["clients", "emails", "quotes", "invoices", "notes", "documents"];
+const GROUP_ORDER = [
+  "clients",
+  "prospects",
+  "emails",
+  "actions",
+  "quotes",
+  "invoices",
+  "notes",
+  "documents",
+];
 
 const GROUP_LIST_PATHS = {
   clients: "/dashboard/clients",
+  prospects: "/dashboard/prospects",
   emails: "/dashboard/communications?category=email",
+  actions: "/dashboard",
   quotes: "/dashboard/documents?kind=quote",
   invoices: "/dashboard/documents?kind=invoice",
   notes: "/dashboard/notes",
@@ -25,6 +36,7 @@ export default function SearchResultsList({
   onSelect,
   compact = false,
   showSummary = true,
+  onSeeMoreGroup,
   testId = "search-results-list",
 }) {
   const { t } = useDashboardLang();
@@ -66,10 +78,22 @@ export default function SearchResultsList({
         data-testid={`${testId}-empty`}
         className={compact ? "px-3 py-4 text-center" : "py-10 text-center max-w-sm mx-auto"}
       >
-        <p className={compact ? "text-[12px] font-medium text-dash-text-muted" : "text-sm font-medium text-dash-text-muted"}>
+        <p
+          className={
+            compact
+              ? "text-[12px] font-medium text-dash-text-muted"
+              : "text-sm font-medium text-dash-text-muted"
+          }
+        >
           {t("search.noResults").replace("{query}", query || "")}
         </p>
-        <p className={compact ? "text-[11px] text-dash-text-muted mt-1" : "text-[13px] text-dash-text-muted mt-1.5 leading-relaxed"}>
+        <p
+          className={
+            compact
+              ? "text-[11px] text-dash-text-muted mt-1"
+              : "text-[13px] text-dash-text-muted mt-1.5 leading-relaxed"
+          }
+        >
           {t("search.noResultsHint")}
         </p>
       </div>
@@ -78,13 +102,13 @@ export default function SearchResultsList({
 
   return (
     <div data-testid={testId} className={compact ? "" : "space-y-5"}>
-      {showSummary && !compact && (
+      {showSummary && !compact ? (
         <p className="text-[13px] text-dash-text-muted">
           {t("search.resultsCount")
             .replace("{count}", String(total))
             .replace("{query}", query || "")}
         </p>
-      )}
+      ) : null}
 
       {GROUP_ORDER.map((groupKey) => {
         const group = groups[groupKey];
@@ -97,7 +121,9 @@ export default function SearchResultsList({
             <div
               className={[
                 "flex items-center justify-between gap-2",
-                compact ? "px-3 py-2 bg-dash-bg border-b border-dash-border-soft" : "mb-2",
+                compact
+                  ? "px-3 py-2 bg-dash-bg border-b border-dash-border-soft"
+                  : "mb-2",
               ].join(" ")}
             >
               <h4
@@ -108,7 +134,16 @@ export default function SearchResultsList({
               >
                 {t(`search.groups.${groupKey}`)}
               </h4>
-              {hasMore && listPath ? (
+              {hasMore && onSeeMoreGroup ? (
+                <ActionButton
+                  variant="ghost"
+                  className="h-auto py-0 px-1 text-[10px] font-medium text-dash-primary hover:underline"
+                  onClick={() => onSeeMoreGroup(groupKey)}
+                  data-testid={`${testId}-group-${groupKey}-see-more`}
+                >
+                  {t("search.showAllInGroup").replace("{count}", String(group.total))}
+                </ActionButton>
+              ) : hasMore && listPath ? (
                 <ActionButton
                   variant="ghost"
                   className="h-auto py-0 px-1 text-[10px] font-medium text-dash-primary hover:underline"
@@ -119,15 +154,25 @@ export default function SearchResultsList({
                 </ActionButton>
               ) : hasMore ? (
                 <span className="text-[10px] text-dash-text-subtle">
-                  {t("search.moreResults").replace("{count}", String(group.total - group.items.length))}
+                  {t("search.moreResults").replace(
+                    "{count}",
+                    String(group.total - group.items.length)
+                  )}
                 </span>
               ) : null}
             </div>
-            <div className={compact ? "divide-y divide-dash-border-soft" : "bg-dash-surface border border-dash-border rounded-xl overflow-hidden divide-y divide-dash-border-soft"}>
+            <div
+              className={
+                compact
+                  ? "divide-y divide-dash-border-soft"
+                  : "bg-dash-surface border border-dash-border rounded-xl overflow-hidden divide-y divide-dash-border-soft"
+              }
+            >
               {group.items.map((item) => (
                 <SearchResultItem
                   key={`${item.type}-${item.id}`}
                   item={item}
+                  query={query}
                   onSelect={onSelect}
                   compact={compact}
                   testId={`${testId}-item-${item.type}-${item.id}`}

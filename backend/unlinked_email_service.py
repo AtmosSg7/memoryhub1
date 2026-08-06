@@ -414,8 +414,9 @@ async def associate_communication_to_client(
                 "clientId": client_id,
                 "metadata": meta,
                 "updatedAt": now,
+                "status": "linked",
             },
-            "$unset": {"ignoredAt": "", "status": ""},
+            "$unset": {"ignoredAt": ""},
         },
     )
 
@@ -462,9 +463,13 @@ async def restore_communication(db, user_id: str, communication_id: str) -> Rest
     if not comm.get("ignoredAt"):
         return RestoreResponse(communicationId=communication_id, restored=True)
 
+    restored_status = "linked" if comm.get("clientId") else "unlinked"
     await db.communications.update_one(
         {"userId": user_id, "id": communication_id},
-        {"$unset": {"ignoredAt": "", "status": ""}, "$set": {"updatedAt": _now()}},
+        {
+            "$unset": {"ignoredAt": ""},
+            "$set": {"updatedAt": _now(), "status": restored_status},
+        },
     )
     return RestoreResponse(communicationId=communication_id, restored=True)
 

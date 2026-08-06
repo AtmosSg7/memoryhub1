@@ -34,6 +34,25 @@ export async function getClient360(clientId) {
   return handleResponse(res, data, "Failed to load client dashboard.");
 }
 
+/**
+ * Client Timeline V2 — fused chronology + relation summary.
+ * @param {string} clientId
+ * @param {{ limit?: number, offset?: number, category?: string }} [opts]
+ */
+export async function getClientTimelineV2(
+  clientId,
+  { limit = 40, offset = 0, category = "all" } = {}
+) {
+  const params = new URLSearchParams();
+  params.set("limit", String(limit));
+  params.set("offset", String(offset));
+  if (category) params.set("category", category);
+  const { res, data } = await apiFetch(
+    `/api/clients/${encodeURIComponent(clientId)}/timeline-v2?${params}`
+  );
+  return handleResponse(res, data, "Failed to load client timeline.");
+}
+
 export async function createClient(payload) {
   const { res, data } = await apiFetch("/api/clients", {
     method: "POST",

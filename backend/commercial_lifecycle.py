@@ -444,6 +444,15 @@ async def sync_overdue_invoices(db, user_id: Optional[str] = None) -> int:
                 "message": f"Facture {number} passée en retard." if number else "Facture passée en retard.",
             },
         )
+        try:
+            from action_engine.engine import safe_evaluate_invoice
+
+            await safe_evaluate_invoice(
+                db,
+                {**doc, "status": "overdue", "overdueAt": ts},
+            )
+        except Exception:
+            pass
     for uid in touched_users:
         invalidate_user(uid)
     return overdue_count

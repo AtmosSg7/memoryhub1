@@ -2,7 +2,7 @@
 
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from auth import get_current_user, get_db
 from client_models import (
@@ -132,6 +132,34 @@ async def get_client_360(
     if not exists:
         raise HTTPException(status_code=404, detail={"message": "Client not found."})
     return await build_client_360(db, current_user["id"], client_id)
+
+
+@clients_router.get("/{client_id}/timeline-v2")
+async def get_client_timeline_v2(
+    client_id: str,
+    limit: int = Query(40, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    category: str = Query("all"),
+    current_user: dict = Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """Client Timeline V2 — fused chronology with intelligence + relation summary."""
+    from timeline_v2_service import list_client_timeline_v2
+
+    exists = await db.clients.find_one(
+        {**_user_filter(current_user["id"]), "id": client_id},
+        {"_id": 1},
+    )
+    if not exists:
+        raise HTTPException(status_code=404, detail={"message": "Client not found."})
+    return await list_client_timeline_v2(
+        db,
+        current_user["id"],
+        client_id,
+        limit=limit,
+        offset=offset,
+        category=category,
+    )
 
 
 @clients_router.put("/{client_id}", response_model=ClientPublic)
