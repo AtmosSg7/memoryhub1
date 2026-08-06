@@ -21,6 +21,28 @@ export function formatCallWhen(iso, lang = "fr") {
   }
 }
 
+export function formatCallDate(iso, lang = "fr") {
+  if (!iso) return "—";
+  try {
+    return new Intl.DateTimeFormat(lang === "en" ? "en-GB" : "fr-FR", {
+      dateStyle: "medium",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
+export function formatCallTime(iso, lang = "fr") {
+  if (!iso) return "—";
+  try {
+    return new Intl.DateTimeFormat(lang === "en" ? "en-GB" : "fr-FR", {
+      timeStyle: "short",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
 export function callDisplayName(call) {
   return (
     call?.clientName?.trim() ||

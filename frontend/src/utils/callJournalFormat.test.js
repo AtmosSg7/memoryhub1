@@ -2,7 +2,9 @@ import {
   CALL_FILTERS,
   callDisplayName,
   callStatusTone,
+  formatCallDate,
   formatCallDuration,
+  formatCallTime,
 } from "./callJournalFormat";
 
 describe("callJournalFormat", () => {
@@ -11,6 +13,14 @@ describe("callJournalFormat", () => {
     expect(formatCallDuration(45)).toBe("45s");
     expect(formatCallDuration(90)).toBe("1 min 30s");
     expect(formatCallDuration(null)).toBe("—");
+  });
+
+  test("formats date and time parts", () => {
+    const iso = "2026-08-06T14:30:00.000Z";
+    expect(formatCallDate(iso, "fr")).not.toBe("—");
+    expect(formatCallTime(iso, "fr")).not.toBe("—");
+    expect(formatCallDate(null)).toBe("—");
+    expect(formatCallTime(null)).toBe("—");
   });
 
   test("display name prefers client then counterparty then phone", () => {
