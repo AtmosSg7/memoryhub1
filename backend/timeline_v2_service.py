@@ -145,6 +145,9 @@ def _human_title(event_type: str, metadata: dict) -> str:
         )
     subject = metadata.get("subject")
     if event_type in COMM_TYPES and subject:
+        count = metadata.get("messageCount")
+        if metadata.get("syntheticConversation") and isinstance(count, int) and count > 1:
+            return f"{subject} · {count} messages"
         return str(subject)
     number = metadata.get("number") or metadata.get("quoteNumber") or metadata.get("invoiceNumber")
     base = TITLE_FR.get(event_type) or event_type.replace("_", " ").capitalize()
@@ -157,6 +160,11 @@ def _human_summary(event: EventPublic, *, intelligence: Optional[dict] = None) -
     meta = event.metadata or {}
     if intelligence and intelligence.get("summary"):
         return str(intelligence["summary"])
+    if meta.get("syntheticConversation") and meta.get("messageCount"):
+        excerpt = meta.get("excerpt") or meta.get("subject") or ""
+        count = meta.get("messageCount")
+        if excerpt:
+            return f"{excerpt} ({count} messages)"
     for key in ("excerpt", "content", "preview", "body", "description", "message"):
         val = meta.get(key)
         if val and str(val).strip():

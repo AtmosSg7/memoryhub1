@@ -48,6 +48,7 @@ import ListCollectionFooter from "@/components/dashboard/ListCollectionFooter";
 import ClientSectionNav from "@/components/dashboard/client/ClientSectionNav";
 import ClientContactsSection from "@/components/dashboard/client/ClientContactsSection";
 import ClientEmailsSection from "@/components/dashboard/client/ClientEmailsSection";
+import ClientInboxSection from "@/components/dashboard/client/ClientInboxSection";
 import ClientRelationSummary from "@/components/dashboard/client/ClientRelationSummary";
 import SectionPanel from "@/components/dashboard/client/SectionPanel";
 import {
@@ -636,11 +637,24 @@ export default function ClientDetailPage() {
       {activeSection === "emails" && (
         <SectionPanel
           id="client-section-emails"
-          title={t("clientEmails.title")}
-          subtitle={t("clientEmails.subtitle")}
+          title={t("clientInbox.title")}
+          subtitle={t("clientInbox.subtitle")}
           testId="client-section-emails"
         >
-          <ClientEmailsSection clientId={client.id} t={t} lang={lang} />
+          <div className="space-y-8">
+            <ClientInboxSection
+              clientId={client.id}
+              t={t}
+              lang={lang}
+              initialConversationId={searchParams.get("conversation")}
+            />
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-dash-text-subtle mb-3">
+                {t("clientEmails.title")}
+              </h3>
+              <ClientEmailsSection clientId={client.id} t={t} lang={lang} />
+            </div>
+          </div>
         </SectionPanel>
       )}
 

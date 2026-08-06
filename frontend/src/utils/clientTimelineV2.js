@@ -97,6 +97,13 @@ export function timelineItemRoute(item, clientId) {
   if (!item) return null;
   const base = clientId ? `/dashboard/clients/${encodeURIComponent(clientId)}` : null;
   if (item.kind === "communication" || item.category === "communications") {
+    const convId = item.metadata?.conversationId;
+    if (base && convId) {
+      return `${base}?section=emails&conversation=${encodeURIComponent(convId)}`;
+    }
+    if (convId) {
+      return `/dashboard/communications?conversation=${encodeURIComponent(convId)}`;
+    }
     const cid = item.metadata?.communicationId || item.entityId;
     if (cid) {
       return `/dashboard/communications?open=${encodeURIComponent(cid)}`;

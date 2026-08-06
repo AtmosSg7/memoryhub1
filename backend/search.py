@@ -93,12 +93,15 @@ TYPE_ALIASES = {
     "invoices": "invoices",
     "action": "actions",
     "actions": "actions",
+    "conversation": "conversations",
+    "conversations": "conversations",
 }
 
 ALL_GROUP_KEYS = (
     "clients",
     "prospects",
     "emails",
+    "conversations",
     "notes",
     "documents",
     "quotes",
@@ -121,6 +124,7 @@ class SearchResultItem(BaseModel):
         "email",
         "communication",
         "action",
+        "conversation",
     ]
     title: str
     subtitle: Optional[str] = None
@@ -154,6 +158,7 @@ class SearchGroups(BaseModel):
     emails: SearchGroup
     prospects: SearchGroup = SearchGroup(total=0, items=[])
     actions: SearchGroup = SearchGroup(total=0, items=[])
+    conversations: SearchGroup = SearchGroup(total=0, items=[])
     # Reserved empty groups for future connectors
     whatsapp: SearchGroup = SearchGroup(total=0, items=[])
     calls: SearchGroup = SearchGroup(total=0, items=[])
@@ -286,9 +291,21 @@ def _invoice_url(client_id: Optional[str], invoice_id: str) -> str:
     return f"/dashboard/documents?open={invoice_id}"
 
 
-def _email_url(client_id: Optional[str], comm_id: str) -> str:
+def _email_url(
+    client_id: Optional[str],
+    comm_id: str,
+    *,
+    conversation_id: Optional[str] = None,
+) -> str:
+    if client_id and conversation_id:
+        return (
+            f"/dashboard/clients/{client_id}"
+            f"?section=emails&conversation={conversation_id}"
+        )
     if client_id:
-        return f"/dashboard/clients/{client_id}?section=timeline"
+        return f"/dashboard/clients/{client_id}?section=emails"
+    if conversation_id:
+        return f"/dashboard/communications?conversation={conversation_id}"
     return f"/dashboard/communications?open={comm_id}"
 
 
@@ -692,7 +709,11 @@ async def _search_communications(
         )
         if "summary" in matched or "intent" in matched:
             tier = max(tier, 7)  # AI match ranks after title/identity
-        url = _email_url(client_id, doc["id"])
+        url = _email_url(
+            client_id,
+            doc["id"],
+            conversation_id=doc.get("conversationId"),
+        )
         items.append(
             _enrich_item(
                 SearchResultItem(
@@ -719,6 +740,111 @@ async def _search_communications(
                         "direction": doc.get("direction"),
                         "intent": analysis.get("intent"),
                         "provider": doc.get("provider"),
+                        "conversationId": doc.get("conversationId"),
+                        "channel": doc.get("type"),
+                        "lifecycleStatus": doc.get("lifecycleStatus"),
+                    },
+                )
+            )
+        )
+    return SearchGroup(total=total, items=_page(_rank_items(items, query), limit=limit, offset=offset))
+
+
+CONV_SEARCH_FIELDS = [
+    "subject",
+    "preview",
+    "clientName",
+    "channel",
+    "provider",
+    "conversationKey",
+    "participants.email",
+    "participants.phone",
+    "participants.displayName",
+    "participants.identityKey",
+]
+
+
+async def _search_conversations(
+    db, user_id: str, query: str, patterns: List[dict], *, limit: int, offset: int
+) -> SearchGroup:
+    """Search Hub conversations by subject / preview / participant / channel / attachment name."""
+    clause = _text_match_clause(CONV_SEARCH_FIELDS, query)
+    attachment_conv_ids: List[str] = []
+    try:
+        att_clause = _text_match_clause(["filename", "kind", "mimeType"], query)
+        att_cursor = db.communication_attachments.find(
+            {**_user_filter(user_id), **att_clause},
+            {"_id": 0, "conversationId": 1},
+        ).limit(40)
+        async for att in att_cursor:
+            cid = att.get("conversationId")
+            if cid and cid not in attachment_conv_ids:
+                attachment_conv_ids.append(cid)
+    except Exception:
+        attachment_conv_ids = []
+
+    or_parts = [clause]
+    if attachment_conv_ids:
+        or_parts.append({"id": {"$in": attachment_conv_ids}})
+    mongo_q = {**_user_filter(user_id), "$or": or_parts}
+
+    total = await db.conversations.count_documents(mongo_q)
+    fetch_n = min(MAX_LIMIT * 3, offset + offset + 24)
+    cursor = (
+        db.conversations.find(mongo_q, SEARCH_PROJECTION)
+        .sort("lastMessageAt", -1)
+        .limit(fetch_n)
+    )
+    items: List[SearchResultItem] = []
+    async for doc in cursor:
+        client_id = doc.get("clientId") or None
+        preview = _match_preview(doc.get("preview") or "", query) or (doc.get("preview") or "")[:120]
+        matched = detect_matched_fields(
+            query,
+            {
+                "subject": doc.get("subject"),
+                "preview": doc.get("preview"),
+                "clientName": doc.get("clientName"),
+                "channel": doc.get("channel"),
+            },
+        )
+        if doc.get("id") in attachment_conv_ids and "attachment" not in matched:
+            matched = list(matched or []) + ["attachment"]
+        tier, _ = score_result(
+            matched_fields=matched or ["subject"],
+            query=query,
+            field_values={"subject": doc.get("subject"), "preview": doc.get("preview")},
+            occurred_at=doc.get("lastMessageAt") or "",
+            linked_to_client=bool(client_id),
+        )
+        if client_id:
+            url = f"/dashboard/clients/{client_id}?section=emails&conversation={doc['id']}"
+        else:
+            url = f"/dashboard/communications?conversation={doc['id']}"
+        items.append(
+            _enrich_item(
+                SearchResultItem(
+                    id=doc["id"],
+                    type="conversation",
+                    title=doc.get("subject") or "Conversation",
+                    subtitle=doc.get("clientName") or doc.get("channel") or doc.get("provider"),
+                    clientId=client_id,
+                    clientName=doc.get("clientName"),
+                    sourceId=doc.get("conversationKey"),
+                    url=url,
+                    navigationTarget=url,
+                    createdAt=doc.get("createdAt") or "",
+                    updatedAt=doc.get("updatedAt") or doc.get("lastMessageAt") or "",
+                    occurredAt=doc.get("lastMessageAt"),
+                    matchPreview=preview or None,
+                    preview=preview or None,
+                    relevance=tier,
+                    matchedFields=matched,
+                    metadata={
+                        "channel": doc.get("channel"),
+                        "provider": doc.get("provider"),
+                        "messageCount": doc.get("messageCount"),
+                        "lifecycleStatus": doc.get("lifecycleStatus"),
                     },
                 )
             )
@@ -968,6 +1094,10 @@ async def global_search(
         tasks["actions"] = _search_actions(
             db, user_id, query, patterns, limit=limit, offset=offset
         )
+    if "conversations" in want:
+        tasks["conversations"] = _search_conversations(
+            db, user_id, query, patterns, limit=limit, offset=offset
+        )
 
     keys = list(tasks.keys())
     results = await asyncio.gather(*(tasks[k] for k in keys))
@@ -982,6 +1112,7 @@ async def global_search(
         emails=by_key.get("emails") or _empty_group(),
         prospects=by_key.get("prospects") or _empty_group(),
         actions=by_key.get("actions") or _empty_group(),
+        conversations=by_key.get("conversations") or _empty_group(),
     )
 
     total = (
@@ -993,12 +1124,14 @@ async def global_search(
         + groups.emails.total
         + groups.prospects.total
         + groups.actions.total
+        + groups.conversations.total
     )
 
     flat: List[SearchResultItem] = []
     for key in (
         "clients",
         "prospects",
+        "conversations",
         "emails",
         "quotes",
         "invoices",

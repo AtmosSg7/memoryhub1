@@ -423,6 +423,26 @@ async def associate_communication_to_client(
     await _sync_email_message_client(db, user_id, {**comm, "metadata": meta}, client)
     await _ensure_timeline_event(db, user_id, {**comm, "metadata": meta}, client)
 
+    # Hub V2 — retarget conversation so Client Inbox picks up the thread immediately.
+    try:
+        from communication_hub.conversation_engine import (
+            after_communication_upsert,
+            retarget_conversations_for_communications,
+        )
+
+        linked_doc = {**comm, "clientId": client_id, "metadata": meta, "status": "linked"}
+        if not linked_doc.get("conversationId"):
+            linked_doc = await after_communication_upsert(db, linked_doc)
+        await retarget_conversations_for_communications(
+            db,
+            user_id,
+            [communication_id],
+            client_id=client_id,
+            client_name=display,
+        )
+    except Exception:
+        pass
+
     await db.clients.update_one(
         {"userId": user_id, "id": client_id},
         {"$set": {"updatedAt": now, "lastActivityAt": now}},

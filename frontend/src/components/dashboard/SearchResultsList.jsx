@@ -8,6 +8,7 @@ import { ActionButton } from "@/components/dashboard/ActionButton";
 const GROUP_ORDER = [
   "clients",
   "prospects",
+  "conversations",
   "emails",
   "actions",
   "quotes",
@@ -19,6 +20,7 @@ const GROUP_ORDER = [
 const GROUP_LIST_PATHS = {
   clients: "/dashboard/clients",
   prospects: "/dashboard/prospects",
+  conversations: "/dashboard/communications",
   emails: "/dashboard/communications?category=email",
   actions: "/dashboard",
   quotes: "/dashboard/documents?kind=quote",

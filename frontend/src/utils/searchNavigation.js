@@ -15,20 +15,43 @@ export function resolveSearchNavigation(item) {
     case "quote":
     case "invoice":
       return item.id ? `/dashboard/documents?open=${encodeURIComponent(item.id)}` : "/dashboard/documents";
+    case "conversation": {
+      const convId = item.id || item.metadata?.conversationId;
+      if (item.clientId && convId) {
+        return `/dashboard/clients/${item.clientId}?section=emails&conversation=${encodeURIComponent(convId)}`;
+      }
+      if (convId) {
+        return `/dashboard/communications?conversation=${encodeURIComponent(convId)}`;
+      }
+      return item.clientId
+        ? `/dashboard/clients/${item.clientId}?section=emails`
+        : "/dashboard/communications";
+    }
     case "email":
-    case "communication":
+    case "communication": {
+      const convId = item.metadata?.conversationId;
+      if (item.clientId && convId) {
+        return `/dashboard/clients/${item.clientId}?section=emails&conversation=${encodeURIComponent(convId)}`;
+      }
       if (item.clientId) {
-        return `/dashboard/clients/${item.clientId}?section=timeline`;
+        return `/dashboard/clients/${item.clientId}?section=emails`;
+      }
+      if (convId) {
+        return `/dashboard/communications?conversation=${encodeURIComponent(convId)}`;
       }
       return item.id
         ? `/dashboard/communications?open=${encodeURIComponent(item.id)}`
         : "/dashboard/communications";
+    }
     case "action":
+      if (item.metadata?.conversationId && item.clientId) {
+        return `/dashboard/clients/${item.clientId}?section=emails&conversation=${encodeURIComponent(item.metadata.conversationId)}`;
+      }
       if (item.sourceId) {
         return `/dashboard/communications?open=${encodeURIComponent(item.sourceId)}`;
       }
       if (item.clientId) {
-        return `/dashboard/clients/${item.clientId}?section=timeline`;
+        return `/dashboard/clients/${item.clientId}?section=emails`;
       }
       return "/dashboard";
     case "note":

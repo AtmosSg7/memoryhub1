@@ -41,6 +41,7 @@ from reminders import reminders_router
 from personal_reminders import personal_reminders_router
 from portal import portal_router, portal_admin_router
 from communications import communications_router
+from communication_hub import hub_router
 from prospects.routes import prospects_router
 from action_engine.routes import actions_router
 from communication_intelligence.routes import ci_router
@@ -196,6 +197,7 @@ api_router.include_router(personal_reminders_router)
 api_router.include_router(portal_router)
 api_router.include_router(portal_admin_router)
 api_router.include_router(communications_router)
+api_router.include_router(hub_router)
 api_router.include_router(prospects_router)
 api_router.include_router(actions_router)
 api_router.include_router(ci_router)
@@ -340,6 +342,33 @@ async def startup_db_indexes():
     )
     await db.communications.create_index(
         [("userId", 1), ("type", 1), ("clientId", 1), ("createdAt", -1)]
+    )
+    await db.communications.create_index([("userId", 1), ("conversationId", 1), ("createdAt", 1)])
+    await db.communications.create_index([("userId", 1), ("lifecycleStatus", 1), ("createdAt", -1)])
+
+    # Communication Hub V2 — conversations + attachment metadata
+    await ensure_index(db.conversations, "id", name="conversations_id_unique", unique=True)
+    await ensure_index(
+        db.conversations,
+        [("userId", 1), ("conversationKey", 1)],
+        name="conversations_user_key_unique",
+        unique=True,
+    )
+    await db.conversations.create_index([("userId", 1), ("clientId", 1), ("lastMessageAt", -1)])
+    await db.conversations.create_index([("userId", 1), ("channel", 1), ("lastMessageAt", -1)])
+    await db.conversations.create_index([("userId", 1), ("lifecycleStatus", 1), ("lastMessageAt", -1)])
+
+    await ensure_index(
+        db.communication_attachments,
+        "id",
+        name="communication_attachments_id_unique",
+        unique=True,
+    )
+    await db.communication_attachments.create_index(
+        [("userId", 1), ("conversationId", 1), ("createdAt", -1)]
+    )
+    await db.communication_attachments.create_index(
+        [("userId", 1), ("communicationId", 1)]
     )
 
     # Prospects — user decisions only (exchanges stay on communications)

@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import List, Set
+from typing import Dict, List, Optional, Set
 
 from events import EventListResponse, EventPublic, event_public
 
 
-def _comm_to_event(doc: dict) -> EventPublic:
+def _comm_to_event(doc: dict, *, synthetic: bool = False, message_count: int = 1) -> EventPublic:
     """Map a Communication Center row to an EventPublic for the Timeline UI."""
     ctype = doc.get("type") or "email"
     direction = doc.get("direction") or "inbound"
@@ -41,16 +41,63 @@ def _comm_to_event(doc: dict) -> EventPublic:
     metadata.setdefault("attachmentsCount", doc.get("attachmentsCount") or 0)
     metadata["communicationId"] = doc.get("id")
     metadata["communicationType"] = ctype
+    if doc.get("conversationId"):
+        metadata["conversationId"] = doc["conversationId"]
+    if doc.get("lifecycleStatus"):
+        metadata["lifecycleStatus"] = doc["lifecycleStatus"]
+    if doc.get("priority"):
+        metadata["priority"] = doc["priority"]
+    if synthetic:
+        metadata["syntheticConversation"] = True
+        metadata["messageCount"] = message_count
+        if message_count > 1:
+            # Timeline = conversational summary; Inbox = individual messages.
+            if event_type == "email_received":
+                metadata["timelineTitleHint"] = f"Conversation e-mail ({message_count} messages)"
+            elif event_type == "email_sent":
+                metadata["timelineTitleHint"] = f"Conversation e-mail ({message_count} messages)"
+            else:
+                metadata["timelineTitleHint"] = f"Conversation ({message_count} messages)"
+
+    event_id = (
+        f"comm-conv-{doc['conversationId']}"
+        if synthetic and doc.get("conversationId")
+        else f"comm-{doc['id']}"
+    )
+    entity_id = str(doc.get("conversationId") or doc.get("id") or "")
 
     return EventPublic(
-        id=f"comm-{doc['id']}",
+        id=event_id,
         type=event_type,
         entityType=entity_type,
-        entityId=str(doc.get("id") or ""),
+        entityId=entity_id,
         clientId=doc.get("clientId"),
         metadata=metadata,
         createdAt=doc.get("createdAt") or "",
     )
+
+
+def _collapse_communications_by_conversation(comm_docs: List[dict]) -> List[EventPublic]:
+    """One timeline card per Hub conversation (latest message), else per message."""
+    by_conv: Dict[str, List[dict]] = {}
+    orphans: List[dict] = []
+    for doc in comm_docs:
+        conv_id = (doc.get("conversationId") or "").strip()
+        if conv_id:
+            by_conv.setdefault(conv_id, []).append(doc)
+        else:
+            orphans.append(doc)
+
+    events: List[EventPublic] = []
+    for conv_id, docs in by_conv.items():
+        docs_sorted = sorted(docs, key=lambda d: d.get("createdAt") or "")
+        latest = docs_sorted[-1]
+        events.append(
+            _comm_to_event(latest, synthetic=True, message_count=len(docs_sorted))
+        )
+    for doc in orphans:
+        events.append(_comm_to_event(doc, synthetic=False, message_count=1))
+    return events
 
 
 async def list_universal_client_timeline(
@@ -64,6 +111,7 @@ async def list_universal_client_timeline(
     """Merge append-only events with Communication Center rows (deduped).
 
     Communication Center is the source of truth for email / future channels.
+    Hub conversations are synthesized as a single timeline card per thread.
     Commercial, notes, documents stay on the events ledger.
     """
     window = max(limit + offset, limit) * 3
@@ -87,7 +135,7 @@ async def list_universal_client_timeline(
         if pid:
             covered_provider_ids.add(pid)
 
-    merged: List[EventPublic] = [_comm_to_event(doc) for doc in comm_docs]
+    merged: List[EventPublic] = _collapse_communications_by_conversation(comm_docs)
 
     async for doc in (
         db.events.find({"userId": user_id, "clientId": client_id}, {"_id": 0, "userId": 0})

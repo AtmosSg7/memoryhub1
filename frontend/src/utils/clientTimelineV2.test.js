@@ -47,7 +47,21 @@ describe("clientTimelineV2", () => {
     expect(rows.filter((r) => r.kind === "item")).toHaveLength(2);
   });
 
-  it("routes communication cards to communications open", () => {
+  it("routes communication cards to client inbox conversation when available", () => {
+    expect(
+      timelineItemRoute(
+        {
+          kind: "communication",
+          category: "communications",
+          entityId: "c1",
+          metadata: { communicationId: "c1", conversationId: "conv-9" },
+        },
+        "client-1"
+      )
+    ).toContain("/dashboard/clients/client-1?section=emails&conversation=conv-9");
+  });
+
+  it("falls back to communications open without conversationId", () => {
     expect(
       timelineItemRoute(
         {

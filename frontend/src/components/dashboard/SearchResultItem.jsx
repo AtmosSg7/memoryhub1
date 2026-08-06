@@ -5,6 +5,7 @@ import {
   FileText,
   Receipt,
   Mail,
+  MessagesSquare,
   UserPlus,
   ListChecks,
 } from "lucide-react";
@@ -22,6 +23,7 @@ const TYPE_CONFIG = {
   invoice: { icon: Receipt, color: "text-[#065F46]", bg: "bg-[#ECFDF5]" },
   email: { icon: Mail, color: "text-[#1E3A5F]", bg: "bg-[#EEF2FF]" },
   communication: { icon: Mail, color: "text-[#1E3A5F]", bg: "bg-[#EEF2FF]" },
+  conversation: { icon: MessagesSquare, color: "text-[#1E3A5F]", bg: "bg-[#EEF2FF]" },
   action: { icon: ListChecks, color: "text-[#3730A3]", bg: "bg-[#EEF2FF]" },
 };
 

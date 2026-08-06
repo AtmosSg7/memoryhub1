@@ -104,10 +104,12 @@ def rule_reply_to_prospect(fact: Dict[str, Any]) -> List[Dict[str, Any]]:
     title = "Répondre au prospect"
     if subject:
         title = f"Répondre au prospect — {subject[:80]}"
+    conv_id = (comm.get("conversationId") or "").strip()
+    key_suffix = f"conv:{conv_id}" if conv_id else comm["id"]
     return [
         _proposal(
             action_type=ACTION_TYPE_REPLY_TO_PROSPECT,
-            idempotency_key=f"{ACTION_TYPE_REPLY_TO_PROSPECT}:{comm['id']}",
+            idempotency_key=f"{ACTION_TYPE_REPLY_TO_PROSPECT}:{key_suffix}",
             title=title,
             description="Nouveau message d'un contact inconnu à traiter.",
             priority=ACTION_PRIORITY_HIGH,
@@ -118,6 +120,7 @@ def rule_reply_to_prospect(fact: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "channel": comm.get("type"),
                 "provider": comm.get("provider"),
                 "fromEmail": (comm.get("metadata") or {}).get("fromEmail"),
+                "conversationId": conv_id or None,
             },
         )
     ]
@@ -145,10 +148,12 @@ def rule_read_client_reply(fact: Dict[str, Any]) -> List[Dict[str, Any]]:
     title = f"Lire la réponse de {client_name}"
     if subject:
         title = f"Lire la réponse — {subject[:80]}"
+    conv_id = (comm.get("conversationId") or "").strip()
+    key_suffix = f"conv:{conv_id}" if conv_id else comm["id"]
     return [
         _proposal(
             action_type=ACTION_TYPE_READ_CLIENT_REPLY,
-            idempotency_key=f"{ACTION_TYPE_READ_CLIENT_REPLY}:{comm['id']}",
+            idempotency_key=f"{ACTION_TYPE_READ_CLIENT_REPLY}:{key_suffix}",
             title=title,
             description="Nouveau message d'un client existant.",
             priority=ACTION_PRIORITY_NORMAL,
@@ -160,6 +165,7 @@ def rule_read_client_reply(fact: Dict[str, Any]) -> List[Dict[str, Any]]:
                 "channel": comm.get("type"),
                 "provider": comm.get("provider"),
                 "clientName": client_name,
+                "conversationId": conv_id or None,
             },
         )
     ]

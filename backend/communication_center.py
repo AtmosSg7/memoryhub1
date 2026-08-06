@@ -182,11 +182,14 @@ async def upsert_communication(db, doc: dict) -> dict:
                 {"userId": user_id, "id": existing["id"]},
                 {"$set": {k: v for k, v in doc.items() if k not in ("id", "userId")}},
             )
+            # Hub first so Action Engine can idempotent on conversationId.
+            doc = await _hook_communication_hub(db, doc)
             await _hook_action_engine(db, doc)
             await _hook_communication_intelligence(db, doc)
             return doc
 
     await db.communications.insert_one(doc)
+    doc = await _hook_communication_hub(db, doc)
     await _hook_action_engine(db, doc)
     await _hook_communication_intelligence(db, doc)
     return doc
@@ -214,6 +217,16 @@ async def _hook_communication_intelligence(db, communication: dict) -> None:
         schedule_analyze_after_ingest(db, communication)
     except Exception:
         pass
+
+
+async def _hook_communication_hub(db, communication: dict) -> dict:
+    """Hub V2 — conversation grouping + lifecycle + attachments (never breaks writers)."""
+    try:
+        from communication_hub.conversation_engine import after_communication_upsert
+
+        return await after_communication_upsert(db, communication)
+    except Exception:
+        return communication
 
 
 def _association_status_for_gmail(email_doc: dict, *, existing: Optional[dict] = None) -> str:
