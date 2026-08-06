@@ -79,6 +79,8 @@ const TimelinePage = React.lazy(() => import("@/pages/dashboard/TimelinePage"));
 
 const CommunicationsPage = React.lazy(() => import("@/pages/dashboard/CommunicationsPage"));
 
+const CallsPage = React.lazy(() => import("@/pages/dashboard/CallsPage"));
+
 const ProspectsPage = React.lazy(() => import("@/pages/dashboard/ProspectsPage"));
 
 const IntegrationsPage = React.lazy(() => import("@/pages/dashboard/IntegrationsPage"));
@@ -212,6 +214,8 @@ function App() {
               <Route path="files" element={<FileLibraryPage />} />
 
               <Route path="communications" element={<CommunicationsPage />} />
+
+              <Route path="calls" element={<CallsPage />} />
 
               <Route path="prospects" element={<ProspectsPage />} />
 

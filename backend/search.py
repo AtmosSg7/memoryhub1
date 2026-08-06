@@ -70,6 +70,13 @@ COMM_SEARCH_FIELDS = [
     "metadata.fromName",
     "metadata.clientName",
     "metadata.toEmails",
+    "metadata.phoneNumber",
+    "metadata.normalizedPhone",
+    "metadata.counterpartyName",
+    "metadata.notes",
+    "metadata.status",
+    "metadata.fromPhone",
+    "metadata.toPhone",
 ]
 ACTION_SEARCH_FIELDS = ["title", "description", "type", "status"]
 CI_SEARCH_FIELDS = ["summary", "intent", "suggestedActionTitle"]
@@ -83,6 +90,9 @@ TYPE_ALIASES = {
     "communications": "emails",
     "email": "emails",
     "emails": "emails",
+    "phone": "emails",
+    "call": "emails",
+    "calls": "emails",
     "note": "notes",
     "notes": "notes",
     "document": "documents",
@@ -122,6 +132,7 @@ class SearchResultItem(BaseModel):
         "quote",
         "invoice",
         "email",
+        "phone",
         "communication",
         "action",
         "conversation",
@@ -709,21 +720,57 @@ async def _search_communications(
         )
         if "summary" in matched or "intent" in matched:
             tier = max(tier, 7)  # AI match ranks after title/identity
-        url = _email_url(
-            client_id,
-            doc["id"],
-            conversation_id=doc.get("conversationId"),
+        is_phone = (doc.get("type") or "") == "phone"
+        if is_phone:
+            if client_id and doc.get("conversationId"):
+                url = f"/dashboard/clients/{client_id}?tab=inbox&conversationId={doc['conversationId']}"
+            elif client_id:
+                url = f"/dashboard/clients/{client_id}"
+            else:
+                url = f"/dashboard/calls?open={doc['id']}"
+            title = doc.get("subject") or "Appel"
+            subtitle = (
+                meta.get("clientName")
+                or meta.get("counterpartyName")
+                or meta.get("phoneNumber")
+                or meta.get("normalizedPhone")
+                or doc.get("provider")
+            )
+            result_type = "phone"
+        else:
+            url = _email_url(
+                client_id,
+                doc["id"],
+                conversation_id=doc.get("conversationId"),
+            )
+            title = doc.get("subject") or "E-mail"
+            subtitle = (
+                meta.get("clientName")
+                or meta.get("fromName")
+                or meta.get("fromEmail")
+                or doc.get("provider")
+            )
+            result_type = "email"
+        phone_matched = detect_matched_fields(
+            query,
+            {
+                "metadata.phoneNumber": meta.get("phoneNumber"),
+                "metadata.normalizedPhone": meta.get("normalizedPhone"),
+                "metadata.counterpartyName": meta.get("counterpartyName"),
+                "metadata.notes": meta.get("notes"),
+                "metadata.status": meta.get("status"),
+                "metadata.clientName": meta.get("clientName"),
+            },
         )
+        if phone_matched:
+            matched = list(dict.fromkeys((matched or []) + phone_matched))
         items.append(
             _enrich_item(
                 SearchResultItem(
                     id=doc["id"],
-                    type="email",
-                    title=doc.get("subject") or "E-mail",
-                    subtitle=meta.get("clientName")
-                    or meta.get("fromName")
-                    or meta.get("fromEmail")
-                    or doc.get("provider"),
+                    type=result_type,
+                    title=title,
+                    subtitle=subtitle,
                     clientId=client_id,
                     clientName=meta.get("clientName"),
                     sourceId=doc.get("providerId"),
@@ -743,6 +790,8 @@ async def _search_communications(
                         "conversationId": doc.get("conversationId"),
                         "channel": doc.get("type"),
                         "lifecycleStatus": doc.get("lifecycleStatus"),
+                        "phoneNumber": meta.get("phoneNumber"),
+                        "status": meta.get("status"),
                     },
                 )
             )

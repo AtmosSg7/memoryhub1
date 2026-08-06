@@ -64,33 +64,49 @@ def _comm_emails(doc: dict) -> Tuple[Optional[str], Optional[str], List[str]]:
     return from_email, from_name, [e for e in to_emails if e]
 
 
+def _phone_from_meta(meta: dict) -> Optional[str]:
+    return (
+        meta.get("normalizedPhone")
+        or meta.get("phoneNumber")
+        or meta.get("phone")
+        or meta.get("fromPhone")
+        or meta.get("toPhone")
+        or meta.get("detectedPhone")
+    )
+
+
 def _identity_keys_for_communication(doc: dict) -> List[str]:
     """Strong identity keys this communication contributes to.
 
-    Inbound → fromEmail (+ phone if present in metadata).
-    Outbound → never creates a prospect alone; keys are used only to attach
-    to an existing inbound group when linking / detailing.
+    Inbound email → fromEmail (+ phone if present).
+    Inbound phone → phone:{normalized} only (never name alone).
+    Outbound → attach to existing inbound groups only.
     """
     meta = doc.get("metadata") or {}
     from_email, _, to_emails = _comm_emails(doc)
     keys: List[str] = []
     direction = doc.get("direction") or "inbound"
+    comm_type = doc.get("type") or "email"
 
     if direction == "inbound":
-        key = identity_key_for_email(from_email)
-        if key:
-            keys.append(key)
+        if comm_type != "phone":
+            key = identity_key_for_email(from_email)
+            if key:
+                keys.append(key)
     else:
         for addr in to_emails:
             key = identity_key_for_email(addr)
             if key:
                 keys.append(key)
 
-    phone_key = identity_key_for_phone(
-        meta.get("phone") or meta.get("fromPhone") or meta.get("detectedPhone")
-    )
-    if phone_key and direction == "inbound":
-        keys.append(phone_key)
+    phone_key = identity_key_for_phone(_phone_from_meta(meta))
+    if phone_key and (direction == "inbound" or comm_type == "phone"):
+        if direction == "inbound" or phone_key:
+            if direction == "inbound":
+                keys.append(phone_key)
+            elif phone_key not in keys:
+                # outbound phone: only for attaching to existing groups
+                keys.append(phone_key)
     return keys
 
 
@@ -102,6 +118,19 @@ def _primary_email_identity(doc: dict) -> Optional[str]:
     if to_emails:
         return identity_key_for_email(to_emails[0])
     return None
+
+
+def _primary_identity(doc: dict) -> Optional[str]:
+    """Open a prospect group from inbound email or inbound phone."""
+    if (doc.get("direction") or "inbound") != "inbound":
+        return None
+    if (doc.get("type") or "") == "phone":
+        meta = doc.get("metadata") or {}
+        status = (meta.get("status") or "").lower()
+        if status in {"spam", "blocked"}:
+            return None
+        return identity_key_for_phone(_phone_from_meta(meta))
+    return _primary_email_identity(doc)
 
 
 async def _load_decisions(db, user_id: str) -> Dict[str, dict]:
@@ -139,10 +168,10 @@ async def _upsert_decision(db, user_id: str, identity_key: str, fields: dict) ->
 
 
 async def _load_candidate_communications(db, user_id: str) -> List[dict]:
-    """Unlinked emails (any direction) — outbound only attach to inbound groups."""
+    """Unlinked emails + phone calls — outbound only attach to inbound groups."""
     query = {
         "userId": user_id,
-        "type": "email",
+        "type": {"$in": ["email", "phone"]},
         "$or": [{"clientId": None}, {"clientId": {"$exists": False}}, {"clientId": ""}],
     }
     cursor = (
@@ -160,22 +189,27 @@ def _build_groups(
     """Build identity_key → group accumulator. Only inbound opens a group."""
     groups: Dict[str, dict] = {}
 
-    # Pass 1: open groups from inbound
+    # Pass 1: open groups from inbound email or phone
     for doc in docs:
         if (doc.get("direction") or "inbound") != "inbound":
             continue
         if doc.get("ignoredAt"):
             # Individually ignored emails do not seed a prospect; other msgs may.
             continue
-        identity_key = _primary_email_identity(doc)
+        identity_key = _primary_identity(doc)
         if not identity_key:
             continue
         from_email, from_name, _ = _comm_emails(doc)
-        noise = classify_email_noise(
-            email=from_email,
-            from_name=from_name,
-            subject=doc.get("subject"),
-        )
+        meta = doc.get("metadata") or {}
+        phone_name = (meta.get("counterpartyName") or meta.get("fromName") or "").strip() or None
+        display_hint = from_name or phone_name
+        noise = None
+        if (doc.get("type") or "") != "phone":
+            noise = classify_email_noise(
+                email=from_email,
+                from_name=from_name,
+                subject=doc.get("subject"),
+            )
         group = groups.get(identity_key)
         if not group:
             channel, value = parse_identity_key(identity_key)
@@ -184,8 +218,10 @@ def _build_groups(
                 "channel": channel,
                 "email": value if channel == "email" else None,
                 "phone": value if channel == "phone" else None,
-                "displayName": guess_display_name(from_name=from_name, email=from_email),
-                "company": guess_company_from_email(from_email),
+                "displayName": guess_display_name(from_name=display_hint, email=from_email)
+                or phone_name
+                or (value if channel == "phone" else None),
+                "company": guess_company_from_email(from_email) if channel == "email" else None,
                 "noiseClass": noise,
                 "docs": [],
                 "inboundCount": 0,
@@ -193,21 +229,22 @@ def _build_groups(
             group = groups[identity_key]
         else:
             # Prefer a real person name / clearer company when available
-            if from_name and (
+            if display_hint and (
                 not group.get("displayName")
                 or group["displayName"] == guess_display_name(from_name=None, email=from_email)
+                or group["displayName"] == group.get("phone")
             ):
-                group["displayName"] = from_name
-            if not group.get("company"):
+                group["displayName"] = display_hint
+            if not group.get("company") and from_email:
                 group["company"] = guess_company_from_email(from_email)
             # Any non-noise inbound clears noise if mixed? Keep strictest: if ANY
             # inbound is clean, treat group as clean (person mailed from real addr).
-            if noise is None:
+            if noise is None and group.get("noiseClass"):
                 group["noiseClass"] = None
         group["docs"].append(doc)
         group["inboundCount"] += 1
 
-    # Pass 2: attach outbound to existing groups (same counterparty email)
+    # Pass 2: attach outbound to existing groups (same counterparty email/phone)
     for doc in docs:
         if (doc.get("direction") or "inbound") != "outbound":
             continue
@@ -480,11 +517,15 @@ async def _reconcile_actions_after_link(
     *,
     client_name: str = "",
 ) -> None:
-    """Attach clientId to open actions and retarget reply_to_prospect after link/convert."""
+    """Attach clientId to open actions and retarget reply/call_back after link/convert."""
     if not communication_ids:
         return
     try:
-        from action_engine.constants import ACTION_STATUS_PENDING, ACTION_TYPE_REPLY_TO_PROSPECT
+        from action_engine.constants import (
+            ACTION_STATUS_PENDING,
+            ACTION_TYPE_CALL_BACK,
+            ACTION_TYPE_REPLY_TO_PROSPECT,
+        )
     except Exception:
         return
 
@@ -518,6 +559,29 @@ async def _reconcile_actions_after_link(
                     "description": "Contact converti en client — répondre depuis la fiche.",
                     "updatedAt": now,
                     "metadata.prospectConverted": True,
+                    "metadata.linkedClientId": client_id,
+                }
+            },
+        )
+    # Keep call_back actions; refresh title with client name.
+    cb_cursor = db.actions.find(
+        {
+            "userId": user_id,
+            "communicationId": {"$in": list(communication_ids)},
+            "status": ACTION_STATUS_PENDING,
+            "type": ACTION_TYPE_CALL_BACK,
+        },
+        {"_id": 0, "id": 1},
+    )
+    async for action in cb_cursor:
+        label = client_name or "client"
+        await db.actions.update_one(
+            {"userId": user_id, "id": action["id"]},
+            {
+                "$set": {
+                    "title": f"Rappeler {label}",
+                    "clientId": client_id,
+                    "updatedAt": now,
                     "metadata.linkedClientId": client_id,
                 }
             },
@@ -621,6 +685,7 @@ async def ignore_prospect(
             from action_engine.constants import (
                 ACTION_STATUS_DISMISSED,
                 ACTION_STATUS_PENDING,
+                ACTION_TYPE_CALL_BACK,
                 ACTION_TYPE_REPLY_TO_PROSPECT,
             )
 
@@ -629,7 +694,9 @@ async def ignore_prospect(
                     "userId": user_id,
                     "communicationId": {"$in": comm_ids},
                     "status": ACTION_STATUS_PENDING,
-                    "type": ACTION_TYPE_REPLY_TO_PROSPECT,
+                    "type": {
+                        "$in": [ACTION_TYPE_REPLY_TO_PROSPECT, ACTION_TYPE_CALL_BACK]
+                    },
                 },
                 {
                     "$set": {

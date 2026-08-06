@@ -42,6 +42,7 @@ export default function DashboardHome() {
     pulseActions,
     pulseLoading,
     communicationStats,
+    phoneStats,
     reminders,
     refetchAll,
   } = useLivingDashboard({ lang, period, enabled: true });
@@ -118,6 +119,7 @@ export default function DashboardHome() {
           <LivingTodayStrip
             events={todayEvents}
             importsToday={livingKpis.importsToday}
+            phoneToday={phoneStats?.today ?? 0}
             t={t}
           />
 

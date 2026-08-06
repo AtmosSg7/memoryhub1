@@ -6,6 +6,7 @@ import { listImports } from "@/lib/importApi";
 import { fetchHubConversations } from "@/lib/hubApi";
 import { listCommunications } from "@/lib/communicationsApi";
 import { listReminders } from "@/lib/remindersApi";
+import { fetchPhoneDashboardStats } from "@/lib/phoneApi";
 import { useDashboardHomeData } from "@/hooks/useDashboardHomeData";
 import { formatInvoiceAmount } from "@/utils/invoiceDisplay";
 import { mapAnalyticsToDashboardHome } from "@/utils/mapAnalyticsOverview";
@@ -48,6 +49,13 @@ export function useLivingDashboard({ lang = "fr", period = "30d", enabled = true
     emails30d: 0,
     docs7d: 0,
     docs30d: 0,
+    callsToday: 0,
+    callsMissed: 0,
+    callsToCallBack: 0,
+    callsRecognized: 0,
+    callsUnknowns: 0,
+    call7: 0,
+    call30: 0,
     todayEvents: [],
     reminders: [],
     actions: [],
@@ -66,6 +74,7 @@ export function useLivingDashboard({ lang = "fr", period = "30d", enabled = true
         events,
         reminders,
         actions,
+        phoneStats,
       ] = await Promise.all([
         fetchHubConversations({ lifecycleStatus: "to_read", limit: 1 }).catch(() => ({ total: 0 })),
         getActionsCount({ status: "pending" }).catch(() => ({ total: 0 })),
@@ -75,6 +84,7 @@ export function useLivingDashboard({ lang = "fr", period = "30d", enabled = true
         listRecentEvents(40).catch(() => ({ items: [] })),
         listReminders({ limit: 8 }).catch(() => ({ items: [] })),
         listActions({ status: "pending", limit: 8 }).catch(() => ({ items: [] })),
+        fetchPhoneDashboardStats().catch(() => null),
       ]);
 
       const importItems = imports.items || imports || [];
@@ -97,6 +107,13 @@ export function useLivingDashboard({ lang = "fr", period = "30d", enabled = true
         emails30d: Math.max(emails30d, emails7d),
         docs7d,
         docs30d: Math.max(docs30d, docs7d),
+        callsToday: phoneStats?.today ?? 0,
+        callsMissed: phoneStats?.missed ?? 0,
+        callsToCallBack: phoneStats?.toCallBack ?? 0,
+        callsRecognized: phoneStats?.recognized ?? 0,
+        callsUnknowns: phoneStats?.unknowns ?? 0,
+        call7: phoneStats?.call7 ?? 0,
+        call30: phoneStats?.call30 ?? 0,
         todayEvents: eventItems.filter((e) => isToday(e.createdAt)).slice(0, 12),
         reminders: reminders.items || reminders || [],
         actions: actions.items || actions || [],
@@ -142,12 +159,23 @@ export function useLivingDashboard({ lang = "fr", period = "30d", enabled = true
     () => ({
       email7: pulse.emails7d,
       email30: pulse.emails30d,
-      call7: 0,
-      call30: 0,
+      call7: pulse.call7,
+      call30: pulse.call30,
       whatsapp7: 0,
       whatsapp30: 0,
       docs7: pulse.docs7d,
       docs30: pulse.docs30d,
+    }),
+    [pulse],
+  );
+
+  const phoneStats = useMemo(
+    () => ({
+      today: pulse.callsToday,
+      missed: pulse.callsMissed,
+      toCallBack: pulse.callsToCallBack,
+      recognized: pulse.callsRecognized,
+      unknowns: pulse.callsUnknowns,
     }),
     [pulse],
   );
@@ -157,6 +185,7 @@ export function useLivingDashboard({ lang = "fr", period = "30d", enabled = true
     livingKpis,
     money,
     communicationStats,
+    phoneStats,
     todayEvents: pulse.todayEvents,
     reminders: pulse.reminders,
     pulseActions: pulse.actions,

@@ -1,4 +1,4 @@
-import { Building2, Mail, MessageSquare } from "lucide-react";
+import { Building2, Mail, MessageSquare, Phone } from "lucide-react";
 import { useDashboardLang } from "@/hooks/useDashboardLang";
 import { ActionButton } from "@/components/dashboard/ActionButton";
 import {
@@ -54,6 +54,12 @@ export default function ProspectCard({
                 {t("prospects.sourceGmail")}
               </span>
             ) : null}
+            {prospect.source === "phone" || prospect.channel === "phone" ? (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-dash-text-muted bg-dash-surface-muted rounded-md px-1.5 py-0.5">
+                <Phone className="w-3 h-3" />
+                {t("prospects.sourcePhone")}
+              </span>
+            ) : null}
             {prospect.noiseClass ? (
               <span className="text-[11px] text-dash-text-subtle">
                 {t(`prospects.noise.${prospect.noiseClass}`) !== `prospects.noise.${prospect.noiseClass}`
@@ -74,6 +80,9 @@ export default function ProspectCard({
 
           {prospect.email ? (
             <p className="text-xs text-dash-text-muted truncate">{prospect.email}</p>
+          ) : null}
+          {prospect.phone ? (
+            <p className="text-xs text-dash-text-muted truncate">{prospect.phone}</p>
           ) : null}
 
           {prospect.lastSubject ? (
@@ -105,6 +114,18 @@ export default function ProspectCard({
           {t("prospects.firstContact")}: {formatProspectDateShort(prospect.firstContactAt, lang)}
         </p>
         <div className="flex flex-wrap gap-2 w-full sm:w-auto sm:justify-end">
+          {prospect.phone && !showRestore ? (
+            <ActionButton
+              variant="secondary"
+              className="h-10 text-sm flex-1 sm:flex-none min-w-[8rem]"
+              onClick={() => {
+                window.location.href = `tel:${prospect.phone}`;
+              }}
+              data-testid={`prospect-callback-${prospect.id}`}
+            >
+              {t("calls.actions.callBack")}
+            </ActionButton>
+          ) : null}
           {showRestore ? (
             <ActionButton
               variant="quick"

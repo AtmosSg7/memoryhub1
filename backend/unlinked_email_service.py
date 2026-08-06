@@ -383,10 +383,23 @@ async def associate_communication_to_client(
     communication_id: str,
     client_id: str,
 ) -> AssociateResponse:
-    """Link an email communication to a client (idempotent)."""
+    """Link an email or phone communication to a client (idempotent)."""
     comm = await _get_owned_communication(db, user_id, communication_id)
-    if comm.get("type") != "email":
-        raise ValueError("not_an_email")
+    comm_type = comm.get("type") or "email"
+    if comm_type not in {"email", "phone"}:
+        raise ValueError("unsupported_communication_type")
+
+    # Phone Hub path — retarget all compatible phone rows for the number.
+    if comm_type == "phone":
+        from phone.association_service import associate_call_to_client
+
+        result = await associate_call_to_client(db, user_id, communication_id, client_id)
+        return AssociateResponse(
+            communicationId=result.communicationId,
+            clientId=result.clientId,
+            clientName=result.clientName,
+            alreadyLinked=result.alreadyLinked,
+        )
 
     client = await _get_owned_client(db, user_id, client_id)
     display = client_display_name(client)

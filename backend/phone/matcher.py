@@ -26,13 +26,10 @@ class PhoneMatcher:
 
     @staticmethod
     def phones_match(a: str, b: str) -> bool:
+        """Strong match only: exact normalized digits (no name, no fuzzy suffix)."""
         if not a or not b:
             return False
-        if a == b:
-            return True
-        if len(a) >= 9 and len(b) >= 9 and (a.endswith(b[-9:]) or b.endswith(a[-9:])):
-            return True
-        return False
+        return a == b
 
     def find_client(
         self,

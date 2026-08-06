@@ -6,7 +6,7 @@ function countBy(events, pred) {
   return (events || []).filter(pred).length;
 }
 
-function LivingTodayStrip({ events, importsToday, t }) {
+function LivingTodayStrip({ events, importsToday, phoneToday = 0, t }) {
   const navigate = useNavigate();
   const emails = countBy(
     events,
@@ -26,6 +26,13 @@ function LivingTodayStrip({ events, importsToday, t }) {
         e.entityType === "invoice",
     ),
   );
+  const callsFromEvents = countBy(
+    events,
+    (e) =>
+      e.type === "call_logged" ||
+      e.entityType === "call" ||
+      String(e.type || "").includes("call"),
+  );
 
   const cards = [
     {
@@ -38,9 +45,9 @@ function LivingTodayStrip({ events, importsToday, t }) {
     {
       key: "calls",
       icon: Phone,
-      count: 0,
-      path: null,
-      ready: false,
+      count: Math.max(phoneToday || 0, callsFromEvents),
+      path: "/dashboard/calls",
+      ready: true,
     },
     {
       key: "whatsapp",

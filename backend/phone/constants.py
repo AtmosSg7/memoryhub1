@@ -10,6 +10,8 @@ CHANNEL_PHONE = "phone"
 
 # Vendor ids reserved for future OAuth / API connectors.
 VENDOR_MOCK = "mock"
+VENDOR_MANUAL = "manual"
+VENDOR_CSV = "csv"
 VENDOR_TWILIO = "twilio"
 VENDOR_AIRCALL = "aircall"
 VENDOR_RINGOVER = "ringover"
@@ -19,6 +21,8 @@ VENDOR_FREEPBX = "freepbx"
 
 PHONE_VENDORS = (
     VENDOR_MOCK,
+    VENDOR_MANUAL,
+    VENDOR_CSV,
     VENDOR_TWILIO,
     VENDOR_AIRCALL,
     VENDOR_RINGOVER,
@@ -26,6 +30,18 @@ PHONE_VENDORS = (
     VENDOR_3CX,
     VENDOR_FREEPBX,
 )
+
+# Real carrier connectors — reserved, not wired in Phone Hub V2.
+PHONE_CARRIER_VENDORS = (
+    VENDOR_TWILIO,
+    VENDOR_AIRCALL,
+    VENDOR_RINGOVER,
+    VENDOR_OVH,
+    VENDOR_3CX,
+    VENDOR_FREEPBX,
+)
+
+PHONE_MODE_MANUAL = "manual_journal"
 
 CallDirection = Literal["incoming", "outgoing"]
 

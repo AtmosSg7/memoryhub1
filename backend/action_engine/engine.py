@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple  # noqa: F401 — List used by call_back completion
 
 from pymongo.errors import DuplicateKeyError
 
@@ -113,6 +113,59 @@ async def evaluate_fact(db, fact: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+async def _complete_matching_call_backs(db, communication: dict) -> int:
+    """Outgoing completed/answered call auto-completes pending call_back for same phone/client."""
+    if (communication.get("type") or "") != "phone":
+        return 0
+    if (communication.get("direction") or "") != "outbound":
+        return 0
+    meta = communication.get("metadata") or {}
+    status = (meta.get("status") or "").lower()
+    if status in {"missed", "failed", "busy", "spam", "blocked", "rejected"}:
+        return 0
+
+    from action_engine.constants import (
+        ACTION_STATUS_COMPLETED,
+        ACTION_STATUS_PENDING,
+        ACTION_TYPE_CALL_BACK,
+    )
+
+    user_id = communication["userId"]
+    now = _utc_now_iso()
+    filters: List[Dict[str, Any]] = []
+    client_id = communication.get("clientId")
+    normalized = (meta.get("normalizedPhone") or "").strip()
+    conv_id = (communication.get("conversationId") or "").strip()
+    if client_id:
+        filters.append({"clientId": client_id})
+    if normalized:
+        filters.append({"metadata.normalizedPhone": normalized})
+    if conv_id:
+        filters.append({"metadata.conversationId": conv_id})
+    if not filters:
+        return 0
+
+    query = {
+        "userId": user_id,
+        "type": ACTION_TYPE_CALL_BACK,
+        "status": ACTION_STATUS_PENDING,
+        "$or": filters,
+    }
+    result = await db.actions.update_many(
+        query,
+        {
+            "$set": {
+                "status": ACTION_STATUS_COMPLETED,
+                "completedAt": now,
+                "updatedAt": now,
+                "metadata.completedBy": "outgoing_call",
+                "metadata.completedCommunicationId": communication.get("id"),
+            }
+        },
+    )
+    return int(result.modified_count or 0)
+
+
 async def evaluate_communication(
     db,
     communication: dict,
@@ -131,12 +184,20 @@ async def evaluate_communication(
     # Honor ignored prospect decisions so new mails don't reopen the queue.
     if not communication.get("clientId") and (communication.get("direction") or "") == "inbound":
         try:
-            from prospects.identity import identity_key_for_email
+            from prospects.identity import identity_key_for_email, identity_key_for_phone
             from integrations.matching import normalize_email_loose
 
             meta = communication.get("metadata") or {}
-            from_email = normalize_email_loose(meta.get("fromEmail"))
-            identity_key = identity_key_for_email(from_email)
+            identity_key = None
+            if (communication.get("type") or "") == "phone":
+                identity_key = identity_key_for_phone(
+                    meta.get("normalizedPhone")
+                    or meta.get("phoneNumber")
+                    or meta.get("fromPhone")
+                )
+            else:
+                from_email = normalize_email_loose(meta.get("fromEmail"))
+                identity_key = identity_key_for_email(from_email)
             if identity_key:
                 decision = await db.prospect_decisions.find_one(
                     {
@@ -153,7 +214,17 @@ async def evaluate_communication(
                 "action_engine_prospect_ignored_lookup_failed communication_id=%s",
                 communication.get("id"),
             )
-    return await evaluate_fact(db, fact)
+    result = await evaluate_fact(db, fact)
+    try:
+        completed = await _complete_matching_call_backs(db, communication)
+        if completed:
+            result = {**result, "completedCallBacks": completed}
+    except Exception:
+        logger.exception(
+            "action_engine_complete_call_back_failed communication_id=%s",
+            communication.get("id"),
+        )
+    return result
 
 
 async def evaluate_invoice(

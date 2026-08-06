@@ -9,6 +9,8 @@ from integrations import account_service
 from phone.config import phone_configured, phone_provider_mode, phone_sync_max_calls
 from phone.constants import (
     ACCOUNT_STATUS_CONNECTED,
+    PHONE_CARRIER_VENDORS,
+    PHONE_MODE_MANUAL,
     PHONE_SYNC_STATE_ERROR,
     PHONE_SYNC_STATE_IDLE,
     PHONE_SYNC_STATE_RUNNING,
@@ -104,16 +106,21 @@ async def get_phone_status(db, user_id: str) -> PhoneStatusResponse:
         raw = account["lastSyncSummary"]
         last_sync = PhoneSyncSummary(**raw) if isinstance(raw, dict) else None
 
+    # Product UI uses mode=manual_journal + carrierConnected=false (no live operator).
+    # ``connected`` still reflects mock/dev sync accounts for the V1 harness.
     return PhoneStatusResponse(
-        configured=phone_configured(),
+        configured=True,
         providerMode=mode,
+        mode=PHONE_MODE_MANUAL,
         connected=connected,
+        carrierConnected=False,
         syncing=syncing,
         account=_account_public(account, vendor=mode) if account else None,
         lastSync=last_sync,
         lastCall=await _last_call(db, user_id),
         stats=await _phone_stats(db, user_id),
         availableVendors=list(PHONE_VENDORS),
+        comingSoonVendors=list(PHONE_CARRIER_VENDORS),
     )
 
 

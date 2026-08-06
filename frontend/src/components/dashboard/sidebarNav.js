@@ -3,6 +3,7 @@ import {
   Users,
   UserPlus,
   ScrollText,
+  Phone,
   FileStack,
   BarChart3,
   Settings,
@@ -33,6 +34,7 @@ export function getSidebarItems(t) {
     { to: "/dashboard/documents", key: "documents", icon: FileStack, label: t("nav.documents") },
     { to: "/dashboard/analytics", key: "analytics", icon: BarChart3, label: t("nav.analytics") },
     { to: "/dashboard/communications", key: "communications", icon: ScrollText, label: t("nav.communications") },
+    { to: "/dashboard/calls", key: "calls", icon: Phone, label: t("nav.calls") },
     { to: "/dashboard/settings", key: "settings", icon: Settings, label: t("nav.settings") },
   ];
 }
@@ -78,6 +80,7 @@ export function getMobilePrimaryNavItems(t) {
 export function getMobileMoreNavItems(t) {
   return [
     { to: "/dashboard/communications", key: "communications", icon: ScrollText, label: t("nav.communications") },
+    { to: "/dashboard/calls", key: "calls", icon: Phone, label: t("nav.calls") },
     { to: "/dashboard/analytics", key: "analytics", icon: BarChart3, label: t("nav.analytics") },
     { to: "/dashboard/settings", key: "settings", icon: Settings, label: t("nav.settings") },
   ];

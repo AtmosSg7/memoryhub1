@@ -1,4 +1,4 @@
-"""Phone Hub V1 — telephony channel into Communications → Hub → Inbox/Timeline/Search."""
+"""Phone Hub V2 — manual journal / CSV into Communications → Hub → Inbox/Timeline/Search."""
 
 from phone.constants import CallDirection, CallStatus, PROVIDER_PHONE
 from phone.matcher import PhoneMatcher

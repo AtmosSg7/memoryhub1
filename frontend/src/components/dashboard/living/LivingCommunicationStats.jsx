@@ -4,7 +4,7 @@ import { FileText, Mail, MessageCircle, Phone } from "lucide-react";
 function LivingCommunicationStats({ stats, t }) {
   const rows = [
     { key: "email", icon: Mail, d7: stats?.email7 ?? 0, d30: stats?.email30 ?? 0 },
-    { key: "call", icon: Phone, d7: stats?.call7 ?? 0, d30: stats?.call30 ?? 0, soon: true },
+    { key: "call", icon: Phone, d7: stats?.call7 ?? 0, d30: stats?.call30 ?? 0 },
     { key: "whatsapp", icon: MessageCircle, d7: stats?.whatsapp7 ?? 0, d30: stats?.whatsapp30 ?? 0, soon: true },
     { key: "docs", icon: FileText, d7: stats?.docs7 ?? 0, d30: stats?.docs30 ?? 0 },
   ];

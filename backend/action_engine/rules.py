@@ -172,7 +172,7 @@ def rule_read_client_reply(fact: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 def rule_call_back(fact: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Missed call → call back (ready for phone channel; inert until facts arrive)."""
+    """Missed / voicemail → call_back. Spam/blocked → never. Idempotent per conversation."""
     if not rule_enabled(ACTION_TYPE_CALL_BACK):
         return []
     comm = fact.get("communication") or {}
@@ -181,24 +181,54 @@ def rule_call_back(fact: Dict[str, Any]) -> List[Dict[str, Any]]:
     if (comm.get("type") or "") != "phone":
         return []
     meta = comm.get("metadata") or {}
+    status = (meta.get("status") or "").lower()
+    if status in {"spam", "blocked"}:
+        return []
+    if (comm.get("status") or "") == "ignored" or comm.get("ignoredAt"):
+        return []
+
     missed = bool(meta.get("missed") or meta.get("missedCall") or fact.get("missedCall"))
-    if not missed:
+    voicemail = bool(meta.get("voicemail") or status == "voicemail")
+    if not missed and not voicemail:
         return []
 
     client_id = comm.get("clientId")
-    client_name = meta.get("clientName") or meta.get("fromName") or "contact"
+    client_name = (
+        meta.get("clientName")
+        or meta.get("counterpartyName")
+        or meta.get("fromName")
+        or meta.get("phoneNumber")
+        or "contact"
+    )
+    conv_id = (comm.get("conversationId") or "").strip()
+    phone_key = (meta.get("normalizedPhone") or "").strip()
+    if conv_id:
+        key_suffix = f"conv:{conv_id}"
+    elif phone_key:
+        key_suffix = f"phone:{phone_key}"
+    else:
+        key_suffix = comm["id"]
+    description = (
+        "Messagerie vocale à rappeler." if voicemail and not missed else "Appel manqué à rappeler."
+    )
     return [
         _proposal(
             action_type=ACTION_TYPE_CALL_BACK,
-            idempotency_key=f"{ACTION_TYPE_CALL_BACK}:{comm['id']}",
+            idempotency_key=f"{ACTION_TYPE_CALL_BACK}:{key_suffix}",
             title=f"Rappeler {client_name}",
-            description="Appel manqué à rappeler.",
+            description=description,
             priority=ACTION_PRIORITY_HIGH,
             source=ACTION_SOURCE_COMMUNICATION,
             user_id=comm["userId"],
             client_id=client_id,
             communication_id=comm["id"],
-            metadata={"channel": "phone", "missed": True},
+            metadata={
+                "channel": "phone",
+                "missed": missed,
+                "voicemail": voicemail,
+                "normalizedPhone": phone_key or None,
+                "conversationId": conv_id or None,
+            },
         )
     ]
 
