@@ -644,9 +644,13 @@ export default function ClientDetailPage() {
           <div className="space-y-8">
             <ClientInboxSection
               clientId={client.id}
+              client={client}
               t={t}
               lang={lang}
               initialConversationId={searchParams.get("conversation")}
+              onCreateQuote={openAddQuote}
+              onCreateInvoice={openAddInvoice}
+              onCreateNote={openAddNote}
             />
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-dash-text-subtle mb-3">
